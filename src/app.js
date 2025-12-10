@@ -10,8 +10,24 @@ require('dotenv').config();
 const app = express();
 
 // CORS configuration
+const allowedOrigins = [
+  'https://test1.miyn.app',
+  'http://localhost:5173',
+  'http://localhost:5174',
+  'https://erpinleadsit.netlify.app'
+];
+
 app.use(cors({
-  origin: ['https://test1.miyn.app', 'http://localhost:5173', 'http://localhost:5174', 'https://erpinleadsit.netlify.app'],
+  origin: function (origin, callback) {
+    // allow requests with no origin (like curl, Postman)
+    if (!origin) return callback(null, true);
+
+    if (allowedOrigins.includes(origin)) {
+      callback(null, true);
+    } else {
+      callback(new Error('Not allowed by CORS'));
+    }
+  },
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization']

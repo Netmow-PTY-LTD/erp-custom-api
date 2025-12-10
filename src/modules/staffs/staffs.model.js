@@ -96,12 +96,12 @@ const Staff = sequelize.define('Staff', {
     updatedAt: 'updated_at'
 });
 
-// Define associations
-Staff.associate = (models) => {
-    Staff.belongsTo(models.Department, {
-        foreignKey: 'department_id',
-        as: 'department'
-    });
-};
+// Import Department model and define association
+const { Department } = require('../departments/departments.model');
+
+Staff.belongsTo(Department, {
+    foreignKey: 'department_id',
+    as: 'department'
+});
 
 module.exports = { Staff };
