@@ -1,0 +1,1142 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>System Architecture Visualization</title>
+    <script src="https://cdn.jsdelivr.net/npm/mermaid/dist/mermaid.min.js"></script>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #f4f6f8;
+            margin: 0;
+            padding: 20px;
+            color: #333;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        .card {
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            margin-bottom: 30px;
+            padding: 20px;
+            overflow: hidden;
+        }
+
+        .card h2 {
+            margin-top: 0;
+            color: #2c3e50;
+            border-bottom: 2px solid #eee;
+            padding-bottom: 10px;
+            margin-bottom: 20px;
+        }
+
+        .mermaid {
+            display: flex;
+            justify-content: center;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <h1 style="text-align: center; margin-bottom: 40px;">System Architecture Visualizer</h1>
+
+        <div class="card">
+            <h2>1. API Request Flow</h2>
+            <div class="mermaid">
+                graph TD
+                Client[Client / Frontend] -->|HTTP Request| Router[Express Router]
+
+                subgraph "Module Layer"
+                Router -->|Route Handler| Controller[Controller Layer]
+                Controller -->|Business Logic| Service[Service Layer]
+                Service -->|Data Access| Repository[Repository Layer]
+                end
+
+                Repository -->|Sequelize Query| DB[(MySQL Database)]
+
+                %% Example Flow for Products
+                subgraph "Example: Get All Products"
+                PR[GET /api/products] --> PC[ProductController.getProducts]
+                PC --> PS[ProductService.getAllProducts]
+                PS --> PRep[ProductRepository.findAll]
+                PRep -->|Select *| ProductsTable[products table]
+                end
+            </div>
+        </div>
+
+        <div class="card">
+            <h2>2. Database Entity Relations (ER Diagram)</h2>
+            <div class="mermaid">
+                erDiagram
+                %% Core / Auth
+                USERS ||--o{ ROLES : "has role"
+                ROLES ||--|| ROLE_SETTINGS : "has settings"
+
+                %% HR
+                USERS ||--o{ STAFFS : "created by"
+                STAFFS }|--|| DEPARTMENTS : "belongs to (logical)"
+                STAFFS ||--o{ ATTENDANCES : "has"
+                STAFFS ||--o{ LEAVES : "requests"
+                STAFFS ||--o{ PAYROLLS : "receives"
+
+                %% Inventory / Products
+                CATEGORIES ||--o{ PRODUCTS : "contains"
+                UNITS ||--o{ PRODUCTS : "measured in"
+                CATEGORIES ||--o{ CATEGORIES : "parent category"
+
+                %% Sales
+                CUSTOMERS }|--|| SALES_ROUTES : "on route"
+                CUSTOMERS ||--o{ ORDERS : "places"
+                ORDERS ||--|{ ORDER_ITEMS : "contains"
+                ORDER_ITEMS }|--|| PRODUCTS : "refers to"
+                ORDERS ||--|| INVOICES : "generates"
+                ORDERS ||--o{ PAYMENTS : "paid by"
+                INVOICES ||--o{ PAYMENTS : "paid by"
+                ORDERS ||--o{ DELIVERIES : "shipped via"
+
+                %% Purchase
+                SUPPLIERS ||--o{ PURCHASE_ORDERS : "supplies"
+                PURCHASE_ORDERS ||--|{ PURCHASE_ORDER_ITEMS : "contains"
+                PURCHASE_ORDER_ITEMS }|--|| PRODUCTS : "refers to"
+
+                %% Accounting
+                INCOMES }|--|| USERS : "recorded by"
+                EXPENSES }|--|| USERS : "recorded by"
+
+                %% Table Definitions (Simplified)
+                USERS {
+                int id
+                string name
+                string email
+                int role_id
+                }
+
+                PRODUCTS {
+                int id
+                string name
+                decimal price
+                int stock_quantity
+                int category_id
+                int unit_id
+                }
+
+                ORDERS {
+                int id
+                string order_number
+                int customer_id
+                decimal total_amount
+                string status
+                }
+
+                STAFFS {
+                int id
+                string first_name
+                string last_name
+                string email
+                }
+            </div>
+        </div>
+
+        <div class="card">
+            <h2>3. Module Route Map</h2>
+            <div class="mermaid">
+                graph TD
+                subgraph "Core & Auth Module"
+                Users[Users]
+                Roles[Roles]
+                RoleSettings[Role Settings]
+                end
+
+                subgraph "HR Module"
+                Staffs[Staffs]
+                Depts[Departments]
+                Attend[Attendance]
+                Leaves[Leaves]
+                Payroll[Payroll]
+                end
+
+                subgraph "Inventory Module"
+                Products[Products]
+                Cats[Categories]
+                Units[Units]
+                end
+
+                subgraph "Sales Module"
+                Customers[Customers]
+                SRoutes[Sales Routes]
+                Warehouses[Warehouses]
+                Orders[Orders]
+                OrderItems[Order Items]
+                Invoices[Invoices]
+                Payments[Payments]
+                Deliveries[Deliveries]
+                end
+
+                subgraph "Purchase Module"
+                Suppliers[Suppliers]
+                POrders[Purchase Orders]
+                POItems[Purchase Order Items]
+                end
+
+                subgraph "Accounting Module"
+                Incomes[Incomes]
+                Expenses[Expenses]
+                AccPayroll[Payroll Records]
+                end
+
+                subgraph "Settings Module"
+                Settings[Settings]
+                end
+
+                %% Relationships between Modules
+                Users -->|Manages| Staffs
+                Staffs -->|Belongs to| Depts
+                Staffs -->|Has| Attend
+                Staffs -->|Requests| Leaves
+                Staffs -->|Receives| Payroll
+
+                Products -->|Categorized by| Cats
+                Products -->|Measured in| Units
+
+                Customers -->|Assigned to| SRoutes
+                Orders -->|Placed by| Customers
+                Orders -->|Contains| OrderItems
+                OrderItems -->|Refers to| Products
+                Orders -->|Generates| Invoices
+                Invoices -->|Paid via| Payments
+                Orders -->|Shipped via| Deliveries
+
+                POrders -->|Supplied by| Suppliers
+                POrders -->|Contains| POItems
+                POItems -->|Refers to| Products
+
+                AccPayroll -.->|Linked to| Payroll
+            </div>
+        </div>
+
+        <!-- Individual Module ER Diagrams -->
+        <div class="card">
+            <h2>4. Auth Module - ER Diagram</h2>
+            <div class="mermaid">
+                erDiagram
+                USERS {
+                int id PK
+                string name
+                string email UK
+                string password
+                int role_id FK
+                datetime created_at
+                }
+                ROLES {
+                int id PK
+                string name UK
+                datetime created_at
+                }
+                ROLE_SETTINGS {
+                int id PK
+                int role_id FK
+                text menu
+                text dashboard
+                text custom
+                }
+                USERS ||--o| ROLES : "has"
+                ROLES ||--|| ROLE_SETTINGS : "has settings"
+            </div>
+        </div>
+
+        <div class="card">
+            <h2>5. Staff Module - ER Diagram</h2>
+            <div class="mermaid">
+                erDiagram
+                STAFFS {
+                int id PK
+                string first_name
+                string last_name
+                string email UK
+                string phone
+                string position
+                string department
+                date hire_date
+                decimal salary
+                string address
+                string city
+                string state
+                string country
+                string postal_code
+                enum status
+                text notes
+                datetime created_at
+                datetime updated_at
+                }
+                DEPARTMENTS {
+                int id PK
+                string name UK
+                text description
+                datetime created_at
+                }
+                STAFFS }|--|| DEPARTMENTS : "belongs to"
+            </div>
+        </div>
+
+        <div class="card">
+            <h2>6. Attendance Module - ER Diagram</h2>
+            <div class="mermaid">
+                erDiagram
+                ATTENDANCES {
+                int id PK
+                int staff_id FK
+                date date
+                time check_in
+                time check_out
+                enum status
+                text notes
+                int created_by FK
+                datetime created_at
+                datetime updated_at
+                }
+                STAFFS {
+                int id PK
+                string first_name
+                string last_name
+                string email
+                }
+                ATTENDANCES }|--|| STAFFS : "belongs to"
+                ATTENDANCES }|--|| USERS : "created by"
+            </div>
+        </div>
+
+        <div class="card">
+            <h2>7. Leave Module - ER Diagram</h2>
+            <div class="mermaid">
+                erDiagram
+                LEAVES {
+                int id PK
+                int staff_id FK
+                enum leave_type
+                date start_date
+                date end_date
+                text reason
+                enum status
+                int approved_by FK
+                int created_by FK
+                datetime created_at
+                datetime updated_at
+                }
+                STAFFS {
+                int id PK
+                string first_name
+                string last_name
+                }
+                LEAVES }|--|| STAFFS : "requested by"
+                LEAVES }|--o| STAFFS : "approved by"
+            </div>
+        </div>
+
+        <div class="card">
+            <h2>8. Department Module - ER Diagram</h2>
+            <div class="mermaid">
+                erDiagram
+                DEPARTMENTS {
+                int id PK
+                string name UK
+                text description
+                datetime created_at
+                }
+                STAFFS {
+                int id PK
+                string first_name
+                string last_name
+                string department
+                }
+                DEPARTMENTS ||--o{ STAFFS : "has members"
+            </div>
+        </div>
+
+        <div class="card">
+            <h2>9. Product Module - ER Diagram</h2>
+            <div class="mermaid">
+                erDiagram
+                PRODUCTS {
+                int id PK
+                string name
+                string sku UK
+                text description
+                int category_id FK
+                int unit_id FK
+                decimal price
+                decimal cost
+                int stock_quantity
+                int min_stock_level
+                int max_stock_level
+                string barcode
+                string image_url
+                boolean is_active
+                datetime created_at
+                datetime updated_at
+                }
+                CATEGORIES {
+                int id PK
+                string name
+                text description
+                int parent_id FK
+                boolean is_active
+                datetime created_at
+                datetime updated_at
+                }
+                UNITS {
+                int id PK
+                string name
+                string symbol
+                boolean is_active
+                datetime created_at
+                datetime updated_at
+                }
+                PRODUCTS }|--|| CATEGORIES : "belongs to"
+                PRODUCTS }|--|| UNITS : "measured in"
+                CATEGORIES ||--o{ CATEGORIES : "parent of"
+            </div>
+        </div>
+
+        <div class="card">
+            <h2>10. Customer Module - ER Diagram</h2>
+            <div class="mermaid">
+                erDiagram
+                CUSTOMERS {
+                int id PK
+                string name
+                string email UK
+                string phone
+                string company
+                text address
+                string city
+                string state
+                string country
+                string postal_code
+                decimal latitude
+                decimal longitude
+                string tax_id
+                decimal credit_limit
+                decimal outstanding_balance
+                enum customer_type
+                int sales_route_id FK
+                int created_by FK
+                boolean is_active
+                datetime created_at
+                datetime updated_at
+                }
+                SALES_ROUTES {
+                int id PK
+                string route_name
+                text description
+                }
+                CUSTOMERS }|--o| SALES_ROUTES : "assigned to"
+            </div>
+        </div>
+
+        <div class="card">
+            <h2>11. Supplier Module - ER Diagram</h2>
+            <div class="mermaid">
+                erDiagram
+                SUPPLIERS {
+                int id PK
+                string name
+                string contact_person
+                string email UK
+                string phone
+                text address
+                string city
+                string state
+                string country
+                string postal_code
+                string tax_id
+                string website
+                string payment_terms
+                int created_by FK
+                text notes
+                boolean is_active
+                datetime created_at
+                datetime updated_at
+                }
+            </div>
+        </div>
+
+        <div class="card">
+            <h2>12. Sales Module - ER Diagram</h2>
+            <div class="mermaid">
+                erDiagram
+                ORDERS {
+                int id PK
+                string order_number UK
+                int customer_id FK
+                datetime order_date
+                enum status
+                decimal total_amount
+                decimal tax_amount
+                decimal discount_amount
+                text shipping_address
+                text billing_address
+                enum payment_status
+                text notes
+                int created_by FK
+                datetime created_at
+                datetime updated_at
+                }
+                ORDER_ITEMS {
+                int id PK
+                int order_id FK
+                int product_id FK
+                int quantity
+                decimal unit_price
+                decimal total_price
+                datetime created_at
+                datetime updated_at
+                }
+                INVOICES {
+                int id PK
+                string invoice_number UK
+                int order_id FK
+                datetime invoice_date
+                date due_date
+                decimal total_amount
+                enum status
+                int created_by FK
+                datetime created_at
+                datetime updated_at
+                }
+                PAYMENTS {
+                int id PK
+                int invoice_id FK
+                int order_id FK
+                decimal amount
+                datetime payment_date
+                string payment_method
+                string reference_number
+                enum status
+                int created_by FK
+                datetime created_at
+                datetime updated_at
+                }
+                DELIVERIES {
+                int id PK
+                string delivery_number UK
+                int order_id FK
+                date delivery_date
+                text delivery_address
+                string delivery_person_name
+                string delivery_person_phone
+                string tracking_number
+                enum status
+                text notes
+                datetime delivered_at
+                text signature
+                int created_by FK
+                datetime created_at
+                datetime updated_at
+                }
+                WAREHOUSES {
+                int id PK
+                string name
+                string location
+                int capacity
+                string manager_name
+                string contact_number
+                boolean is_active
+                datetime created_at
+                datetime updated_at
+                }
+                SALES_ROUTES {
+                int id PK
+                string route_name
+                text description
+                int assigned_sales_rep_id FK
+                string start_location
+                string end_location
+                boolean is_active
+                datetime created_at
+                datetime updated_at
+                }
+                CUSTOMERS {
+                int id PK
+                string name
+                string email
+                }
+                PRODUCTS {
+                int id PK
+                string name
+                string sku
+                }
+
+                CUSTOMERS ||--o{ ORDERS : "places"
+                ORDERS ||--|{ ORDER_ITEMS : "contains"
+                ORDER_ITEMS }|--|| PRODUCTS : "refers to"
+                ORDERS ||--|| INVOICES : "generates"
+                ORDERS ||--o{ PAYMENTS : "paid by"
+                INVOICES ||--o{ PAYMENTS : "paid by"
+                ORDERS ||--o{ DELIVERIES : "shipped via"
+                CUSTOMERS }|--o| SALES_ROUTES : "assigned to"
+            </div>
+        </div>
+
+        <div class="card">
+            <h2>13. Purchase Module - ER Diagram</h2>
+            <div class="mermaid">
+                erDiagram
+                PURCHASE_ORDERS {
+                int id PK
+                string po_number UK
+                int supplier_id FK
+                datetime order_date
+                date expected_delivery_date
+                enum status
+                decimal total_amount
+                text notes
+                int created_by FK
+                datetime created_at
+                datetime updated_at
+                }
+                PURCHASE_ORDER_ITEMS {
+                int id PK
+                int purchase_order_id FK
+                int product_id FK
+                int quantity
+                decimal unit_cost
+                decimal line_total
+                datetime created_at
+                datetime updated_at
+                }
+                SUPPLIERS {
+                int id PK
+                string name
+                string email
+                }
+                PRODUCTS {
+                int id PK
+                string name
+                string sku
+                }
+
+                SUPPLIERS ||--o{ PURCHASE_ORDERS : "supplies"
+                PURCHASE_ORDERS ||--|{ PURCHASE_ORDER_ITEMS : "contains"
+                PURCHASE_ORDER_ITEMS }|--|| PRODUCTS : "refers to"
+            </div>
+        </div>
+
+        <div class="card">
+            <h2>14. Accounting Module - ER Diagram</h2>
+            <div class="mermaid">
+                erDiagram
+                INCOMES {
+                int id PK
+                string title
+                decimal amount
+                date income_date
+                string category
+                text description
+                string reference_number
+                string payment_method
+                int created_by FK
+                datetime created_at
+                datetime updated_at
+                }
+                EXPENSES {
+                int id PK
+                string title
+                decimal amount
+                date expense_date
+                string category
+                text description
+                string reference_number
+                string payment_method
+                enum status
+                int created_by FK
+                datetime created_at
+                datetime updated_at
+                }
+                PAYROLLS {
+                int id PK
+                int staff_id FK
+                string salary_month
+                decimal basic_salary
+                decimal allowances
+                decimal deductions
+                decimal net_salary
+                date payment_date
+                enum status
+                text notes
+                int created_by FK
+                datetime created_at
+                datetime updated_at
+                }
+                STAFFS {
+                int id PK
+                string first_name
+                string last_name
+                }
+                USERS {
+                int id PK
+                string name
+                }
+
+                INCOMES }|--|| USERS : "recorded by"
+                EXPENSES }|--|| USERS : "recorded by"
+                PAYROLLS }|--|| STAFFS : "for"
+                PAYROLLS }|--|| USERS : "created by"
+            </div>
+        </div>
+
+        <div class="card">
+            <h2>15. Settings Module - ER Diagram</h2>
+            <div class="mermaid">
+                erDiagram
+                SETTINGS {
+                int id PK
+                string name
+                text description
+                enum status
+                datetime created_at
+                datetime updated_at
+                }
+            </div>
+        </div>
+
+        <div class="card">
+            <h2>16. Reports Module - Data Sources</h2>
+            <div class="mermaid">
+                erDiagram
+                ORDERS {
+                int id PK
+                int customer_id FK
+                decimal total_amount
+                datetime order_date
+                enum status
+                }
+                CUSTOMERS {
+                int id PK
+                string name
+                decimal outstanding_balance
+                }
+                PRODUCTS {
+                int id PK
+                string name
+                decimal price
+                int stock_quantity
+                }
+                ORDER_ITEMS {
+                int id PK
+                int order_id FK
+                int product_id FK
+                int quantity
+                decimal total_price
+                }
+                PURCHASE_ORDERS {
+                int id PK
+                int supplier_id FK
+                decimal total_amount
+                datetime order_date
+                }
+                SUPPLIERS {
+                int id PK
+                string name
+                }
+                ATTENDANCES {
+                int id PK
+                int staff_id FK
+                date date
+                enum status
+                }
+                PAYROLLS {
+                int id PK
+                int staff_id FK
+                string salary_month
+                decimal net_salary
+                enum status
+                }
+                INCOMES {
+                int id PK
+                decimal amount
+                date income_date
+                }
+                EXPENSES {
+                int id PK
+                decimal amount
+                date expense_date
+                }
+
+                ORDERS }|--|| CUSTOMERS : "placed by"
+                ORDERS ||--|{ ORDER_ITEMS : "contains"
+                ORDER_ITEMS }|--|| PRODUCTS : "refers to"
+                PURCHASE_ORDERS }|--|| SUPPLIERS : "from"
+                ATTENDANCES }|--|| STAFFS : "for"
+                PAYROLLS }|--|| STAFFS : "for"
+            </div>
+        </div>
+
+        <!-- Route-Specific ER Diagrams -->
+        <h1 style="text-align: center; margin: 60px 0 40px 0; color: #2c3e50;">Route-Specific Database Access</h1>
+
+        <div class="card">
+            <h2>Route: POST /api/sales/orders - Create Order</h2>
+            <div class="mermaid">
+                erDiagram
+                ORDERS {
+                int id PK
+                string order_number UK
+                int customer_id FK
+                decimal total_amount
+                enum status
+                int created_by FK
+                }
+                ORDER_ITEMS {
+                int id PK
+                int order_id FK
+                int product_id FK
+                int quantity
+                decimal unit_price
+                decimal total_price
+                }
+                PRODUCTS {
+                int id PK
+                string name
+                int stock_quantity
+                decimal price
+                }
+                CUSTOMERS {
+                int id PK
+                string name
+                decimal credit_limit
+                decimal outstanding_balance
+                }
+                USERS {
+                int id PK
+                string name
+                }
+
+                ORDERS }|--|| CUSTOMERS : "placed by"
+                ORDERS ||--|{ ORDER_ITEMS : "contains"
+                ORDER_ITEMS }|--|| PRODUCTS : "refers to"
+                ORDERS }|--|| USERS : "created by"
+            </div>
+            <p style="margin-top: 15px; color: #666;"><strong>Tables Accessed:</strong> orders (INSERT), order_items
+                (INSERT), products (SELECT, UPDATE stock), customers (SELECT, UPDATE balance), users (SELECT)</p>
+        </div>
+
+        <div class="card">
+            <h2>Route: GET /api/reports/sales/top-customers - Top Customers Report</h2>
+            <div class="mermaid">
+                erDiagram
+                CUSTOMERS {
+                int id PK
+                string name
+                string email
+                decimal outstanding_balance
+                }
+                ORDERS {
+                int id PK
+                int customer_id FK
+                decimal total_amount
+                datetime order_date
+                enum status
+                }
+                ORDER_ITEMS {
+                int id PK
+                int order_id FK
+                int product_id FK
+                decimal total_price
+                }
+
+                CUSTOMERS ||--o{ ORDERS : "places"
+                ORDERS ||--|{ ORDER_ITEMS : "contains"
+            </div>
+            <p style="margin-top: 15px; color: #666;"><strong>Tables Accessed:</strong> customers (SELECT), orders
+                (SELECT with JOIN), order_items (SELECT, SUM aggregation)</p>
+            <p style="color: #666;"><strong>Query Logic:</strong> GROUP BY customer_id, SUM(total_amount), ORDER BY
+                total DESC, LIMIT</p>
+        </div>
+
+        <div class="card">
+            <h2>Route: POST /api/purchase/orders - Create Purchase Order</h2>
+            <div class="mermaid">
+                erDiagram
+                PURCHASE_ORDERS {
+                int id PK
+                string po_number UK
+                int supplier_id FK
+                decimal total_amount
+                enum status
+                int created_by FK
+                }
+                PURCHASE_ORDER_ITEMS {
+                int id PK
+                int purchase_order_id FK
+                int product_id FK
+                int quantity
+                decimal unit_cost
+                }
+                PRODUCTS {
+                int id PK
+                string name
+                int stock_quantity
+                }
+                SUPPLIERS {
+                int id PK
+                string name
+                string email
+                }
+                USERS {
+                int id PK
+                string name
+                }
+
+                PURCHASE_ORDERS }|--|| SUPPLIERS : "from"
+                PURCHASE_ORDERS ||--|{ PURCHASE_ORDER_ITEMS : "contains"
+                PURCHASE_ORDER_ITEMS }|--|| PRODUCTS : "refers to"
+                PURCHASE_ORDERS }|--|| USERS : "created by"
+            </div>
+            <p style="margin-top: 15px; color: #666;"><strong>Tables Accessed:</strong> purchase_orders (INSERT),
+                purchase_order_items (INSERT), products (SELECT), suppliers (SELECT), users (SELECT)</p>
+        </div>
+
+        <div class="card">
+            <h2>Route: POST /api/attendance/check-in - Staff Check-in</h2>
+            <div class="mermaid">
+                erDiagram
+                ATTENDANCES {
+                int id PK
+                int staff_id FK
+                date date
+                time check_in
+                enum status
+                int created_by FK
+                }
+                STAFFS {
+                int id PK
+                string first_name
+                string last_name
+                string email
+                enum status
+                }
+                USERS {
+                int id PK
+                string name
+                }
+
+                ATTENDANCES }|--|| STAFFS : "for"
+                ATTENDANCES }|--|| USERS : "created by"
+            </div>
+            <p style="margin-top: 15px; color: #666;"><strong>Tables Accessed:</strong> attendances (INSERT, SELECT to
+                check duplicates), staffs (SELECT), users (SELECT)</p>
+        </div>
+
+        <div class="card">
+            <h2>Route: GET /api/reports/hr/payroll - Payroll Summary Report</h2>
+            <div class="mermaid">
+                erDiagram
+                PAYROLLS {
+                int id PK
+                int staff_id FK
+                string salary_month
+                decimal basic_salary
+                decimal allowances
+                decimal deductions
+                decimal net_salary
+                enum status
+                }
+                STAFFS {
+                int id PK
+                string first_name
+                string last_name
+                string department
+                }
+                DEPARTMENTS {
+                int id PK
+                string name
+                }
+
+                PAYROLLS }|--|| STAFFS : "for"
+                STAFFS }|--|| DEPARTMENTS : "belongs to"
+            </div>
+            <p style="margin-top: 15px; color: #666;"><strong>Tables Accessed:</strong> payrolls (SELECT with
+                aggregation), staffs (SELECT with JOIN), departments (SELECT with JOIN)</p>
+            <p style="color: #666;"><strong>Query Logic:</strong> GROUP BY salary_month, SUM(net_salary),
+                COUNT(staff_id)</p>
+        </div>
+
+        <div class="card">
+            <h2>Route: GET /api/products/stock - Stock Details</h2>
+            <div class="mermaid">
+                erDiagram
+                PRODUCTS {
+                int id PK
+                string name
+                string sku
+                int stock_quantity
+                int min_stock_level
+                decimal price
+                decimal cost
+                boolean is_active
+                }
+                CATEGORIES {
+                int id PK
+                string name
+                }
+                UNITS {
+                int id PK
+                string name
+                string symbol
+                }
+
+                PRODUCTS }|--|| CATEGORIES : "belongs to"
+                PRODUCTS }|--|| UNITS : "measured in"
+            </div>
+            <p style="margin-top: 15px; color: #666;"><strong>Tables Accessed:</strong> products (SELECT, COUNT, SUM
+                aggregations), categories (SELECT with JOIN), units (SELECT with JOIN)</p>
+            <p style="color: #666;"><strong>Query Logic:</strong> COUNT(*) for total, WHERE stock_quantity <=
+                    min_stock_level for low stock, SUM(stock_quantity * price) for total value</p>
+        </div>
+
+        <div class="card">
+            <h2>Route: POST /api/accounting/expenses - Record Expense</h2>
+            <div class="mermaid">
+                erDiagram
+                EXPENSES {
+                int id PK
+                string title
+                decimal amount
+                date expense_date
+                string category
+                enum status
+                int created_by FK
+                }
+                USERS {
+                int id PK
+                string name
+                string email
+                }
+
+                EXPENSES }|--|| USERS : "recorded by"
+            </div>
+            <p style="margin-top: 15px; color: #666;"><strong>Tables Accessed:</strong> expenses (INSERT), users
+                (SELECT)</p>
+        </div>
+
+        <div class="card">
+            <h2>Route: GET /api/customers?page=1&limit=10 - List Customers</h2>
+            <div class="mermaid">
+                erDiagram
+                CUSTOMERS {
+                int id PK
+                string name
+                string email UK
+                string phone
+                string company
+                enum customer_type
+                int sales_route_id FK
+                boolean is_active
+                }
+                SALES_ROUTES {
+                int id PK
+                string route_name
+                string description
+                }
+
+                CUSTOMERS }|--o| SALES_ROUTES : "assigned to"
+            </div>
+            <p style="margin-top: 15px; color: #666;"><strong>Tables Accessed:</strong> customers (SELECT with
+                pagination), sales_routes (SELECT with LEFT JOIN)</p>
+            <p style="color: #666;"><strong>Query Logic:</strong> LIMIT, OFFSET for pagination, findAndCountAll for
+                total count</p>
+        </div>
+
+        <div class="card">
+            <h2>Route: POST /api/leaves - Submit Leave Request</h2>
+            <div class="mermaid">
+                erDiagram
+                LEAVES {
+                int id PK
+                int staff_id FK
+                enum leave_type
+                date start_date
+                date end_date
+                text reason
+                enum status
+                int created_by FK
+                }
+                STAFFS {
+                int id PK
+                string first_name
+                string last_name
+                string email
+                }
+                USERS {
+                int id PK
+                string name
+                }
+
+                LEAVES }|--|| STAFFS : "requested by"
+                LEAVES }|--|| USERS : "created by"
+            </div>
+            <p style="margin-top: 15px; color: #666;"><strong>Tables Accessed:</strong> leaves (INSERT), staffs
+                (SELECT), users (SELECT)</p>
+        </div>
+
+        <div class="card">
+            <h2>Route: GET /api/reports/profit-loss - Profit & Loss Report</h2>
+            <div class="mermaid">
+                erDiagram
+                INCOMES {
+                int id PK
+                decimal amount
+                date income_date
+                string category
+                }
+                EXPENSES {
+                int id PK
+                decimal amount
+                date expense_date
+                string category
+                enum status
+                }
+                ORDERS {
+                int id PK
+                decimal total_amount
+                datetime order_date
+                enum status
+                }
+                PURCHASE_ORDERS {
+                int id PK
+                decimal total_amount
+                datetime order_date
+                enum status
+                }
+                PAYROLLS {
+                int id PK
+                decimal net_salary
+                date payment_date
+                enum status
+                }
+
+                INCOMES ||--o{ ORDERS : "includes revenue from"
+                EXPENSES ||--o{ PURCHASE_ORDERS : "includes costs from"
+                EXPENSES ||--o{ PAYROLLS : "includes payroll"
+            </div>
+            <p style="margin-top: 15px; color: #666;"><strong>Tables Accessed:</strong> incomes (SELECT, SUM), expenses
+                (SELECT, SUM), orders (SELECT, SUM), purchase_orders (SELECT, SUM), payrolls (SELECT, SUM)</p>
+            <p style="color: #666;"><strong>Query Logic:</strong> SUM(amount) GROUP BY category/period, Calculate:
+                Revenue - (Expenses + COGS + Payroll) = Net Profit</p>
+        </div>
+    </div>
+
+    <script>
+        mermaid.initialize({ startOnLoad: true, theme: 'default' });
+    </script>
+</body>
+
+</html>

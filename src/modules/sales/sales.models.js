@@ -1,0 +1,429 @@
+const { DataTypes } = require('sequelize');
+const { sequelize } = require('../../core/database/sequelize');
+const { Customer } = require('../customers/customers.model');
+const { Product } = require('../products/products.model');
+
+// Warehouse Model
+const Warehouse = sequelize.define('Warehouse', {
+    id: {
+        type: DataTypes.INTEGER,
+        primaryKey: true,
+        autoIncrement: true
+    },
+    name: {
+        type: DataTypes.STRING(255),
+        allowNull: false
+    },
+    location: {
+        type: DataTypes.STRING(255),
+        allowNull: true
+    },
+    capacity: {
+        type: DataTypes.INTEGER,
+        allowNull: true
+    },
+    manager_name: {
+        type: DataTypes.STRING(100),
+        allowNull: true
+    },
+    contact_number: {
+        type: DataTypes.STRING(50),
+        allowNull: true
+    },
+    is_active: {
+        type: DataTypes.BOOLEAN,
+        defaultValue: true
+    },
+    created_at: {
+        type: DataTypes.DATE,
+        defaultValue: DataTypes.NOW
+    },
+    updated_at: {
+        type: DataTypes.DATE,
+        defaultValue: DataTypes.NOW
+    }
+}, {
+    tableName: 'warehouses',
+    timestamps: true,
+    createdAt: 'created_at',
+    updatedAt: 'updated_at'
+});
+
+// SalesRoute Model
+const SalesRoute = sequelize.define('SalesRoute', {
+    id: {
+        type: DataTypes.INTEGER,
+        primaryKey: true,
+        autoIncrement: true
+    },
+    route_name: {
+        type: DataTypes.STRING(255),
+        allowNull: false
+    },
+    description: {
+        type: DataTypes.TEXT,
+        allowNull: true
+    },
+    assigned_sales_rep_id: {
+        type: DataTypes.INTEGER,
+        allowNull: true
+    },
+    start_location: {
+        type: DataTypes.STRING(255),
+        allowNull: true
+    },
+    end_location: {
+        type: DataTypes.STRING(255),
+        allowNull: true
+    },
+    is_active: {
+        type: DataTypes.BOOLEAN,
+        defaultValue: true
+    },
+    created_at: {
+        type: DataTypes.DATE,
+        defaultValue: DataTypes.NOW
+    },
+    updated_at: {
+        type: DataTypes.DATE,
+        defaultValue: DataTypes.NOW
+    }
+}, {
+    tableName: 'sales_routes',
+    timestamps: true,
+    createdAt: 'created_at',
+    updatedAt: 'updated_at'
+});
+
+// Order Model
+const Order = sequelize.define('Order', {
+    id: {
+        type: DataTypes.INTEGER,
+        primaryKey: true,
+        autoIncrement: true
+    },
+    order_number: {
+        type: DataTypes.STRING(50),
+        allowNull: false,
+        unique: true
+    },
+    customer_id: {
+        type: DataTypes.INTEGER,
+        allowNull: false
+    },
+    order_date: {
+        type: DataTypes.DATE,
+        defaultValue: DataTypes.NOW
+    },
+    status: {
+        type: DataTypes.ENUM('pending', 'confirmed', 'processing', 'shipped', 'delivered', 'cancelled'),
+        defaultValue: 'pending'
+    },
+    total_amount: {
+        type: DataTypes.DECIMAL(10, 2),
+        allowNull: false,
+        defaultValue: 0.00
+    },
+    tax_amount: {
+        type: DataTypes.DECIMAL(10, 2),
+        defaultValue: 0.00
+    },
+    discount_amount: {
+        type: DataTypes.DECIMAL(10, 2),
+        defaultValue: 0.00
+    },
+    shipping_address: {
+        type: DataTypes.TEXT,
+        allowNull: true
+    },
+    billing_address: {
+        type: DataTypes.TEXT,
+        allowNull: true
+    },
+    payment_status: {
+        type: DataTypes.ENUM('unpaid', 'partially_paid', 'paid', 'refunded'),
+        defaultValue: 'unpaid'
+    },
+    notes: {
+        type: DataTypes.TEXT,
+        allowNull: true
+    },
+    due_date: {
+        type: DataTypes.DATE,
+        allowNull: true
+    },
+    created_by: {
+        type: DataTypes.INTEGER,
+        allowNull: true
+    },
+    created_at: {
+        type: DataTypes.DATE,
+        defaultValue: DataTypes.NOW
+    },
+    updated_at: {
+        type: DataTypes.DATE,
+        defaultValue: DataTypes.NOW
+    }
+}, {
+    tableName: 'orders',
+    timestamps: true,
+    createdAt: 'created_at',
+    updatedAt: 'updated_at'
+});
+
+// OrderItem Model
+const OrderItem = sequelize.define('OrderItem', {
+    id: {
+        type: DataTypes.INTEGER,
+        primaryKey: true,
+        autoIncrement: true
+    },
+    order_id: {
+        type: DataTypes.INTEGER,
+        allowNull: false
+    },
+    product_id: {
+        type: DataTypes.INTEGER,
+        allowNull: false
+    },
+    quantity: {
+        type: DataTypes.INTEGER,
+        allowNull: false,
+        defaultValue: 1
+    },
+    unit_price: {
+        type: DataTypes.DECIMAL(10, 2),
+        allowNull: false
+    },
+    discount: {
+        type: DataTypes.DECIMAL(10, 2),
+        allowNull: true,
+        defaultValue: 0.00
+    },
+    line_total: {
+        type: DataTypes.DECIMAL(10, 2),
+        allowNull: true
+    },
+    total_price: {
+        type: DataTypes.DECIMAL(10, 2),
+        allowNull: false
+    },
+    created_at: {
+        type: DataTypes.DATE,
+        defaultValue: DataTypes.NOW
+    },
+    updated_at: {
+        type: DataTypes.DATE,
+        defaultValue: DataTypes.NOW
+    }
+}, {
+    tableName: 'order_items',
+    timestamps: true,
+    createdAt: 'created_at',
+    updatedAt: 'updated_at'
+});
+
+// Invoice Model
+const Invoice = sequelize.define('Invoice', {
+    id: {
+        type: DataTypes.INTEGER,
+        primaryKey: true,
+        autoIncrement: true
+    },
+    invoice_number: {
+        type: DataTypes.STRING(50),
+        allowNull: false,
+        unique: true
+    },
+    order_id: {
+        type: DataTypes.INTEGER,
+        allowNull: false
+    },
+    invoice_date: {
+        type: DataTypes.DATE,
+        defaultValue: DataTypes.NOW
+    },
+    due_date: {
+        type: DataTypes.DATE,
+        allowNull: true
+    },
+    total_amount: {
+        type: DataTypes.DECIMAL(10, 2),
+        allowNull: false
+    },
+    status: {
+        type: DataTypes.ENUM('draft', 'sent', 'paid', 'overdue', 'cancelled'),
+        defaultValue: 'draft'
+    },
+    created_by: {
+        type: DataTypes.INTEGER,
+        allowNull: true
+    },
+    created_at: {
+        type: DataTypes.DATE,
+        defaultValue: DataTypes.NOW
+    },
+    updated_at: {
+        type: DataTypes.DATE,
+        defaultValue: DataTypes.NOW
+    }
+}, {
+    tableName: 'invoices',
+    timestamps: true,
+    createdAt: 'created_at',
+    updatedAt: 'updated_at'
+});
+
+// Payment Model
+const Payment = sequelize.define('Payment', {
+    id: {
+        type: DataTypes.INTEGER,
+        primaryKey: true,
+        autoIncrement: true
+    },
+    invoice_id: {
+        type: DataTypes.INTEGER,
+        allowNull: true // Can be linked to invoice or directly to order
+    },
+    order_id: {
+        type: DataTypes.INTEGER,
+        allowNull: false
+    },
+    amount: {
+        type: DataTypes.DECIMAL(10, 2),
+        allowNull: false
+    },
+    payment_date: {
+        type: DataTypes.DATE,
+        defaultValue: DataTypes.NOW
+    },
+    payment_method: {
+        type: DataTypes.STRING(50),
+        allowNull: false // e.g., 'cash', 'credit_card', 'bank_transfer'
+    },
+    reference_number: {
+        type: DataTypes.STRING(100),
+        allowNull: true
+    },
+    status: {
+        type: DataTypes.ENUM('pending', 'completed', 'failed', 'refunded'),
+        defaultValue: 'pending'
+    },
+    created_by: {
+        type: DataTypes.INTEGER,
+        allowNull: true
+    },
+    created_at: {
+        type: DataTypes.DATE,
+        defaultValue: DataTypes.NOW
+    },
+    updated_at: {
+        type: DataTypes.DATE,
+        defaultValue: DataTypes.NOW
+    }
+}, {
+    tableName: 'payments',
+    timestamps: true,
+    createdAt: 'created_at',
+    updatedAt: 'updated_at'
+});
+
+// Delivery Model
+const Delivery = sequelize.define('Delivery', {
+    id: {
+        type: DataTypes.INTEGER,
+        primaryKey: true,
+        autoIncrement: true
+    },
+    delivery_number: {
+        type: DataTypes.STRING(50),
+        allowNull: false,
+        unique: true
+    },
+    order_id: {
+        type: DataTypes.INTEGER,
+        allowNull: false
+    },
+    delivery_date: {
+        type: DataTypes.DATE,
+        allowNull: true
+    },
+    delivery_address: {
+        type: DataTypes.TEXT,
+        allowNull: false
+    },
+    delivery_person_name: {
+        type: DataTypes.STRING(255),
+        allowNull: true
+    },
+    delivery_person_phone: {
+        type: DataTypes.STRING(50),
+        allowNull: true
+    },
+    tracking_number: {
+        type: DataTypes.STRING(100),
+        allowNull: true
+    },
+    status: {
+        type: DataTypes.ENUM('pending', 'in_transit', 'delivered', 'failed', 'returned'),
+        defaultValue: 'pending'
+    },
+    notes: {
+        type: DataTypes.TEXT,
+        allowNull: true
+    },
+    delivered_at: {
+        type: DataTypes.DATE,
+        allowNull: true
+    },
+    signature: {
+        type: DataTypes.TEXT,
+        allowNull: true
+    },
+    created_by: {
+        type: DataTypes.INTEGER,
+        allowNull: true
+    },
+    created_at: {
+        type: DataTypes.DATE,
+        defaultValue: DataTypes.NOW
+    },
+    updated_at: {
+        type: DataTypes.DATE,
+        defaultValue: DataTypes.NOW
+    }
+}, {
+    tableName: 'deliveries',
+    timestamps: true,
+    createdAt: 'created_at',
+    updatedAt: 'updated_at'
+});
+
+// Associations
+Order.belongsTo(Customer, { foreignKey: 'customer_id', as: 'customer' });
+
+Order.hasMany(OrderItem, { foreignKey: 'order_id', as: 'items' });
+OrderItem.belongsTo(Order, { foreignKey: 'order_id' });
+OrderItem.belongsTo(Product, { foreignKey: 'product_id', as: 'product' });
+
+Order.hasOne(Invoice, { foreignKey: 'order_id', as: 'invoice' });
+Invoice.belongsTo(Order, { foreignKey: 'order_id', as: 'order' });
+
+Order.hasMany(Payment, { foreignKey: 'order_id', as: 'payments' });
+Payment.belongsTo(Order, { foreignKey: 'order_id', as: 'order' });
+
+Invoice.hasMany(Payment, { foreignKey: 'invoice_id', as: 'payments' });
+Payment.belongsTo(Invoice, { foreignKey: 'invoice_id', as: 'invoice' });
+
+Order.hasMany(Delivery, { foreignKey: 'order_id', as: 'deliveries' });
+Delivery.belongsTo(Order, { foreignKey: 'order_id' });
+
+module.exports = {
+    Warehouse,
+    SalesRoute,
+    Order,
+    OrderItem,
+    Invoice,
+    Payment,
+    Delivery
+};

@@ -1,0 +1,243 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Reports Module Documentation</title>
+    <script src="https://cdn.jsdelivr.net/npm/mermaid/dist/mermaid.min.js"></script>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #c471f5 0%, #fa71cd 100%);
+            margin: 0;
+            padding: 20px;
+            color: #333;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        .header {
+            background: white;
+            border-radius: 12px;
+            padding: 30px;
+            margin-bottom: 30px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+        }
+
+        .header h1 {
+            margin: 0 0 10px 0;
+            color: #c471f5;
+        }
+
+        .header p {
+            margin: 0;
+            color: #666;
+        }
+
+        .card {
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+            margin-bottom: 30px;
+            padding: 30px;
+            overflow: hidden;
+        }
+
+        .card h2 {
+            margin-top: 0;
+            color: #c471f5;
+            border-bottom: 3px solid #c471f5;
+            padding-bottom: 15px;
+            margin-bottom: 25px;
+        }
+
+        .route-item {
+            background: #f8f9fa;
+            border-left: 4px solid #c471f5;
+            padding: 15px 20px;
+            margin-bottom: 15px;
+            border-radius: 6px;
+        }
+
+        .route-item h3 {
+            margin: 0 0 10px 0;
+            color: #333;
+            font-size: 18px;
+        }
+
+        .route-method {
+            display: inline-block;
+            padding: 4px 12px;
+            border-radius: 4px;
+            font-weight: bold;
+            font-size: 12px;
+            margin-right: 10px;
+        }
+
+        .method-get {
+            background: #28a745;
+            color: white;
+        }
+
+        .route-path {
+            font-family: 'Courier New', monospace;
+            color: #c471f5;
+            font-weight: bold;
+        }
+
+        .route-desc {
+            margin: 10px 0 0 0;
+            color: #666;
+        }
+
+        .mermaid {
+            display: flex;
+            justify-content: center;
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 8px;
+        }
+
+        .back-link {
+            display: inline-block;
+            padding: 10px 20px;
+            background: #c471f5;
+            color: white;
+            text-decoration: none;
+            border-radius: 6px;
+            margin-bottom: 20px;
+        }
+
+        .back-link:hover {
+            background: #b361e5;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <a href="/module-docs" class="back-link">← Back to Module Index</a>
+        <div class="header">
+            <h1>📊 Reports Module</h1>
+            <p>Business analytics and reporting system</p>
+        </div>
+        <div class="card">
+            <h2>📋 API Routes</h2>
+            <div class="route-item">
+                <h3><span class="route-method method-get">GET</span><span
+                        class="route-path">/api/reports/sales/top-customers</span></h3>
+                <p class="route-desc">Top customers by sales volume report.</p>
+            </div>
+            <div class="route-item">
+                <h3><span class="route-method method-get">GET</span><span
+                        class="route-path">/api/reports/sales/top-products</span></h3>
+                <p class="route-desc">Top selling products report.</p>
+            </div>
+            <div class="route-item">
+                <h3><span class="route-method method-get">GET</span><span
+                        class="route-path">/api/reports/purchase/spending-by-supplier</span></h3>
+                <p class="route-desc">Purchase spending analysis by supplier.</p>
+            </div>
+            <div class="route-item">
+                <h3><span class="route-method method-get">GET</span><span
+                        class="route-path">/api/reports/hr/attendance</span></h3>
+                <p class="route-desc">Employee attendance summary report.</p>
+            </div>
+            <div class="route-item">
+                <h3><span class="route-method method-get">GET</span><span
+                        class="route-path">/api/reports/hr/payroll</span></h3>
+                <p class="route-desc">Payroll summary and analysis.</p>
+            </div>
+            <div class="route-item">
+                <h3><span class="route-method method-get">GET</span><span
+                        class="route-path">/api/reports/profit-loss</span></h3>
+                <p class="route-desc">Profit & Loss statement with income and expenses.</p>
+            </div>
+        </div>
+        <div class="card">
+            <h2>🗄️ Data Sources (ER Diagram)</h2>
+            <div class="mermaid">
+                erDiagram
+                ORDERS {
+                int id PK
+                int customer_id FK
+                decimal total_amount
+                datetime order_date
+                enum status
+                }
+                CUSTOMERS {
+                int id PK
+                string name
+                decimal outstanding_balance
+                }
+                PRODUCTS {
+                int id PK
+                string name
+                decimal price
+                int stock_quantity
+                }
+                ORDER_ITEMS {
+                int id PK
+                int order_id FK
+                int product_id FK
+                int quantity
+                decimal total_price
+                }
+                PURCHASE_ORDERS {
+                int id PK
+                int supplier_id FK
+                decimal total_amount
+                }
+                SUPPLIERS {
+                int id PK
+                string name
+                }
+                ATTENDANCES {
+                int id PK
+                int staff_id FK
+                date date
+                enum status
+                }
+                PAYROLLS {
+                int id PK
+                int staff_id FK
+                decimal net_salary
+                }
+                INCOMES {
+                int id PK
+                decimal amount
+                date income_date
+                }
+                EXPENSES {
+                int id PK
+                decimal amount
+                date expense_date
+                }
+                ORDERS }|--|| CUSTOMERS : "placed by"
+                ORDERS ||--|{ ORDER_ITEMS : "contains"
+                ORDER_ITEMS }|--|| PRODUCTS : "refers to"
+                PURCHASE_ORDERS }|--|| SUPPLIERS : "from"
+            </div>
+        </div>
+        <div class="card">
+            <h2>📊 Tables Used</h2>
+            <ul>
+                <li><strong>orders, order_items</strong> - Sales data for customer and product reports</li>
+                <li><strong>customers</strong> - Customer information</li>
+                <li><strong>products</strong> - Product catalog</li>
+                <li><strong>purchase_orders</strong> - Purchase data for supplier spending</li>
+                <li><strong>suppliers</strong> - Supplier information</li>
+                <li><strong>attendances</strong> - Attendance records for HR reports</li>
+                <li><strong>payrolls</strong> - Payroll data for financial reports</li>
+                <li><strong>incomes, expenses</strong> - Financial transactions for P&L</li>
+            </ul>
+        </div>
+    </div>
+    <script>mermaid.initialize({ startOnLoad: true, theme: 'default' });</script>
+</body>
+
+</html>

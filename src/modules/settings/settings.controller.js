@@ -1,0 +1,79 @@
+const SettingsService = require('./settings.service');
+const { success, error, successWithPagination } = require('../../core/utils/response');
+
+class SettingsController {
+  constructor(settingsService) {
+    this.settingsService = settingsService || SettingsService;
+  }
+
+  async getAll(req, res) {
+    try {
+      const page = parseInt(req.query.page) || 1;
+      const limit = parseInt(req.query.limit) || 10;
+      const result = await this.settingsService.getAll(page, limit);
+      return successWithPagination(res, 'Settings retrieved successfully', result.data, {
+        total: result.total,
+        page,
+        limit
+      });
+    } catch (err) {
+      return error(res, err.message, 500);
+    }
+  }
+
+  async getById(req, res) {
+    try {
+      const setting = await this.settingsService.getById(req.params.id);
+      return success(res, 'Setting retrieved successfully', setting);
+    } catch (err) {
+      return error(res, err.message, 404);
+    }
+  }
+
+  async create(req, res) {
+    try {
+      const setting = await this.settingsService.create(req.body);
+      return success(res, 'Setting created successfully', setting, 201);
+    } catch (err) {
+      return error(res, err.message, 400);
+    }
+  }
+
+  async update(req, res) {
+    try {
+      const setting = await this.settingsService.update(req.params.id, req.body);
+      return success(res, 'Setting updated successfully', setting);
+    } catch (err) {
+      return error(res, err.message, 400);
+    }
+  }
+
+  async delete(req, res) {
+    try {
+      await this.settingsService.delete(req.params.id);
+      return success(res, 'Setting deleted successfully', null);
+    } catch (err) {
+      return error(res, err.message, 404);
+    }
+  }
+
+  async getCompanyProfile(req, res) {
+    try {
+      const profile = await this.settingsService.getCompanyProfile();
+      return success(res, 'Company profile retrieved successfully', profile);
+    } catch (err) {
+      return error(res, err.message, 500);
+    }
+  }
+
+  async updateCompanyProfile(req, res) {
+    try {
+      const profile = await this.settingsService.updateCompanyProfile(req.body);
+      return success(res, 'Company profile updated successfully', profile);
+    } catch (err) {
+      return error(res, err.message, 400);
+    }
+  }
+}
+
+module.exports = SettingsController;

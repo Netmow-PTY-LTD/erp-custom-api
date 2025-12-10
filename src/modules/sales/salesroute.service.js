@@ -1,0 +1,42 @@
+const SalesRouteRepository = require('./salesroute.repository');
+
+class SalesRouteService {
+    async getAllRoutes(filters = {}, page = 1, limit = 10) {
+        const offset = (page - 1) * limit;
+        const result = await SalesRouteRepository.findAll(filters, limit, offset);
+        return {
+            data: result.rows,
+            total: result.count
+        };
+    }
+
+    async getRouteById(id) {
+        const route = await SalesRouteRepository.findById(id);
+        if (!route) {
+            throw new Error('Sales route not found');
+        }
+        return route;
+    }
+
+    async createRoute(data, userId) {
+        return await SalesRouteRepository.create({ ...data, created_by: userId });
+    }
+
+    async updateRoute(id, data) {
+        const route = await SalesRouteRepository.update(id, data);
+        if (!route) {
+            throw new Error('Sales route not found');
+        }
+        return route;
+    }
+
+    async deleteRoute(id) {
+        const route = await SalesRouteRepository.delete(id);
+        if (!route) {
+            throw new Error('Sales route not found');
+        }
+        return route;
+    }
+}
+
+module.exports = new SalesRouteService();

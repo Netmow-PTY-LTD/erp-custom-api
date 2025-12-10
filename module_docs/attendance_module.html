@@ -1,0 +1,212 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Attendance Module Documentation</title>
+    <script src="https://cdn.jsdelivr.net/npm/mermaid/dist/mermaid.min.js"></script>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #f12711 0%, #f5af19 100%);
+            margin: 0;
+            padding: 20px;
+            color: #333;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        .header {
+            background: white;
+            border-radius: 12px;
+            padding: 30px;
+            margin-bottom: 30px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+        }
+
+        .header h1 {
+            margin: 0 0 10px 0;
+            color: #f12711;
+        }
+
+        .header p {
+            margin: 0;
+            color: #666;
+        }
+
+        .card {
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+            margin-bottom: 30px;
+            padding: 30px;
+            overflow: hidden;
+        }
+
+        .card h2 {
+            margin-top: 0;
+            color: #f12711;
+            border-bottom: 3px solid #f12711;
+            padding-bottom: 15px;
+            margin-bottom: 25px;
+        }
+
+        .route-item {
+            background: #f8f9fa;
+            border-left: 4px solid #f12711;
+            padding: 15px 20px;
+            margin-bottom: 15px;
+            border-radius: 6px;
+        }
+
+        .route-item h3 {
+            margin: 0 0 10px 0;
+            color: #333;
+            font-size: 18px;
+        }
+
+        .route-method {
+            display: inline-block;
+            padding: 4px 12px;
+            border-radius: 4px;
+            font-weight: bold;
+            font-size: 12px;
+            margin-right: 10px;
+        }
+
+        .method-get {
+            background: #28a745;
+            color: white;
+        }
+
+        .method-post {
+            background: #007bff;
+            color: white;
+        }
+
+        .method-put {
+            background: #ffc107;
+            color: #333;
+        }
+
+        .method-delete {
+            background: #dc3545;
+            color: white;
+        }
+
+        .route-path {
+            font-family: 'Courier New', monospace;
+            color: #f12711;
+            font-weight: bold;
+        }
+
+        .route-desc {
+            margin: 10px 0 0 0;
+            color: #666;
+        }
+
+        .mermaid {
+            display: flex;
+            justify-content: center;
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 8px;
+        }
+
+        .back-link {
+            display: inline-block;
+            padding: 10px 20px;
+            background: #f12711;
+            color: white;
+            text-decoration: none;
+            border-radius: 6px;
+            margin-bottom: 20px;
+        }
+
+        .back-link:hover {
+            background: #d11600;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <a href="/module-docs" class="back-link">← Back to Module Index</a>
+        <div class="header">
+            <h1>⏰ Attendance Module</h1>
+            <p>Employee time tracking and attendance management</p>
+        </div>
+        <div class="card">
+            <h2>📋 API Routes</h2>
+            <div class="route-item">
+                <h3><span class="route-method method-get">GET</span><span class="route-path">/api/attendance</span></h3>
+                <p class="route-desc">List attendance records with pagination.</p>
+            </div>
+            <div class="route-item">
+                <h3><span class="route-method method-post">POST</span><span class="route-path">/api/attendance</span>
+                </h3>
+                <p class="route-desc">Record new attendance (check-in/check-out).</p>
+            </div>
+            <div class="route-item">
+                <h3><span class="route-method method-get">GET</span><span class="route-path">/api/attendance/:id</span>
+                </h3>
+                <p class="route-desc">Get attendance record details.</p>
+            </div>
+            <div class="route-item">
+                <h3><span class="route-method method-put">PUT</span><span class="route-path">/api/attendance/:id</span>
+                </h3>
+                <p class="route-desc">Update attendance record.</p>
+            </div>
+            <div class="route-item">
+                <h3><span class="route-method method-delete">DELETE</span><span
+                        class="route-path">/api/attendance/:id</span></h3>
+                <p class="route-desc">Delete attendance record.</p>
+            </div>
+        </div>
+        <div class="card">
+            <h2>🗄️ Database Schema (ER Diagram)</h2>
+            <div class="mermaid">
+                erDiagram
+                ATTENDANCES {
+                int id PK
+                int staff_id FK
+                date date
+                time check_in
+                time check_out
+                enum status
+                text notes
+                int created_by FK
+                datetime created_at
+                datetime updated_at
+                }
+                STAFFS {
+                int id PK
+                string first_name
+                string last_name
+                string email
+                }
+                USERS {
+                int id PK
+                string name
+                }
+                ATTENDANCES }|--|| STAFFS : "belongs to"
+                ATTENDANCES }|--|| USERS : "created by"
+            </div>
+        </div>
+        <div class="card">
+            <h2>📊 Tables Used</h2>
+            <ul>
+                <li><strong>attendances</strong> - Daily attendance records with check-in/out times</li>
+                <li><strong>staffs</strong> - Employee information (referenced)</li>
+                <li><strong>users</strong> - User who recorded the attendance (referenced)</li>
+            </ul>
+        </div>
+    </div>
+    <script>mermaid.initialize({ startOnLoad: true, theme: 'default' });</script>
+</body>
+
+</html>

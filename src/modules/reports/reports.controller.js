@@ -1,0 +1,146 @@
+const ReportService = require('./reports.service');
+const { success, error, successWithPagination } = require('../../core/utils/response');
+
+class ReportController {
+    // Sales
+    async getSalesSummary(req, res) {
+        try {
+            const { startDate, endDate } = req.query;
+            const data = await ReportService.getSalesSummary(startDate, endDate);
+            return success(res, 'Sales summary retrieved', data);
+        } catch (err) {
+            return error(res, err.message, 500);
+        }
+    }
+
+    async getTopCustomers(req, res) {
+        try {
+            const { startDate, endDate } = req.query;
+            const limit = req.query.limit ? parseInt(req.query.limit) : 5;
+            const data = await ReportService.getTopCustomers(startDate, endDate, limit);
+            return successWithPagination(res, 'Top customers retrieved', data, {
+                total: data.length,
+                page: 1,
+                limit,
+                totalPage: 1
+            });
+        } catch (err) {
+            return error(res, err.message, 500);
+        }
+    }
+
+    async getTopProducts(req, res) {
+        try {
+            const { startDate, endDate } = req.query;
+            const limit = req.query.limit ? parseInt(req.query.limit) : 5;
+            const data = await ReportService.getTopProducts(startDate, endDate, limit);
+            return successWithPagination(res, 'Top products retrieved', data, {
+                total: data.length,
+                page: 1,
+                limit,
+                totalPage: 1
+            });
+        } catch (err) {
+            return error(res, err.message, 500);
+        }
+    }
+
+    // Purchase
+    async getPurchaseSummary(req, res) {
+        try {
+            const { startDate, endDate } = req.query;
+            const data = await ReportService.getPurchaseSummary(startDate, endDate);
+            return success(res, 'Purchase summary retrieved', data);
+        } catch (err) {
+            return error(res, err.message, 500);
+        }
+    }
+
+    async getSpendingBySupplier(req, res) {
+        try {
+            const { startDate, endDate } = req.query;
+            const limit = req.query.limit ? parseInt(req.query.limit) : 10;
+            const data = await ReportService.getSpendingBySupplier(startDate, endDate, limit);
+            return successWithPagination(res, 'Supplier spending retrieved', data, {
+                total: data.length,
+                page: 1,
+                limit,
+                totalPage: 1
+            });
+        } catch (err) {
+            return error(res, err.message, 500);
+        }
+    }
+
+    // Inventory
+    async getInventoryStatus(req, res) {
+        try {
+            const data = await ReportService.getInventoryStatus();
+            return success(res, 'Inventory status retrieved', data);
+        } catch (err) {
+            return error(res, err.message, 500);
+        }
+    }
+
+    async getInventoryValuation(req, res) {
+        try {
+            const data = await ReportService.getInventoryValuation();
+            return success(res, 'Inventory valuation retrieved', data);
+        } catch (err) {
+            return error(res, err.message, 500);
+        }
+    }
+
+    // HR
+    async getAttendanceSummary(req, res) {
+        try {
+            const { month, year } = req.query;
+            const page = parseInt(req.query.page) || 1;
+            const limit = parseInt(req.query.limit) || 10;
+
+            if (!month || !year) {
+                return error(res, 'Month and Year are required', 400);
+            }
+
+            const result = await ReportService.getAttendanceSummary(month, year, page, limit);
+            return successWithPagination(res, 'Attendance summary retrieved', result.rows, {
+                total: result.total,
+                page,
+                limit
+            });
+        } catch (err) {
+            return error(res, err.message, 500);
+        }
+    }
+
+    async getPayrollSummary(req, res) {
+        try {
+            const { year } = req.query;
+            if (!year) {
+                return error(res, 'Year is required', 400);
+            }
+            const data = await ReportService.getPayrollSummary(year);
+            return successWithPagination(res, 'Payroll summary retrieved', data, {
+                total: data.length,
+                page: 1,
+                limit: 12,
+                totalPage: 1
+            });
+        } catch (err) {
+            return error(res, err.message, 500);
+        }
+    }
+
+    // Finance
+    async getProfitLoss(req, res) {
+        try {
+            const { startDate, endDate } = req.query;
+            const data = await ReportService.getProfitLoss(startDate, endDate);
+            return success(res, 'Profit & Loss statement retrieved', data);
+        } catch (err) {
+            return error(res, err.message, 500);
+        }
+    }
+}
+
+module.exports = new ReportController();

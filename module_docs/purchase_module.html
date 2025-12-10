@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Purchase Module Documentation</title>
+    <script src="https://cdn.jsdelivr.net/npm/mermaid/dist/mermaid.min.js"></script>
+    <style>
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%); margin: 0; padding: 20px; color: #333; }
+        .container { max-width: 1200px; margin: 0 auto; }
+        .header { background: white; border-radius: 12px; padding: 30px; margin-bottom: 30px; box-shadow: 0 10px 30px rgba(0,0,0,0.2); }
+        .header h1 { margin: 0 0 10px 0; color: #4facfe; }
+        .header p { margin: 0; color: #666; }
+        .card { background: white; border-radius: 12px; box-shadow: 0 10px 30px rgba(0,0,0,0.2); margin-bottom: 30px; padding: 30px; overflow: hidden; }
+        .card h2 { margin-top: 0; color: #4facfe; border-bottom: 3px solid #4facfe; padding-bottom: 15px; margin-bottom: 25px; }
+        .route-item { background: #f8f9fa; border-left: 4px solid #4facfe; padding: 15px 20px; margin-bottom: 15px; border-radius: 6px; }
+        .route-item h3 { margin: 0 0 10px 0; color: #333; font-size: 18px; }
+        .route-method { display: inline-block; padding: 4px 12px; border-radius: 4px; font-weight: bold; font-size: 12px; margin-right: 10px; }
+        .method-get { background: #28a745; color: white; }
+        .method-post { background: #007bff; color: white; }
+        .method-put { background: #ffc107; color: #333; }
+        .method-delete { background: #dc3545; color: white; }
+        .route-path { font-family: 'Courier New', monospace; color: #4facfe; font-weight: bold; }
+        .route-desc { margin: 10px 0 0 0; color: #666; }
+        .mermaid { display: flex; justify-content: center; background: #f8f9fa; padding: 20px; border-radius: 8px; }
+        .back-link { display: inline-block; padding: 10px 20px; background: #4facfe; color: white; text-decoration: none; border-radius: 6px; margin-bottom: 20px; }
+        .back-link:hover { background: #3f9bee; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <a href="/module-docs" class="back-link">← Back to Module Index</a>
+        <div class="header">
+            <h1>📦 Purchase Module</h1>
+            <p>Purchase order management and procurement tracking</p>
+        </div>
+        <div class="card">
+            <h2>📋 API Routes</h2>
+            <div class="route-item">
+                <h3><span class="route-method method-get">GET</span><span class="route-path">/api/purchase/orders</span></h3>
+                <p class="route-desc">List all purchase orders with pagination.</p>
+            </div>
+            <div class="route-item">
+                <h3><span class="route-method method-post">POST</span><span class="route-path">/api/purchase/orders</span></h3>
+                <p class="route-desc">Create a new purchase order.</p>
+            </div>
+            <div class="route-item">
+                <h3><span class="route-method method-get">GET</span><span class="route-path">/api/purchase/orders/:id</span></h3>
+                <p class="route-desc">Get purchase order details.</p>
+            </div>
+            <div class="route-item">
+                <h3><span class="route-method method-put">PUT</span><span class="route-path">/api/purchase/orders/:id</span></h3>
+                <p class="route-desc">Update purchase order.</p>
+            </div>
+            <div class="route-item">
+                <h3><span class="route-method method-delete">DELETE</span><span class="route-path">/api/purchase/orders/:id</span></h3>
+                <p class="route-desc">Cancel purchase order.</p>
+            </div>
+        </div>
+        <div class="card">
+            <h2>🗄️ Database Schema (ER Diagram)</h2>
+            <div class="mermaid">
+erDiagram
+    PURCHASE_ORDERS {
+        int id PK
+        string po_number UK
+        int supplier_id FK
+        datetime order_date
+        date expected_delivery_date
+        enum status
+        decimal total_amount
+        text notes
+        int created_by FK
+        datetime created_at
+        datetime updated_at
+    }
+    PURCHASE_ORDER_ITEMS {
+        int id PK
+        int purchase_order_id FK
+        int product_id FK
+        int quantity
+        decimal unit_cost
+        decimal line_total
+        datetime created_at
+        datetime updated_at
+    }
+    SUPPLIERS {
+        int id PK
+        string name
+        string email
+    }
+    PRODUCTS {
+        int id PK
+        string name
+        string sku
+    }
+    SUPPLIERS ||--o{ PURCHASE_ORDERS : "supplies"
+    PURCHASE_ORDERS ||--|{ PURCHASE_ORDER_ITEMS : "contains"
+    PURCHASE_ORDER_ITEMS }|--|| PRODUCTS : "refers to"
+            </div>
+        </div>
+        <div class="card">
+            <h2>📊 Tables Used</h2>
+            <ul>
+                <li><strong>purchase_orders</strong> - Purchase order headers</li>
+                <li><strong>purchase_order_items</strong> - Line items for each PO</li>
+                <li><strong>suppliers</strong> - Supplier information (referenced)</li>
+                <li><strong>products</strong> - Product catalog (referenced)</li>
+            </ul>
+        </div>
+    </div>
+    <script>mermaid.initialize({ startOnLoad: true, theme: 'default' });</script>
+</body>
+</html>

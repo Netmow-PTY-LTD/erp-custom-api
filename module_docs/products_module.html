@@ -1,0 +1,274 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Products Module Documentation</title>
+    <script src="https://cdn.jsdelivr.net/npm/mermaid/dist/mermaid.min.js"></script>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #43e97b 0%, #38f9d7 100%);
+            margin: 0;
+            padding: 20px;
+            color: #333;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        .header {
+            background: white;
+            border-radius: 12px;
+            padding: 30px;
+            margin-bottom: 30px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+        }
+
+        .header h1 {
+            margin: 0 0 10px 0;
+            color: #43e97b;
+        }
+
+        .header p {
+            margin: 0;
+            color: #666;
+        }
+
+        .card {
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+            margin-bottom: 30px;
+            padding: 30px;
+            overflow: hidden;
+        }
+
+        .card h2 {
+            margin-top: 0;
+            color: #43e97b;
+            border-bottom: 3px solid #43e97b;
+            padding-bottom: 15px;
+            margin-bottom: 25px;
+        }
+
+        .route-item {
+            background: #f8f9fa;
+            border-left: 4px solid #43e97b;
+            padding: 15px 20px;
+            margin-bottom: 15px;
+            border-radius: 6px;
+        }
+
+        .route-item h3 {
+            margin: 0 0 10px 0;
+            color: #333;
+            font-size: 18px;
+        }
+
+        .route-method {
+            display: inline-block;
+            padding: 4px 12px;
+            border-radius: 4px;
+            font-weight: bold;
+            font-size: 12px;
+            margin-right: 10px;
+        }
+
+        .method-get {
+            background: #28a745;
+            color: white;
+        }
+
+        .method-post {
+            background: #007bff;
+            color: white;
+        }
+
+        .method-put {
+            background: #ffc107;
+            color: #333;
+        }
+
+        .method-delete {
+            background: #dc3545;
+            color: white;
+        }
+
+        .route-path {
+            font-family: 'Courier New', monospace;
+            color: #43e97b;
+            font-weight: bold;
+        }
+
+        .route-desc {
+            margin: 10px 0 0 0;
+            color: #666;
+        }
+
+        .mermaid {
+            display: flex;
+            justify-content: center;
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 8px;
+        }
+
+        .back-link {
+            display: inline-block;
+            padding: 10px 20px;
+            background: #43e97b;
+            color: white;
+            text-decoration: none;
+            border-radius: 6px;
+            margin-bottom: 20px;
+        }
+
+        .back-link:hover {
+            background: #38d66a;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <a href="/module-docs" class="back-link">← Back to Module Index</a>
+
+        <div class="header">
+            <h1>📦 Products Module</h1>
+            <p>Product catalog, inventory management, categories, and units</p>
+        </div>
+
+        <div class="card">
+            <h2>📋 API Routes</h2>
+
+            <div class="route-item">
+                <h3>
+                    <span class="route-method method-get">GET</span>
+                    <span class="route-path">/api/products</span>
+                </h3>
+                <p class="route-desc">List all products with pagination. Supports filtering by category, status, search.
+                </p>
+            </div>
+
+            <div class="route-item">
+                <h3>
+                    <span class="route-method method-post">POST</span>
+                    <span class="route-path">/api/products</span>
+                </h3>
+                <p class="route-desc">Create a new product with details.</p>
+            </div>
+
+            <div class="route-item">
+                <h3>
+                    <span class="route-method method-get">GET</span>
+                    <span class="route-path">/api/products/:id</span>
+                </h3>
+                <p class="route-desc">Get detailed information about a specific product.</p>
+            </div>
+
+            <div class="route-item">
+                <h3>
+                    <span class="route-method method-put">PUT</span>
+                    <span class="route-path">/api/products/:id</span>
+                </h3>
+                <p class="route-desc">Update product details.</p>
+            </div>
+
+            <div class="route-item">
+                <h3>
+                    <span class="route-method method-delete">DELETE</span>
+                    <span class="route-path">/api/products/:id</span>
+                </h3>
+                <p class="route-desc">Delete a product.</p>
+            </div>
+
+            <div class="route-item">
+                <h3>
+                    <span class="route-method method-get">GET</span>
+                    <span class="route-path">/api/products/stock</span>
+                </h3>
+                <p class="route-desc">Get stock summary including total products, low stock count, and total value.</p>
+            </div>
+
+            <div class="route-item">
+                <h3>
+                    <span class="route-method method-get">GET</span>
+                    <span class="route-path">/api/products/categories</span>
+                </h3>
+                <p class="route-desc">List all product categories with pagination.</p>
+            </div>
+
+            <div class="route-item">
+                <h3>
+                    <span class="route-method method-get">GET</span>
+                    <span class="route-path">/api/products/units</span>
+                </h3>
+                <p class="route-desc">List all measurement units with pagination.</p>
+            </div>
+        </div>
+
+        <div class="card">
+            <h2>🗄️ Database Schema (ER Diagram)</h2>
+            <div class="mermaid">
+                erDiagram
+                PRODUCTS {
+                int id PK
+                string name
+                string sku UK
+                text description
+                int category_id FK
+                int unit_id FK
+                decimal price
+                decimal cost
+                int stock_quantity
+                int min_stock_level
+                int max_stock_level
+                string barcode
+                string image_url
+                boolean is_active
+                datetime created_at
+                datetime updated_at
+                }
+                CATEGORIES {
+                int id PK
+                string name
+                text description
+                int parent_id FK
+                boolean is_active
+                datetime created_at
+                datetime updated_at
+                }
+                UNITS {
+                int id PK
+                string name
+                string symbol
+                boolean is_active
+                datetime created_at
+                datetime updated_at
+                }
+                PRODUCTS }|--|| CATEGORIES : "belongs to"
+                PRODUCTS }|--|| UNITS : "measured in"
+                CATEGORIES ||--o{ CATEGORIES : "parent of"
+            </div>
+        </div>
+
+        <div class="card">
+            <h2>📊 Tables Used</h2>
+            <ul>
+                <li><strong>products</strong> - Main product catalog with inventory levels</li>
+                <li><strong>categories</strong> - Product categories with hierarchical structure</li>
+                <li><strong>units</strong> - Measurement units (kg, pcs, liters, etc.)</li>
+            </ul>
+        </div>
+    </div>
+
+    <script>
+        mermaid.initialize({ startOnLoad: true, theme: 'default' });
+    </script>
+</body>
+
+</html>

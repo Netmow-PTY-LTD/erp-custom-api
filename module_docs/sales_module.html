@@ -1,0 +1,352 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sales Module Documentation</title>
+    <script src="https://cdn.jsdelivr.net/npm/mermaid/dist/mermaid.min.js"></script>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+            margin: 0;
+            padding: 20px;
+            color: #333;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        .header {
+            background: white;
+            border-radius: 12px;
+            padding: 30px;
+            margin-bottom: 30px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+        }
+
+        .header h1 {
+            margin: 0 0 10px 0;
+            color: #f5576c;
+        }
+
+        .header p {
+            margin: 0;
+            color: #666;
+        }
+
+        .card {
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+            margin-bottom: 30px;
+            padding: 30px;
+            overflow: hidden;
+        }
+
+        .card h2 {
+            margin-top: 0;
+            color: #f5576c;
+            border-bottom: 3px solid #f5576c;
+            padding-bottom: 15px;
+            margin-bottom: 25px;
+        }
+
+        .route-item {
+            background: #f8f9fa;
+            border-left: 4px solid #f5576c;
+            padding: 15px 20px;
+            margin-bottom: 15px;
+            border-radius: 6px;
+        }
+
+        .route-item h3 {
+            margin: 0 0 10px 0;
+            color: #333;
+            font-size: 18px;
+        }
+
+        .route-method {
+            display: inline-block;
+            padding: 4px 12px;
+            border-radius: 4px;
+            font-weight: bold;
+            font-size: 12px;
+            margin-right: 10px;
+        }
+
+        .method-get {
+            background: #28a745;
+            color: white;
+        }
+
+        .method-post {
+            background: #007bff;
+            color: white;
+        }
+
+        .method-put {
+            background: #ffc107;
+            color: #333;
+        }
+
+        .method-delete {
+            background: #dc3545;
+            color: white;
+        }
+
+        .route-path {
+            font-family: 'Courier New', monospace;
+            color: #f5576c;
+            font-weight: bold;
+        }
+
+        .route-desc {
+            margin: 10px 0 0 0;
+            color: #666;
+        }
+
+        .mermaid {
+            display: flex;
+            justify-content: center;
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 8px;
+        }
+
+        .back-link {
+            display: inline-block;
+            padding: 10px 20px;
+            background: #f5576c;
+            color: white;
+            text-decoration: none;
+            border-radius: 6px;
+            margin-bottom: 20px;
+        }
+
+        .back-link:hover {
+            background: #e04658;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <a href="/module-docs" class="back-link">← Back to Module Index</a>
+
+        <div class="header">
+            <h1>🛒 Sales Module</h1>
+            <p>Complete sales order management, invoicing, payments, and delivery tracking</p>
+        </div>
+
+        <div class="card">
+            <h2>📋 API Routes</h2>
+
+            <div class="route-item">
+                <h3>
+                    <span class="route-method method-get">GET</span>
+                    <span class="route-path">/api/sales/orders</span>
+                </h3>
+                <p class="route-desc">List all sales orders with pagination. Supports filtering by status, customer,
+                    date range.</p>
+            </div>
+
+            <div class="route-item">
+                <h3>
+                    <span class="route-method method-post">POST</span>
+                    <span class="route-path">/api/sales/orders</span>
+                </h3>
+                <p class="route-desc">Create a new sales order with line items.</p>
+            </div>
+
+            <div class="route-item">
+                <h3>
+                    <span class="route-method method-get">GET</span>
+                    <span class="route-path">/api/sales/orders/:id</span>
+                </h3>
+                <p class="route-desc">Get detailed information about a specific order.</p>
+            </div>
+
+            <div class="route-item">
+                <h3>
+                    <span class="route-method method-put">PUT</span>
+                    <span class="route-path">/api/sales/orders/:id</span>
+                </h3>
+                <p class="route-desc">Update order details and status.</p>
+            </div>
+
+            <div class="route-item">
+                <h3>
+                    <span class="route-method method-delete">DELETE</span>
+                    <span class="route-path">/api/sales/orders/:id</span>
+                </h3>
+                <p class="route-desc">Cancel/delete a sales order.</p>
+            </div>
+
+            <div class="route-item">
+                <h3>
+                    <span class="route-method method-get">GET</span>
+                    <span class="route-path">/api/sales/orders/invoices</span>
+                </h3>
+                <p class="route-desc">List all invoices with pagination.</p>
+            </div>
+
+            <div class="route-item">
+                <h3>
+                    <span class="route-method method-get">GET</span>
+                    <span class="route-path">/api/sales/routes</span>
+                </h3>
+                <p class="route-desc">List all sales routes with pagination.</p>
+            </div>
+
+            <div class="route-item">
+                <h3>
+                    <span class="route-method method-get">GET</span>
+                    <span class="route-path">/api/sales/warehouses</span>
+                </h3>
+                <p class="route-desc">List all warehouses with pagination.</p>
+            </div>
+        </div>
+
+        <div class="card">
+            <h2>🗄️ Database Schema (ER Diagram)</h2>
+            <div class="mermaid">
+                erDiagram
+                ORDERS {
+                int id PK
+                string order_number UK
+                int customer_id FK
+                datetime order_date
+                enum status
+                decimal total_amount
+                decimal tax_amount
+                decimal discount_amount
+                text shipping_address
+                text billing_address
+                enum payment_status
+                text notes
+                int created_by FK
+                datetime created_at
+                datetime updated_at
+                }
+                ORDER_ITEMS {
+                int id PK
+                int order_id FK
+                int product_id FK
+                int quantity
+                decimal unit_price
+                decimal total_price
+                datetime created_at
+                datetime updated_at
+                }
+                INVOICES {
+                int id PK
+                string invoice_number UK
+                int order_id FK
+                datetime invoice_date
+                date due_date
+                decimal total_amount
+                enum status
+                int created_by FK
+                datetime created_at
+                datetime updated_at
+                }
+                PAYMENTS {
+                int id PK
+                int invoice_id FK
+                int order_id FK
+                decimal amount
+                datetime payment_date
+                string payment_method
+                string reference_number
+                enum status
+                int created_by FK
+                datetime created_at
+                datetime updated_at
+                }
+                DELIVERIES {
+                int id PK
+                string delivery_number UK
+                int order_id FK
+                date delivery_date
+                text delivery_address
+                string delivery_person_name
+                string delivery_person_phone
+                string tracking_number
+                enum status
+                text notes
+                datetime delivered_at
+                text signature
+                int created_by FK
+                datetime created_at
+                datetime updated_at
+                }
+                WAREHOUSES {
+                int id PK
+                string name
+                string location
+                int capacity
+                string manager_name
+                string contact_number
+                boolean is_active
+                datetime created_at
+                datetime updated_at
+                }
+                SALES_ROUTES {
+                int id PK
+                string route_name
+                text description
+                int assigned_sales_rep_id FK
+                string start_location
+                string end_location
+                boolean is_active
+                datetime created_at
+                datetime updated_at
+                }
+                CUSTOMERS {
+                int id PK
+                string name
+                string email
+                }
+                PRODUCTS {
+                int id PK
+                string name
+                string sku
+                }
+
+                CUSTOMERS ||--o{ ORDERS : "places"
+                ORDERS ||--|{ ORDER_ITEMS : "contains"
+                ORDER_ITEMS }|--|| PRODUCTS : "refers to"
+                ORDERS ||--|| INVOICES : "generates"
+                ORDERS ||--o{ PAYMENTS : "paid by"
+                INVOICES ||--o{ PAYMENTS : "paid by"
+                ORDERS ||--o{ DELIVERIES : "shipped via"
+                CUSTOMERS }|--o| SALES_ROUTES : "assigned to"
+            </div>
+        </div>
+
+        <div class="card">
+            <h2>📊 Tables Used</h2>
+            <ul>
+                <li><strong>orders</strong> - Main sales order records</li>
+                <li><strong>order_items</strong> - Line items for each order</li>
+                <li><strong>invoices</strong> - Invoice records generated from orders</li>
+                <li><strong>payments</strong> - Payment transactions</li>
+                <li><strong>deliveries</strong> - Delivery tracking information</li>
+                <li><strong>warehouses</strong> - Warehouse locations</li>
+                <li><strong>sales_routes</strong> - Sales territory routes</li>
+                <li><strong>customers</strong> - Customer information (referenced)</li>
+                <li><strong>products</strong> - Product catalog (referenced)</li>
+            </ul>
+        </div>
+    </div>
+
+    <script>
+        mermaid.initialize({ startOnLoad: true, theme: 'default' });
+    </script>
+</body>
+
+</html>

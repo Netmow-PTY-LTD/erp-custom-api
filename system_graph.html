@@ -1,0 +1,547 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ERP System Architecture Graph</title>
+    <script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1800px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            overflow: hidden;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 40px;
+            text-align: center;
+        }
+
+        .header h1 {
+            font-size: 2.5rem;
+            margin-bottom: 10px;
+            font-weight: 700;
+        }
+
+        .header p {
+            font-size: 1.1rem;
+            opacity: 0.9;
+        }
+
+        .stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+            padding: 30px 40px;
+            background: #f8f9fa;
+            border-bottom: 2px solid #e9ecef;
+        }
+
+        .stat-card {
+            background: white;
+            padding: 20px;
+            border-radius: 12px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            text-align: center;
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+        }
+
+        .stat-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 8px 15px rgba(0, 0, 0, 0.2);
+        }
+
+        .stat-number {
+            font-size: 2.5rem;
+            font-weight: 700;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .stat-label {
+            font-size: 0.9rem;
+            color: #6c757d;
+            margin-top: 5px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .tabs {
+            display: flex;
+            background: #f8f9fa;
+            padding: 0 40px;
+            border-bottom: 2px solid #e9ecef;
+            overflow-x: auto;
+        }
+
+        .tab {
+            padding: 15px 25px;
+            cursor: pointer;
+            border: none;
+            background: transparent;
+            font-size: 1rem;
+            font-weight: 600;
+            color: #6c757d;
+            border-bottom: 3px solid transparent;
+            transition: all 0.3s ease;
+            white-space: nowrap;
+        }
+
+        .tab:hover {
+            color: #667eea;
+        }
+
+        .tab.active {
+            color: #667eea;
+            border-bottom-color: #667eea;
+        }
+
+        .graph-container {
+            padding: 40px;
+            overflow-x: auto;
+        }
+
+        .tab-content {
+            display: none;
+        }
+
+        .tab-content.active {
+            display: block;
+        }
+
+        .mermaid {
+            background: white;
+            padding: 20px;
+            border-radius: 12px;
+            min-height: 600px;
+        }
+
+        .legend {
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 12px;
+            margin-top: 20px;
+        }
+
+        .legend h3 {
+            margin-bottom: 15px;
+            color: #495057;
+        }
+
+        .legend-items {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 10px;
+        }
+
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .legend-color {
+            width: 30px;
+            height: 30px;
+            border-radius: 6px;
+        }
+
+        .footer {
+            background: #f8f9fa;
+            padding: 20px 40px;
+            text-align: center;
+            color: #6c757d;
+            border-top: 2px solid #e9ecef;
+        }
+
+        @media (max-width: 768px) {
+            .header h1 {
+                font-size: 1.8rem;
+            }
+
+            .stats {
+                grid-template-columns: repeat(2, 1fr);
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🏢 ERP System Architecture</h1>
+            <p>Complete Module & Route Visualization</p>
+        </div>
+
+        <div class="stats">
+            <div class="stat-card">
+                <div class="stat-number">16</div>
+                <div class="stat-label">Modules</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-number">100+</div>
+                <div class="stat-label">API Routes</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-number">5</div>
+                <div class="stat-label">Core Systems</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-number">REST</div>
+                <div class="stat-label">API Architecture</div>
+            </div>
+        </div>
+
+        <div class="tabs">
+            <button class="tab active" onclick="showTab('overview')">System Overview</button>
+            <button class="tab" onclick="showTab('modules')">Module Details</button>
+            <button class="tab" onclick="showTab('data-flow')">Data Flow</button>
+            <button class="tab" onclick="showTab('relationships')">Relationships</button>
+        </div>
+
+        <div class="graph-container">
+            <!-- Overview Tab -->
+            <div id="overview" class="tab-content active">
+                <div class="mermaid">
+graph TB
+    subgraph Core["🔐 Core System"]
+        Auth["Auth Module<br/>5 routes"]
+        Users["Users Module<br/>5 routes"]
+        Roles["Roles Module<br/>5 routes"]
+    end
+
+    subgraph Business["💼 Business Operations"]
+        Customers["Customers Module<br/>6 routes"]
+        Suppliers["Suppliers Module<br/>5 routes"]
+        Products["Products Module<br/>16 routes"]
+        Sales["Sales & Orders<br/>9 routes"]
+        Purchase["Purchase Orders<br/>5 routes"]
+        SalesRoutes["Sales Routes<br/>5 routes"]
+    end
+
+    subgraph HR["👥 Human Resources"]
+        Staff["Staff Module<br/>5 routes"]
+        Departments["Departments<br/>5 routes"]
+        Attendance["Attendance<br/>6 routes"]
+        Leaves["Leave Management<br/>6 routes"]
+        Payroll["Payroll<br/>5 routes"]
+    end
+
+    subgraph Finance["💰 Finance & Accounting"]
+        Accounting["Accounting<br/>7 routes"]
+    end
+
+    subgraph System["⚙️ System Management"]
+        Settings["Settings<br/>2 routes"]
+        Reports["Reports<br/>10 routes"]
+    end
+
+    Auth --> Users
+    Auth --> Roles
+    Users --> Staff
+    Roles --> Users
+    
+    Customers --> Sales
+    Products --> Sales
+    Products --> Purchase
+    Suppliers --> Purchase
+    
+    Staff --> Departments
+    Staff --> Attendance
+    Staff --> Leaves
+    Staff --> Payroll
+    
+    Sales --> Accounting
+    Purchase --> Accounting
+    
+    classDef coreStyle fill:#667eea,stroke:#5a67d8,color:#fff,stroke-width:3px
+    classDef businessStyle fill:#48bb78,stroke:#38a169,color:#fff,stroke-width:2px
+    classDef hrStyle fill:#ed8936,stroke:#dd6b20,color:#fff,stroke-width:2px
+    classDef financeStyle fill:#f6ad55,stroke:#ed8936,color:#fff,stroke-width:2px
+    classDef systemStyle fill:#4299e1,stroke:#3182ce,color:#fff,stroke-width:2px
+    
+    class Auth,Users,Roles coreStyle
+    class Customers,Suppliers,Products,Sales,Purchase,SalesRoutes businessStyle
+    class Staff,Departments,Attendance,Leaves,Payroll hrStyle
+    class Accounting financeStyle
+    class Settings,Reports systemStyle
+                </div>
+            </div>
+
+            <!-- Module Details Tab -->
+            <div id="modules" class="tab-content">
+                <div class="mermaid">
+graph LR
+    subgraph Auth["🔐 Authentication & Authorization"]
+        A1["POST /login"]
+        A2["POST /register"]
+        A3["POST /logout"]
+        A4["POST /refresh"]
+        A5["GET /me"]
+    end
+
+    subgraph Products["📦 Products Management"]
+        P1["GET /products"]
+        P2["POST /products"]
+        P3["GET /products/:id"]
+        P4["PUT /products/:id"]
+        P5["DELETE /products/:id"]
+        P6["GET /products/stock"]
+        P7["GET /products/categories"]
+        P8["GET /products/units"]
+    end
+
+    subgraph Sales["💵 Sales & Orders"]
+        S1["GET /sales"]
+        S2["POST /sales"]
+        S3["GET /sales/:id"]
+        S4["PUT /sales/:id"]
+        S5["DELETE /sales/:id"]
+        S6["GET /sales/stats"]
+    end
+
+    subgraph Purchase["🛒 Purchase Orders"]
+        PO1["GET /purchase"]
+        PO2["POST /purchase/orders"]
+        PO3["GET /purchase/orders/:id"]
+        PO4["PUT /purchase/orders/:id"]
+        PO5["GET /purchase/maps"]
+    end
+
+    subgraph HR["👥 Human Resources"]
+        H1["GET /staff"]
+        H2["GET /departments"]
+        H3["GET /attendance"]
+        H4["GET /leaves"]
+        H5["GET /payroll"]
+    end
+
+    classDef authStyle fill:#667eea,stroke:#5a67d8,color:#fff
+    classDef productStyle fill:#48bb78,stroke:#38a169,color:#fff
+    classDef salesStyle fill:#ed8936,stroke:#dd6b20,color:#fff
+    classDef purchaseStyle fill:#f6ad55,stroke:#ed8936,color:#fff
+    classDef hrStyle fill:#4299e1,stroke:#3182ce,color:#fff
+    
+    class A1,A2,A3,A4,A5 authStyle
+    class P1,P2,P3,P4,P5,P6,P7,P8 productStyle
+    class S1,S2,S3,S4,S5,S6 salesStyle
+    class PO1,PO2,PO3,PO4,PO5 purchaseStyle
+    class H1,H2,H3,H4,H5 hrStyle
+                </div>
+            </div>
+
+            <!-- Data Flow Tab -->
+            <div id="data-flow" class="tab-content">
+                <div class="mermaid">
+sequenceDiagram
+    participant Client
+    participant Auth
+    participant API
+    participant Service
+    participant Repository
+    participant Database
+
+    Client->>Auth: POST /login
+    Auth->>Database: Validate credentials
+    Database-->>Auth: User data
+    Auth-->>Client: JWT Token
+
+    Client->>API: GET /products (with token)
+    API->>Auth: Verify token
+    Auth-->>API: Token valid
+    API->>Service: Get products
+    Service->>Repository: Query products
+    Repository->>Database: SELECT * FROM products
+    Database-->>Repository: Product data
+    Repository-->>Service: Formatted data
+    Service-->>API: Business logic applied
+    API-->>Client: JSON Response
+
+    Client->>API: POST /sales (with token)
+    API->>Auth: Verify token
+    Auth-->>API: Token valid
+    API->>Service: Create sale
+    Service->>Repository: Insert sale
+    Repository->>Database: INSERT INTO sales
+    Database-->>Repository: Sale ID
+    Service->>Repository: Update inventory
+    Repository->>Database: UPDATE products
+    Database-->>Repository: Success
+    Repository-->>Service: Transaction complete
+    Service-->>API: Sale created
+    API-->>Client: 201 Created
+                </div>
+            </div>
+
+            <!-- Relationships Tab -->
+            <div id="relationships" class="tab-content">
+                <div class="mermaid">
+erDiagram
+    USERS ||--o{ STAFF : "is"
+    USERS ||--|| ROLES : "has"
+    STAFF ||--o{ ATTENDANCE : "records"
+    STAFF ||--o{ LEAVES : "requests"
+    STAFF ||--|| DEPARTMENTS : "belongs_to"
+    STAFF ||--o{ PAYROLL : "receives"
+    
+    CUSTOMERS ||--o{ SALES : "places"
+    PRODUCTS ||--o{ SALES_ITEMS : "contains"
+    SALES ||--|{ SALES_ITEMS : "has"
+    SALES ||--|| CUSTOMERS : "belongs_to"
+    
+    SUPPLIERS ||--o{ PURCHASE_ORDERS : "supplies"
+    PRODUCTS ||--o{ PURCHASE_ITEMS : "ordered_in"
+    PURCHASE_ORDERS ||--|{ PURCHASE_ITEMS : "contains"
+    
+    PRODUCTS ||--|| CATEGORIES : "belongs_to"
+    PRODUCTS ||--|| UNITS : "measured_in"
+    
+    SALES ||--o{ ACCOUNTING : "generates"
+    PURCHASE_ORDERS ||--o{ ACCOUNTING : "generates"
+    
+    USERS {
+        int id PK
+        string name
+        string email
+        string password
+        int role_id FK
+    }
+    
+    ROLES {
+        int id PK
+        string name
+    }
+    
+    CUSTOMERS {
+        int id PK
+        string name
+        string email
+        string phone
+        decimal latitude
+        decimal longitude
+    }
+    
+    PRODUCTS {
+        int id PK
+        string name
+        string sku
+        decimal price
+        int stock_quantity
+        int category_id FK
+        int unit_id FK
+    }
+    
+    SALES {
+        int id PK
+        string sale_number
+        int customer_id FK
+        decimal total_amount
+        string status
+    }
+    
+    PURCHASE_ORDERS {
+        int id PK
+        string po_number
+        int supplier_id FK
+        decimal total_amount
+        string status
+    }
+                </div>
+            </div>
+        </div>
+
+        <div class="graph-container">
+            <div class="legend">
+                <h3>📊 Module Categories</h3>
+                <div class="legend-items">
+                    <div class="legend-item">
+                        <div class="legend-color" style="background: #667eea;"></div>
+                        <span>Core System (Auth, Users, Roles)</span>
+                    </div>
+                    <div class="legend-item">
+                        <div class="legend-color" style="background: #48bb78;"></div>
+                        <span>Business Operations</span>
+                    </div>
+                    <div class="legend-item">
+                        <div class="legend-color" style="background: #ed8936;"></div>
+                        <span>Human Resources</span>
+                    </div>
+                    <div class="legend-item">
+                        <div class="legend-color" style="background: #f6ad55;"></div>
+                        <span>Finance & Accounting</span>
+                    </div>
+                    <div class="legend-item">
+                        <div class="legend-color" style="background: #4299e1;"></div>
+                        <span>System Management</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="footer">
+            <p>ERP System Architecture Visualization • Generated with Mermaid.js • <a href="/routes-tree" style="color: #667eea;">View Routes Tree</a></p>
+        </div>
+    </div>
+
+    <script>
+        mermaid.initialize({ 
+            startOnLoad: true,
+            theme: 'default',
+            themeVariables: {
+                primaryColor: '#667eea',
+                primaryTextColor: '#fff',
+                primaryBorderColor: '#5a67d8',
+                lineColor: '#a0aec0',
+                secondaryColor: '#48bb78',
+                tertiaryColor: '#ed8936',
+            },
+            flowchart: {
+                curve: 'basis',
+                padding: 20
+            },
+            sequence: {
+                actorMargin: 50,
+                boxMargin: 10,
+                boxTextMargin: 5,
+                noteMargin: 10,
+                messageMargin: 35
+            }
+        });
+
+        function showTab(tabName) {
+            // Hide all tab contents
+            const contents = document.querySelectorAll('.tab-content');
+            contents.forEach(content => content.classList.remove('active'));
+
+            // Remove active class from all tabs
+            const tabs = document.querySelectorAll('.tab');
+            tabs.forEach(tab => tab.classList.remove('active'));
+
+            // Show selected tab content
+            document.getElementById(tabName).classList.add('active');
+
+            // Add active class to clicked tab
+            event.target.classList.add('active');
+        }
+    </script>
+</body>
+</html>

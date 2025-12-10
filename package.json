@@ -1,0 +1,25 @@
+{
+  "name": "hms-modular-backend",
+  "version": "1.0.0",
+  "description": "Hospital Management System - Modular Node.js + MySQL API (Zod + Pagination)",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js",
+    "dev": "nodemon index.js"
+  },
+  "dependencies": {
+    "bcrypt": "^5.1.0",
+    "cors": "^2.8.5",
+    "express": "^4.18.2",
+    "jsonwebtoken": "^9.0.0",
+    "multer": "^2.0.2",
+    "mysql2": "^3.15.3",
+    "sequelize": "^6.37.7",
+    "zod": "^3.21.4"
+  },
+  "devDependencies": {
+    "dotenv": "^17.2.3",
+    "nodemon": "^2.0.22",
+    "sequelize-cli": "^6.6.3"
+  }
+}
