@@ -1,4 +1,4 @@
-const { Income, Expense, Payroll } = require('./accounting.models');
+const { Income, Expense, Payroll, CreditHead, DebitHead } = require('./accounting.models');
 const { Op } = require('sequelize');
 const { sequelize } = require('../../core/database/sequelize');
 
@@ -10,12 +10,18 @@ class AccountingRepository {
             where.income_date = { [Op.between]: [filters.start_date, filters.end_date] };
         }
         if (filters.category) where.category = filters.category;
+        if (filters.credit_head_id) where.credit_head_id = filters.credit_head_id;
 
         return await Income.findAndCountAll({
             where,
             order: [['income_date', 'DESC']],
             limit,
-            offset
+            offset,
+            include: [{
+                model: CreditHead,
+                as: 'creditHead',
+                attributes: ['id', 'name', 'code']
+            }]
         });
     }
 
@@ -31,12 +37,18 @@ class AccountingRepository {
         }
         if (filters.category) where.category = filters.category;
         if (filters.status) where.status = filters.status;
+        if (filters.debit_head_id) where.debit_head_id = filters.debit_head_id;
 
         return await Expense.findAndCountAll({
             where,
             order: [['expense_date', 'DESC']],
             limit,
-            offset
+            offset,
+            include: [{
+                model: DebitHead,
+                as: 'debitHead',
+                attributes: ['id', 'name', 'code']
+            }]
         });
     }
 
@@ -61,6 +73,86 @@ class AccountingRepository {
 
     async createPayroll(data) {
         return await Payroll.create(data);
+    }
+
+    // --- Credit Head Operations ---
+    async findAllCreditHeads(filters = {}, limit = 10, offset = 0) {
+        const where = {};
+        if (filters.is_active !== undefined) where.is_active = filters.is_active;
+        if (filters.search) {
+            where[Op.or] = [
+                { name: { [Op.like]: `%${filters.search}%` } },
+                { code: { [Op.like]: `%${filters.search}%` } }
+            ];
+        }
+
+        return await CreditHead.findAndCountAll({
+            where,
+            order: [['name', 'ASC']],
+            limit,
+            offset
+        });
+    }
+
+    async findCreditHeadById(id) {
+        return await CreditHead.findByPk(id);
+    }
+
+    async createCreditHead(data) {
+        return await CreditHead.create(data);
+    }
+
+    async updateCreditHead(id, data) {
+        const creditHead = await CreditHead.findByPk(id);
+        if (!creditHead) return null;
+        return await creditHead.update(data);
+    }
+
+    async deleteCreditHead(id) {
+        const creditHead = await CreditHead.findByPk(id);
+        if (!creditHead) return null;
+        await creditHead.destroy();
+        return creditHead;
+    }
+
+    // --- Debit Head Operations ---
+    async findAllDebitHeads(filters = {}, limit = 10, offset = 0) {
+        const where = {};
+        if (filters.is_active !== undefined) where.is_active = filters.is_active;
+        if (filters.search) {
+            where[Op.or] = [
+                { name: { [Op.like]: `%${filters.search}%` } },
+                { code: { [Op.like]: `%${filters.search}%` } }
+            ];
+        }
+
+        return await DebitHead.findAndCountAll({
+            where,
+            order: [['name', 'ASC']],
+            limit,
+            offset
+        });
+    }
+
+    async findDebitHeadById(id) {
+        return await DebitHead.findByPk(id);
+    }
+
+    async createDebitHead(data) {
+        return await DebitHead.create(data);
+    }
+
+    async updateDebitHead(id, data) {
+        const debitHead = await DebitHead.findByPk(id);
+        if (!debitHead) return null;
+        return await debitHead.update(data);
+    }
+
+    async deleteDebitHead(id) {
+        const debitHead = await DebitHead.findByPk(id);
+        if (!debitHead) return null;
+        await debitHead.destroy();
+        return debitHead;
     }
 
     // --- Overview Operations ---

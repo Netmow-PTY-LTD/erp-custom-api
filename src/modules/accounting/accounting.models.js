@@ -14,7 +14,11 @@ const Income = sequelize.define('Income', {
     },
     amount: {
         type: DataTypes.DECIMAL(10, 2),
-        allowNull: false
+        allowNull: false,
+        get() {
+            const value = this.getDataValue('amount');
+            return value === null ? null : parseFloat(value);
+        }
     },
     income_date: {
         type: DataTypes.DATEONLY,
@@ -22,6 +26,10 @@ const Income = sequelize.define('Income', {
     },
     category: {
         type: DataTypes.STRING(100),
+        allowNull: true
+    },
+    credit_head_id: {
+        type: DataTypes.INTEGER,
         allowNull: true
     },
     description: {
@@ -68,7 +76,11 @@ const Expense = sequelize.define('Expense', {
     },
     amount: {
         type: DataTypes.DECIMAL(10, 2),
-        allowNull: false
+        allowNull: false,
+        get() {
+            const value = this.getDataValue('amount');
+            return value === null ? null : parseFloat(value);
+        }
     },
     expense_date: {
         type: DataTypes.DATEONLY,
@@ -76,6 +88,10 @@ const Expense = sequelize.define('Expense', {
     },
     category: {
         type: DataTypes.STRING(100),
+        allowNull: true
+    },
+    debit_head_id: {
+        type: DataTypes.INTEGER,
         allowNull: true
     },
     description: {
@@ -130,19 +146,35 @@ const Payroll = sequelize.define('Payroll', {
     },
     basic_salary: {
         type: DataTypes.DECIMAL(10, 2),
-        allowNull: false
+        allowNull: false,
+        get() {
+            const value = this.getDataValue('basic_salary');
+            return value === null ? null : parseFloat(value);
+        }
     },
     allowances: {
         type: DataTypes.DECIMAL(10, 2),
-        defaultValue: 0.00
+        defaultValue: 0.00,
+        get() {
+            const value = this.getDataValue('allowances');
+            return value === null ? null : parseFloat(value);
+        }
     },
     deductions: {
         type: DataTypes.DECIMAL(10, 2),
-        defaultValue: 0.00
+        defaultValue: 0.00,
+        get() {
+            const value = this.getDataValue('deductions');
+            return value === null ? null : parseFloat(value);
+        }
     },
     net_salary: {
         type: DataTypes.DECIMAL(10, 2),
-        allowNull: false
+        allowNull: false,
+        get() {
+            const value = this.getDataValue('net_salary');
+            return value === null ? null : parseFloat(value);
+        }
     },
     payment_date: {
         type: DataTypes.DATEONLY,
@@ -175,8 +207,109 @@ const Payroll = sequelize.define('Payroll', {
     updatedAt: 'updated_at'
 });
 
+// Credit Head Model
+const CreditHead = sequelize.define('CreditHead', {
+    id: {
+        type: DataTypes.INTEGER,
+        primaryKey: true,
+        autoIncrement: true
+    },
+    name: {
+        type: DataTypes.STRING(255),
+        allowNull: false,
+        unique: true
+    },
+    code: {
+        type: DataTypes.STRING(50),
+        allowNull: true,
+        unique: true
+    },
+    description: {
+        type: DataTypes.TEXT,
+        allowNull: true
+    },
+    parent_id: {
+        type: DataTypes.INTEGER,
+        allowNull: true
+    },
+    is_active: {
+        type: DataTypes.BOOLEAN,
+        defaultValue: true
+    },
+    created_at: {
+        type: DataTypes.DATE,
+        defaultValue: DataTypes.NOW
+    },
+    updated_at: {
+        type: DataTypes.DATE,
+        defaultValue: DataTypes.NOW
+    }
+}, {
+    tableName: 'credit_heads',
+    timestamps: true,
+    createdAt: 'created_at',
+    updatedAt: 'updated_at'
+});
+
+// Debit Head Model
+const DebitHead = sequelize.define('DebitHead', {
+    id: {
+        type: DataTypes.INTEGER,
+        primaryKey: true,
+        autoIncrement: true
+    },
+    name: {
+        type: DataTypes.STRING(255),
+        allowNull: false,
+        unique: true
+    },
+    code: {
+        type: DataTypes.STRING(50),
+        allowNull: true,
+        unique: true
+    },
+    description: {
+        type: DataTypes.TEXT,
+        allowNull: true
+    },
+    parent_id: {
+        type: DataTypes.INTEGER,
+        allowNull: true
+    },
+    is_active: {
+        type: DataTypes.BOOLEAN,
+        defaultValue: true
+    },
+    created_at: {
+        type: DataTypes.DATE,
+        defaultValue: DataTypes.NOW
+    },
+    updated_at: {
+        type: DataTypes.DATE,
+        defaultValue: DataTypes.NOW
+    }
+}, {
+    tableName: 'debit_heads',
+    timestamps: true,
+    createdAt: 'created_at',
+    updatedAt: 'updated_at'
+});
+
+// Define associations
+Income.belongsTo(CreditHead, {
+    foreignKey: 'credit_head_id',
+    as: 'creditHead'
+});
+
+Expense.belongsTo(DebitHead, {
+    foreignKey: 'debit_head_id',
+    as: 'debitHead'
+});
+
 module.exports = {
     Income,
     Expense,
-    Payroll
+    Payroll,
+    CreditHead,
+    DebitHead
 };

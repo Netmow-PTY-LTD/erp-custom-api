@@ -11,7 +11,9 @@ const app = express();
 
 // CORS configuration
 const allowedOrigins = [
+  'http://192.168.68.103:5000',
   'https://test1.miyn.app',
+  'https://test3.miyn.app',
   'http://localhost:5173',
   'http://localhost:5174',
   'https://erpinleadsit.netlify.app'
@@ -25,7 +27,9 @@ app.use(cors({
     if (allowedOrigins.includes(origin)) {
       callback(null, true);
     } else {
-      callback(new Error('Not allowed by CORS'));
+      console.log('CORS blocked origin:', origin);
+      console.log('Allowed origins:', allowedOrigins);
+      callback(new Error(`Not allowed by CORS. Origin: ${origin}`));
     }
   },
   credentials: true,

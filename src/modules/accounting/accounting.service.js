@@ -57,6 +57,82 @@ class AccountingService {
     async getOverview(startDate, endDate) {
         return await AccountingRepository.getFinancialOverview(startDate, endDate);
     }
+
+    // --- Credit Head ---
+    async getAllCreditHeads(filters, page = 1, limit = 10) {
+        const offset = (page - 1) * limit;
+        const result = await AccountingRepository.findAllCreditHeads(filters, limit, offset);
+        return {
+            data: result.rows,
+            total: result.count
+        };
+    }
+
+    async getCreditHeadById(id) {
+        const creditHead = await AccountingRepository.findCreditHeadById(id);
+        if (!creditHead) {
+            throw new Error('Credit head not found');
+        }
+        return creditHead;
+    }
+
+    async createCreditHead(data) {
+        return await AccountingRepository.createCreditHead(data);
+    }
+
+    async updateCreditHead(id, data) {
+        const creditHead = await AccountingRepository.updateCreditHead(id, data);
+        if (!creditHead) {
+            throw new Error('Credit head not found');
+        }
+        return creditHead;
+    }
+
+    async deleteCreditHead(id) {
+        const creditHead = await AccountingRepository.deleteCreditHead(id);
+        if (!creditHead) {
+            throw new Error('Credit head not found');
+        }
+        return creditHead;
+    }
+
+    // --- Debit Head ---
+    async getAllDebitHeads(filters, page = 1, limit = 10) {
+        const offset = (page - 1) * limit;
+        const result = await AccountingRepository.findAllDebitHeads(filters, limit, offset);
+        return {
+            data: result.rows,
+            total: result.count
+        };
+    }
+
+    async getDebitHeadById(id) {
+        const debitHead = await AccountingRepository.findDebitHeadById(id);
+        if (!debitHead) {
+            throw new Error('Debit head not found');
+        }
+        return debitHead;
+    }
+
+    async createDebitHead(data) {
+        return await AccountingRepository.createDebitHead(data);
+    }
+
+    async updateDebitHead(id, data) {
+        const debitHead = await AccountingRepository.updateDebitHead(id, data);
+        if (!debitHead) {
+            throw new Error('Debit head not found');
+        }
+        return debitHead;
+    }
+
+    async deleteDebitHead(id) {
+        const debitHead = await AccountingRepository.deleteDebitHead(id);
+        if (!debitHead) {
+            throw new Error('Debit head not found');
+        }
+        return debitHead;
+    }
 }
 
 module.exports = new AccountingService();

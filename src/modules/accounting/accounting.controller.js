@@ -87,6 +87,118 @@ class AccountingController {
             return error(res, err.message, 400);
         }
     }
+
+    // --- Credit Head ---
+    async getAllCreditHeads(req, res) {
+        try {
+            const page = parseInt(req.query.page) || 1;
+            const limit = parseInt(req.query.limit) || 10;
+            const filters = {
+                is_active: req.query.is_active,
+                search: req.query.search
+            };
+            const result = await AccountingService.getAllCreditHeads(filters, page, limit);
+            return successWithPagination(res, 'Credit heads retrieved successfully', result.data, {
+                total: result.total,
+                page,
+                limit
+            });
+        } catch (err) {
+            return error(res, err.message, 500);
+        }
+    }
+
+    async getCreditHeadById(req, res) {
+        try {
+            const creditHead = await AccountingService.getCreditHeadById(req.params.id);
+            return success(res, 'Credit head retrieved successfully', creditHead);
+        } catch (err) {
+            return error(res, err.message, 404);
+        }
+    }
+
+    async createCreditHead(req, res) {
+        try {
+            const creditHead = await AccountingService.createCreditHead(req.body);
+            return success(res, 'Credit head created successfully', creditHead, 201);
+        } catch (err) {
+            return error(res, err.message, 400);
+        }
+    }
+
+    async updateCreditHead(req, res) {
+        try {
+            const creditHead = await AccountingService.updateCreditHead(req.params.id, req.body);
+            return success(res, 'Credit head updated successfully', creditHead);
+        } catch (err) {
+            return error(res, err.message, 400);
+        }
+    }
+
+    async deleteCreditHead(req, res) {
+        try {
+            await AccountingService.deleteCreditHead(req.params.id);
+            return success(res, 'Credit head deleted successfully', null);
+        } catch (err) {
+            return error(res, err.message, 404);
+        }
+    }
+
+    // --- Debit Head ---
+    async getAllDebitHeads(req, res) {
+        try {
+            const page = parseInt(req.query.page) || 1;
+            const limit = parseInt(req.query.limit) || 10;
+            const filters = {
+                is_active: req.query.is_active,
+                search: req.query.search
+            };
+            const result = await AccountingService.getAllDebitHeads(filters, page, limit);
+            return successWithPagination(res, 'Debit heads retrieved successfully', result.data, {
+                total: result.total,
+                page,
+                limit
+            });
+        } catch (err) {
+            return error(res, err.message, 500);
+        }
+    }
+
+    async getDebitHeadById(req, res) {
+        try {
+            const debitHead = await AccountingService.getDebitHeadById(req.params.id);
+            return success(res, 'Debit head retrieved successfully', debitHead);
+        } catch (err) {
+            return error(res, err.message, 404);
+        }
+    }
+
+    async createDebitHead(req, res) {
+        try {
+            const debitHead = await AccountingService.createDebitHead(req.body);
+            return success(res, 'Debit head created successfully', debitHead, 201);
+        } catch (err) {
+            return error(res, err.message, 400);
+        }
+    }
+
+    async updateDebitHead(req, res) {
+        try {
+            const debitHead = await AccountingService.updateDebitHead(req.params.id, req.body);
+            return success(res, 'Debit head updated successfully', debitHead);
+        } catch (err) {
+            return error(res, err.message, 400);
+        }
+    }
+
+    async deleteDebitHead(req, res) {
+        try {
+            await AccountingService.deleteDebitHead(req.params.id);
+            return success(res, 'Debit head deleted successfully', null);
+        } catch (err) {
+            return error(res, err.message, 404);
+        }
+    }
 }
 
 module.exports = new AccountingController();
