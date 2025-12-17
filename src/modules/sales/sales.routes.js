@@ -5,7 +5,7 @@ const { verifyToken } = require('../../core/middleware/auth');
 const { moduleCheck } = require('../../core/middleware/moduleCheck');
 const { handlerWithFields } = require('../../core/utils/zodTypeView');
 const validate = require('../../core/middleware/validate');
-const { createWarehouse, createOrder, createInvoice, createPayment, createDelivery } = require('./sales.validation');
+const { createWarehouse, createOrder, createInvoice, createPayment, createDelivery, updateInvoiceStatus, createSalesRoute } = require('./sales.validation');
 
 // Module name for routes-tree grouping
 router.moduleName = 'Sales & Orders';
@@ -23,18 +23,21 @@ router.routesMeta = [
         handler: (req, res) => salesController.getAllOrders(req, res),
         description: 'Get all orders with pagination',
         database: {
-            tables: ['orders', 'order_items', 'customers', 'products'],
+            tables: ['orders', 'order_items', 'customers', 'products', 'deliveries'],
             mainTable: 'orders',
             fields: {
-                orders: ['id', 'order_number', 'customer_id', 'order_date', 'status', 'total_amount', 'tax_amount', 'discount_amount', 'shipping_address', 'billing_address', 'payment_status', 'created_at'],
+                orders: ['id', 'order_number', 'customer_id', 'order_date', 'status', 'total_amount', 'tax_amount', 'discount_amount', 'shipping_address', 'billing_address', 'payment_status', 'notes', 'due_date', 'created_at'],
                 customers: ['id', 'name', 'email', 'phone', 'company'],
                 order_items: ['id', 'order_id', 'product_id', 'quantity', 'unit_price', 'discount', 'line_total'],
-                products: ['id', 'name', 'sku', 'price', 'image_url']
+                products: ['id', 'name', 'sku', 'price', 'image_url'],
+                delivery: ['id', 'delivery_number', 'delivery_date', 'status', 'notes'],
+                calculated: ['delivery_status']
             },
             relationships: [
                 'orders.customer_id -> customers.id (FK)',
                 'order_items.order_id -> orders.id (FK)',
-                'order_items.product_id -> products.id (FK)'
+                'order_items.product_id -> products.id (FK)',
+                'orders.id -> deliveries.order_id (HasOne - Latest delivery only)'
             ]
         },
         queryParams: {
@@ -60,6 +63,9 @@ router.routesMeta = [
                     customer_id: 1,
                     total_amount: '150.00',
                     status: 'pending',
+                    delivery_status: 'delivered',
+                    notes: 'Please deliver between 9 AM and 5 PM',
+                    due_date: '2025-12-15',
                     created_at: '2025-12-03T05:00:00.000Z',
                     customer: {
                         id: 1,
@@ -74,18 +80,25 @@ router.routesMeta = [
                             order_id: 1,
                             product_id: 1,
                             quantity: 2,
-                            unit_price: '50.00',
-                            discount: '5.00',
-                            line_total: '95.00',
+                            unit_price: 50.00,
+                            discount: 5.00,
+                            line_total: 95.00,
                             product: {
                                 id: 1,
                                 name: 'Wireless Mouse',
                                 sku: 'MOU-001',
-                                price: '29.99',
+                                price: 29.99,
                                 image_url: 'http://example.com/thumb.jpg'
                             }
                         }
-                    ]
+                    ],
+                    delivery: {
+                        id: 1,
+                        delivery_number: 'DEL-123456',
+                        delivery_date: '2025-12-09',
+                        status: 'delivered',
+                        notes: 'Left at reception'
+                    }
                 }
             ]
         }
@@ -146,18 +159,21 @@ router.routesMeta = [
         method: 'GET',
         middlewares: [],
         handler: (req, res) => salesController.getAllInvoices(req, res),
-        description: 'Get all invoices with pagination',
+        description: 'Get all invoices with pagination. Returns paid_amount and remaining_balance for each invoice.',
         database: {
-            tables: ['invoices', 'orders', 'customers'],
+            tables: ['invoices', 'orders', 'customers', 'payments'],
             mainTable: 'invoices',
             fields: {
                 invoices: ['id', 'invoice_number', 'order_id', 'invoice_date', 'due_date', 'total_amount', 'status', 'created_at'],
                 orders: ['id', 'order_number', 'customer_id', 'total_amount', 'status'],
-                customers: ['id', 'name', 'email', 'phone', 'company']
+                customers: ['id', 'name', 'email', 'phone', 'company'],
+                payments: ['id', 'amount', 'payment_date', 'payment_method', 'status'],
+                calculated: ['paid_amount', 'remaining_balance']
             },
             relationships: [
                 'invoices.order_id -> orders.id (FK)',
-                'orders.customer_id -> customers.id (FK)'
+                'orders.customer_id -> customers.id (FK)',
+                'invoices.id -> payments.invoice_id (HasMany)'
             ]
         },
         queryParams: {
@@ -182,6 +198,8 @@ router.routesMeta = [
                     invoice_number: 'INV-1733130000000',
                     order_id: 1,
                     total_amount: '150.00',
+                    paid_amount: 50.00,
+                    remaining_balance: 100.00,
                     status: 'sent',
                     created_at: '2025-12-03T05:00:00.000Z',
                     order: {
@@ -197,9 +215,94 @@ router.routesMeta = [
                             phone: '+1234567890',
                             company: 'ABC Corp'
                         }
-                    }
+                    },
+                    payments: [
+                        {
+                            id: 1,
+                            amount: '50.00',
+                            payment_date: '2025-12-10T10:00:00.000Z',
+                            payment_method: 'credit_card',
+                            status: 'completed'
+                        }
+                    ]
                 }
             ]
+        }
+    },
+    {
+        path: '/orders/invoices/unpaid',
+        method: 'GET',
+        middlewares: [],
+        handler: (req, res) => salesController.getUnpaidInvoices(req, res),
+        description: 'Get all unpaid invoices (not paid and not cancelled) with pagination',
+        database: {
+            tables: ['invoices', 'orders', 'customers', 'payments'],
+            mainTable: 'invoices',
+            fields: {
+                invoices: ['id', 'invoice_number', 'order_id', 'invoice_date', 'due_date', 'total_amount', 'status', 'created_at'],
+                orders: ['id', 'order_number', 'customer_id', 'total_amount', 'status'],
+                customers: ['id', 'name', 'email', 'phone', 'company']
+            },
+            relationships: [
+                'invoices.order_id -> orders.id (FK)',
+                'orders.customer_id -> customers.id (FK)'
+            ]
+        },
+        queryParams: {
+            page: 'Page number (default: 1)',
+            limit: 'Items per page (default: 10)',
+            customer_id: 'Filter by customer ID',
+            search: 'Search by invoice number, customer name, or customer ID'
+        },
+        sampleResponse: {
+            success: true,
+            message: 'Invoices retrieved successfully',
+            pagination: {
+                total: 5,
+                page: '1',
+                limit: '10',
+                totalPage: 1
+            },
+            data: [
+                {
+                    id: 1,
+                    invoice_number: 'INV-1733130000000',
+                    total_amount: '150.00',
+                    paid_amount: 50.00,
+                    remaining_balance: 100.00,
+                    status: 'sent'
+                }
+            ]
+        }
+    },
+    {
+        path: '/orders/invoices/unpaid/customer/:customerId',
+        method: 'GET',
+        middlewares: [],
+        handler: (req, res) => salesController.getUnpaidInvoicesByCustomer(req, res),
+        description: 'Get all unpaid invoices for a specific customer',
+        database: {
+            tables: ['invoices', 'orders', 'customers'],
+            mainTable: 'invoices',
+            fields: {
+                invoices: ['id', 'invoice_number', 'order_id', 'total_amount', 'status'],
+                orders: ['id', 'order_number', 'customer_id'],
+                customers: ['id', 'name']
+            },
+            relationships: [
+                'invoices.order_id -> orders.id (FK)',
+                'orders.customer_id -> customers.id (FK)'
+            ]
+        },
+        queryParams: {
+            page: 'Page number (default: 1)',
+            limit: 'Items per page (default: 10)',
+            search: 'Search by invoice number'
+        },
+        sampleResponse: {
+            success: true,
+            message: 'Invoices retrieved successfully',
+            data: []
         }
     },
     {
@@ -223,6 +326,31 @@ router.routesMeta = [
         sampleResponse: {
             status: true,
             message: 'Invoice created successfully'
+        }
+    },
+    {
+        path: '/orders/invoices/:id/status',
+        method: 'PATCH',
+        middlewares: [validate(require('./sales.validation').updateInvoiceStatus)],
+        handler: (req, res) => salesController.updateInvoiceStatus(req, res),
+        description: 'Update invoice status (e.g., mark as paid)',
+        database: {
+            tables: ['invoices', 'orders'],
+            mainTable: 'invoices',
+            requiredFields: ['status'],
+            relationships: ['invoices.order_id -> orders.id (FK)'],
+            sideEffects: [
+                'Updates invoices.status',
+                'Updates invoices.updated_at',
+                'If status is paid, updates orders.payment_status to paid'
+            ]
+        },
+        sampleRequest: {
+            status: 'paid'
+        },
+        sampleResponse: {
+            status: true,
+            message: 'Invoice status updated successfully'
         }
     },
     {
@@ -275,18 +403,21 @@ router.routesMeta = [
         method: 'GET',
         middlewares: [],
         handler: (req, res) => salesController.getInvoiceById(req, res),
-        description: 'Get invoice details by ID',
+        description: 'Get invoice details by ID. Returns paid_amount and remaining_balance.',
         database: {
-            tables: ['invoices', 'orders', 'customers'],
+            tables: ['invoices', 'orders', 'customers', 'payments'],
             mainTable: 'invoices',
             fields: {
                 invoices: ['id', 'invoice_number', 'order_id', 'invoice_date', 'due_date', 'total_amount', 'status', 'created_at', 'created_by'],
                 orders: ['id', 'order_number', 'customer_id', 'total_amount', 'status'],
-                customers: ['id', 'name', 'email', 'phone', 'company']
+                customers: ['id', 'name', 'email', 'phone', 'company', 'address', 'city', 'state', 'country', 'postal_code', 'tax_id'],
+                payments: ['id', 'amount', 'payment_date', 'payment_method', 'status'],
+                calculated: ['paid_amount', 'remaining_balance']
             },
             relationships: [
                 'invoices.order_id -> orders.id (FK)',
-                'orders.customer_id -> customers.id (FK)'
+                'orders.customer_id -> customers.id (FK)',
+                'invoices.id -> payments.invoice_id (HasMany)'
             ]
         },
         sampleResponse: {
@@ -299,6 +430,8 @@ router.routesMeta = [
                 invoice_date: '2025-12-08T10:00:00.000Z',
                 due_date: '2025-12-15',
                 total_amount: '100.00',
+                paid_amount: 30.00,
+                remaining_balance: 70.00,
                 status: 'sent',
                 created_by: 1,
                 created_at: '2025-12-08T10:00:00.000Z',
@@ -306,9 +439,36 @@ router.routesMeta = [
                     id: 1,
                     order_number: 'ORD-1733130000000-123',
                     customer_id: 1,
-                    total_amount: '100.00',
-                    status: 'pending'
-                }
+                    total_amount: 100.00,
+                    status: 'pending',
+                    items: [
+                        {
+                            id: 1,
+                            order_id: 1,
+                            product_id: 1,
+                            quantity: 2,
+                            unit_price: 50.00,
+                            discount: 5.00,
+                            line_total: 95.00,
+                            product: {
+                                id: 1,
+                                name: 'Wireless Mouse',
+                                sku: 'MOU-001',
+                                price: 29.99,
+                                image_url: 'http://example.com/thumb.jpg'
+                            }
+                        }
+                    ]
+                },
+                payments: [
+                    {
+                        id: 1,
+                        amount: '30.00',
+                        payment_date: '2025-12-10T10:00:00.000Z',
+                        payment_method: 'credit_card',
+                        status: 'completed'
+                    }
+                ]
             }
         }
     },
@@ -386,16 +546,21 @@ router.routesMeta = [
         method: 'POST',
         middlewares: [validate(createPayment)],
         handler: handlerWithFields((req, res) => salesController.createPayment(req, res), createPayment),
-        description: 'Record a payment for an order',
+        description: 'Record a payment for an order. Validates that payment amount does not exceed remaining balance.',
         database: {
             tables: ['payments', 'orders', 'invoices'],
             mainTable: 'payments',
             requiredFields: ['order_id', 'amount', 'payment_method'],
-            optionalFields: ['invoice_id', 'reference_number'],
+            optionalFields: ['invoice_id', 'reference_number', 'status'],
             autoGeneratedFields: ['id', 'payment_date', 'created_at'],
             relationships: [
                 'payments.order_id -> orders.id (FK)',
                 'payments.invoice_id -> invoices.id (FK)'
+            ],
+            validations: [
+                'Payment amount must not exceed invoice remaining balance',
+                'Cannot create payment if invoice is already fully paid',
+                'Status defaults to "completed" if not provided'
             ]
         },
         sampleRequest: {
@@ -458,7 +623,7 @@ router.routesMeta = [
         handler: (req, res) => salesController.getOrderById(req, res),
         description: 'Get order details with populated customer and product information',
         database: {
-            tables: ['orders', 'customers', 'order_items', 'products', 'invoices', 'payments'],
+            tables: ['orders', 'customers', 'order_items', 'products', 'invoices', 'payments', 'deliveries'],
             mainTable: 'orders',
             fields: {
                 orders: ['id', 'order_number', 'customer_id', 'order_date', 'status', 'total_amount', 'shipping_address', 'billing_address', 'notes', 'due_date'],
@@ -466,14 +631,17 @@ router.routesMeta = [
                 order_items: ['id', 'order_id', 'product_id', 'quantity', 'unit_price', 'discount', 'line_total', 'total_price'],
                 products: ['id', 'name', 'sku', 'price', 'image_url'],
                 invoices: ['id', 'invoice_number', 'status', 'total_amount'],
-                payments: ['id', 'amount', 'payment_date', 'payment_method']
+                payments: ['id', 'amount', 'payment_date', 'payment_method'],
+                deliveries: ['id', 'delivery_number', 'delivery_date', 'status', 'notes'],
+                calculated: ['delivery_status']
             },
             relationships: [
                 'orders.customer_id -> customers.id (FK)',
                 'order_items.order_id -> orders.id (FK)',
                 'order_items.product_id -> products.id (FK)',
                 'invoices.order_id -> orders.id (HasOne)',
-                'payments.order_id -> orders.id (HasMany)'
+                'payments.order_id -> orders.id (HasMany)',
+                'orders.id -> deliveries.order_id (HasMany)'
             ]
         },
         sampleResponse: {
@@ -484,7 +652,8 @@ router.routesMeta = [
                 customer_id: 1,
                 order_date: '2025-12-08T10:00:00.000Z',
                 status: 'pending',
-                total_amount: '100.00',
+                delivery_status: 'delivered',
+                total_amount: 100.00,
                 shipping_address: '123 Main St, New York, NY',
                 billing_address: '123 Main St, New York, NY',
                 notes: 'Please deliver between 9 AM and 5 PM',
@@ -502,10 +671,10 @@ router.routesMeta = [
                         order_id: 1,
                         product_id: 1,
                         quantity: 2,
-                        unit_price: '50.00',
-                        discount: '5.00',
-                        line_total: '95.00',
-                        total_price: '95.00',
+                        unit_price: 50.00,
+                        discount: 5.00,
+                        line_total: 95.00,
+                        total_price: 95.00,
                         product: {
                             id: 1,
                             name: 'Wireless Mouse',
@@ -516,7 +685,8 @@ router.routesMeta = [
                     }
                 ],
                 invoice: null,
-                payments: []
+                payments: [],
+                deliveries: []
             }
         }
     },
@@ -536,13 +706,15 @@ router.routesMeta = [
             sideEffects: [
                 'Updates orders.status to delivered (if status=delivered)',
                 'Updates orders.status to shipped (if status=in_transit)',
-                'Sets deliveries.delivered_at timestamp when status is delivered'
+                'Updates orders.status to confirmed (if status=confirmed)',
+                'Sets deliveries.delivered_at timestamp when status is delivered',
+                'Allowed status values: pending, confirmed, in_transit, delivered, failed, returned'
             ]
         },
         sampleRequest: {
-            status: 'delivered',
+            status: 'confirmed',
             delivery_date: '2025-12-09',
-            notes: 'Left at reception'
+            notes: 'Delivery confirmed by customer'
         },
         sampleResponse: {
             status: true,
@@ -601,7 +773,7 @@ router.routesMeta = [
 
     // --- Sales Routes ---
     {
-        path: '/sales/routes',
+        path: '/routes',
         method: 'GET',
         middlewares: [],
         handler: (req, res) => salesController.getSalesRoutes(req, res),
@@ -610,12 +782,48 @@ router.routesMeta = [
             tables: ['sales_routes'],
             mainTable: 'sales_routes',
             fields: {
-                sales_routes: ['id', 'name', 'description', 'zones']
+                sales_routes: ['id', 'route_name', 'description', 'start_location', 'end_location', 'is_active', 'zoom_level', 'country', 'state', 'city', 'postal_code', 'center_lat', 'center_lng', 'coverage_radius']
             }
         },
         sampleResponse: {
             status: true,
             data: []
+        }
+    },
+    {
+        path: '/sales-route',
+        method: 'POST',
+        middlewares: [validate(createSalesRoute)],
+        handler: handlerWithFields((req, res) => salesController.createSalesRoute(req, res), createSalesRoute),
+        description: 'Create a new sales route with map details',
+        database: {
+            tables: ['sales_routes'],
+            mainTable: 'sales_routes',
+            requiredFields: ['route_name'],
+            optionalFields: ['description', 'assigned_sales_rep_id', 'start_location', 'end_location', 'is_active', 'zoom_level', 'country', 'state', 'city', 'postal_code', 'center_lat', 'center_lng', 'coverage_radius'],
+            autoGeneratedFields: ['id', 'created_at', 'updated_at']
+        },
+        sampleRequest: {
+            routeName: 'Downtown Route',
+            description: 'Main downtown delivery area',
+            zoomLevel: 12,
+            country: 'USA',
+            state: 'NY',
+            city: 'New York',
+            postalCode: '10001',
+            centerLat: 40.7128,
+            centerLng: -74.0060,
+            coverageRadius: 5.5
+        },
+        sampleResponse: {
+            status: true,
+            message: 'Sales route created successfully',
+            data: {
+                id: 1,
+                route_name: 'Downtown Route',
+                zoom_level: 12,
+                country: 'USA'
+            }
         }
     }
 ];

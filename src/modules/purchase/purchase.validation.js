@@ -26,6 +26,11 @@ const createPurchaseInvoice = z.object({
     due_date: z.string().optional()
 });
 
+const updatePurchaseInvoice = z.object({
+    status: z.enum(['draft', 'received', 'paid', 'overdue', 'cancelled']).optional(),
+    due_date: z.string().optional()
+});
+
 // Purchase Payment Validation
 const createPurchasePayment = z.object({
     purchase_order_id: z.number().int().positive(),
@@ -47,6 +52,7 @@ module.exports = {
     createPurchaseOrder,
     updatePurchaseOrder,
     createPurchaseInvoice,
+    updatePurchaseInvoice,
     createPurchasePayment,
     createPurchaseReceipt
 };

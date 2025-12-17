@@ -101,6 +101,15 @@ class PurchaseController {
         }
     }
 
+    async updatePurchaseInvoice(req, res) {
+        try {
+            const invoice = await PurchaseService.updatePurchaseInvoice(req.params.id, req.body);
+            return success(res, 'Purchase invoice updated successfully', invoice);
+        } catch (err) {
+            return error(res, err.message, 400);
+        }
+    }
+
     // Purchase Payments
     async getAllPurchasePayments(req, res) {
         try {

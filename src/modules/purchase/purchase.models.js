@@ -32,15 +32,27 @@ const PurchaseOrder = sequelize.define('PurchaseOrder', {
     total_amount: {
         type: DataTypes.DECIMAL(10, 2),
         allowNull: false,
-        defaultValue: 0.00
+        defaultValue: 0.00,
+        get() {
+            const value = this.getDataValue('total_amount');
+            return value === null ? null : parseFloat(value);
+        }
     },
     tax_amount: {
         type: DataTypes.DECIMAL(10, 2),
-        defaultValue: 0.00
+        defaultValue: 0.00,
+        get() {
+            const value = this.getDataValue('tax_amount');
+            return value === null ? null : parseFloat(value);
+        }
     },
     discount_amount: {
         type: DataTypes.DECIMAL(10, 2),
-        defaultValue: 0.00
+        defaultValue: 0.00,
+        get() {
+            const value = this.getDataValue('discount_amount');
+            return value === null ? null : parseFloat(value);
+        }
     },
     payment_status: {
         type: DataTypes.ENUM('unpaid', 'partially_paid', 'paid'),
@@ -91,16 +103,28 @@ const PurchaseOrderItem = sequelize.define('PurchaseOrderItem', {
     },
     unit_cost: {
         type: DataTypes.DECIMAL(10, 2),
-        allowNull: false
+        allowNull: false,
+        get() {
+            const value = this.getDataValue('unit_cost');
+            return value === null ? null : parseFloat(value);
+        }
     },
     discount: {
         type: DataTypes.DECIMAL(10, 2),
         allowNull: true,
-        defaultValue: 0.00
+        defaultValue: 0.00,
+        get() {
+            const value = this.getDataValue('discount');
+            return value === null ? null : parseFloat(value);
+        }
     },
     line_total: {
         type: DataTypes.DECIMAL(10, 2),
-        allowNull: false
+        allowNull: false,
+        get() {
+            const value = this.getDataValue('line_total');
+            return value === null ? null : parseFloat(value);
+        }
     },
     created_at: {
         type: DataTypes.DATE,
@@ -143,7 +167,11 @@ const PurchaseInvoice = sequelize.define('PurchaseInvoice', {
     },
     total_amount: {
         type: DataTypes.DECIMAL(10, 2),
-        allowNull: false
+        allowNull: false,
+        get() {
+            const value = this.getDataValue('total_amount');
+            return value === null ? null : parseFloat(value);
+        }
     },
     status: {
         type: DataTypes.ENUM('draft', 'received', 'paid', 'overdue', 'cancelled'),
@@ -185,7 +213,11 @@ const PurchasePayment = sequelize.define('PurchasePayment', {
     },
     amount: {
         type: DataTypes.DECIMAL(10, 2),
-        allowNull: false
+        allowNull: false,
+        get() {
+            const value = this.getDataValue('amount');
+            return value === null ? null : parseFloat(value);
+        }
     },
     payment_date: {
         type: DataTypes.DATE,

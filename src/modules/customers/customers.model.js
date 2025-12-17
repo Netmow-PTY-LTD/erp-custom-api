@@ -46,11 +46,19 @@ const Customer = sequelize.define('Customer', {
     },
     latitude: {
         type: DataTypes.DECIMAL(10, 8),
-        allowNull: true
+        allowNull: true,
+        get() {
+            const value = this.getDataValue('latitude');
+            return value === null ? null : parseFloat(value);
+        }
     },
     longitude: {
         type: DataTypes.DECIMAL(11, 8),
-        allowNull: true
+        allowNull: true,
+        get() {
+            const value = this.getDataValue('longitude');
+            return value === null ? null : parseFloat(value);
+        }
     },
     tax_id: {
         type: DataTypes.STRING(100),
@@ -59,12 +67,20 @@ const Customer = sequelize.define('Customer', {
     credit_limit: {
         type: DataTypes.DECIMAL(10, 2),
         allowNull: true,
-        defaultValue: 0.00
+        defaultValue: 0.00,
+        get() {
+            const value = this.getDataValue('credit_limit');
+            return value === null ? null : parseFloat(value);
+        }
     },
     outstanding_balance: {
         type: DataTypes.DECIMAL(10, 2),
         allowNull: true,
-        defaultValue: 0.00
+        defaultValue: 0.00,
+        get() {
+            const value = this.getDataValue('outstanding_balance');
+            return value === null ? null : parseFloat(value);
+        }
     },
     customer_type: {
         type: DataTypes.ENUM('individual', 'company'),

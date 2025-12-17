@@ -43,19 +43,53 @@ class SettingsService {
   }
 
   async getCompanyProfile() {
-    // Mock data for now - should be replaced with actual database query
+    const setting = await this.settingsRepository.findByName('company_profile');
+
+    if (setting && setting.description) {
+      try {
+        return JSON.parse(setting.description);
+      } catch (e) {
+        console.error('Error parsing company profile:', e);
+      }
+    }
+
+    // Default data if no profile exists
     return {
       company_name: 'ERP Company',
       email: 'info@erpcompany.com',
       phone: '+1234567890',
       address: '123 Business St',
       city: 'New York',
-      country: 'USA'
+      country: 'USA',
+      website: 'https://erpcompany.com',
+      description: 'A leading ERP solutions provider',
+      currency: 'USD',
+      logo_url: null
     };
   }
 
   async updateCompanyProfile(data) {
-    // Mock update - should be replaced with actual database update
+    const setting = await this.settingsRepository.findByName('company_profile');
+
+    // Convert data to string for storage
+    const description = JSON.stringify(data);
+
+    if (setting) {
+      // Update existing record
+      await this.settingsRepository.update(setting.id, {
+        name: 'company_profile',
+        description: description,
+        status: 'Active'
+      });
+    } else {
+      // Create new record
+      await this.settingsRepository.create({
+        name: 'company_profile',
+        description: description,
+        status: 'Active'
+      });
+    }
+
     return { ...data, updated_at: new Date() };
   }
 }

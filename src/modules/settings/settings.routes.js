@@ -55,7 +55,9 @@ router.routesMeta = [
                 country: 'USA',
                 tax_id: 'TAX123456',
                 logo_url: '/uploads/logo.png',
-                website: 'https://abccorp.com'
+                website: 'https://abccorp.com',
+                description: 'A leading ERP solutions provider',
+                currency: 'USD'
             }
         }
     },
@@ -69,7 +71,10 @@ router.routesMeta = [
             company_name: 'ABC Corporation Ltd',
             email: 'contact@abccorp.com',
             phone: '+1234567891',
-            website: 'https://www.abccorp.com'
+            website: 'https://www.abccorp.com',
+            description: 'Updated description',
+            currency: 'EUR',
+            logo_url: 'https://example.com/logo.png'
         },
         sampleResponse: {
             status: true,

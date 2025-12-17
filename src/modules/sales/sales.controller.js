@@ -69,7 +69,8 @@ class SalesController {
                 status: req.query.status,
                 customer_id: req.query.customer_id,
                 search: req.query.search,
-                id: req.query.id
+                id: req.query.id,
+                unpaid: req.query.unpaid
             };
 
             const result = await SalesService.getAllInvoices(filters, page, limit);
@@ -78,6 +79,25 @@ class SalesController {
                 page,
                 limit
             });
+        } catch (err) {
+            return error(res, err.message, 500);
+        }
+    }
+
+    async getUnpaidInvoices(req, res) {
+        try {
+            req.query.unpaid = true;
+            return this.getAllInvoices(req, res);
+        } catch (err) {
+            return error(res, err.message, 500);
+        }
+    }
+
+    async getUnpaidInvoicesByCustomer(req, res) {
+        try {
+            req.query.unpaid = true;
+            req.query.customer_id = req.params.customerId;
+            return this.getAllInvoices(req, res);
         } catch (err) {
             return error(res, err.message, 500);
         }
@@ -96,6 +116,15 @@ class SalesController {
         try {
             const invoice = await SalesService.createInvoice(req.body, req.user.id);
             return success(res, 'Invoice created successfully', invoice, 201);
+        } catch (err) {
+            return error(res, err.message, 400);
+        }
+    }
+
+    async updateInvoiceStatus(req, res) {
+        try {
+            const invoice = await SalesService.updateInvoiceStatus(req.params.id, req.body.status, req.user.id);
+            return success(res, 'Invoice status updated successfully', invoice);
         } catch (err) {
             return error(res, err.message, 400);
         }
@@ -203,6 +232,35 @@ class SalesController {
         try {
             const delivery = await SalesService.createDelivery(req.params.id, req.body, req.user.id);
             return success(res, 'Delivery recorded successfully', delivery, 201);
+        } catch (err) {
+            return error(res, err.message, 400);
+        }
+    }
+
+    // Sales Routes
+    async getSalesRoutes(req, res) {
+        try {
+            const page = parseInt(req.query.page) || 1;
+            const limit = parseInt(req.query.limit) || 10;
+            const filters = {
+                is_active: req.query.is_active,
+                search: req.query.search
+            };
+            const result = await SalesService.getAllSalesRoutes(filters, page, limit);
+            return successWithPagination(res, 'Sales routes retrieved successfully', result.data, {
+                total: result.total,
+                page,
+                limit
+            });
+        } catch (err) {
+            return error(res, err.message, 500);
+        }
+    }
+
+    async createSalesRoute(req, res) {
+        try {
+            const route = await SalesService.createSalesRoute(req.body, req.user.id);
+            return success(res, 'Sales route created successfully', route, 201);
         } catch (err) {
             return error(res, err.message, 400);
         }

@@ -13,6 +13,8 @@ const settingsValidations = {
     postal_code: z.string().max(20).optional(),
     tax_id: z.string().max(100).optional(),
     logo_url: z.string().optional(),
+    description: z.string().optional(),
+    currency: z.string().max(10).optional(),
   }),
 
   // Branches

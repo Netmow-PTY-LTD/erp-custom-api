@@ -100,6 +100,14 @@ class PurchaseService {
         return await PurchaseInvoiceRepository.create(invoiceData);
     }
 
+    async updatePurchaseInvoice(id, data) {
+        const invoice = await PurchaseInvoiceRepository.update(id, data);
+        if (!invoice) {
+            throw new Error('Purchase invoice not found');
+        }
+        return invoice;
+    }
+
     // Purchase Payments
     async getAllPurchasePayments(filters = {}, page = 1, limit = 10) {
         const offset = (page - 1) * limit;

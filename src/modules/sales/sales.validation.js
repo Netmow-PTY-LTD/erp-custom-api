@@ -48,8 +48,49 @@ const createDelivery = z.object({
     delivery_person_name: z.string().optional(),
     delivery_person_phone: z.string().optional(),
     tracking_number: z.string().optional(),
-    status: z.enum(['pending', 'in_transit', 'delivered', 'failed', 'returned']).default('delivered'),
+    status: z.enum(['pending', 'confirmed', 'in_transit', 'delivered', 'failed', 'returned']).default('delivered'),
     notes: z.string().optional()
+});
+
+const updateInvoiceStatus = z.object({
+    status: z.enum(['draft', 'sent', 'paid', 'overdue', 'cancelled'], {
+        required_error: "Status is required",
+        invalid_type_error: "Status must be one of: draft, sent, paid, overdue, cancelled"
+    })
+});
+
+// Sales Route Validation
+const createSalesRoute = z.object({
+    route_name: z.string().min(1, 'Route name is required').optional(), // snake_case
+    routeName: z.string().min(1, 'Route name is required').optional(), // camelCase
+    description: z.string().optional(),
+    assigned_sales_rep_id: z.number().int().optional(),
+    start_location: z.string().optional(),
+    end_location: z.string().optional(),
+    is_active: z.boolean().default(true),
+
+    // New fields
+    zoom_level: z.number().int().optional(),
+    zoomLevel: z.number().int().optional(),
+
+    country: z.string().optional(),
+    state: z.string().optional(),
+    city: z.string().optional(),
+
+    postal_code: z.string().optional(),
+    postalCode: z.string().optional(),
+
+    center_lat: z.number().optional(),
+    centerLat: z.number().optional(),
+
+    center_lng: z.number().optional(),
+    centerLng: z.number().optional(),
+
+    coverage_radius: z.number().optional(),
+    coverageRadius: z.number().optional()
+}).refine(data => data.route_name || data.routeName, {
+    message: "Route name is required",
+    path: ["routeName"]
 });
 
 module.exports = {
@@ -57,5 +98,7 @@ module.exports = {
     createOrder,
     createInvoice,
     createPayment,
-    createDelivery
+    createDelivery,
+    updateInvoiceStatus,
+    createSalesRoute
 };

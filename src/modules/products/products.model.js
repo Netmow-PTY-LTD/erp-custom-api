@@ -31,11 +31,19 @@ const Product = sequelize.define('Product', {
     price: {
         type: DataTypes.DECIMAL(10, 2),
         allowNull: false,
-        defaultValue: 0.00
+        defaultValue: 0.00,
+        get() {
+            const value = this.getDataValue('price');
+            return value === null ? null : parseFloat(value);
+        }
     },
     cost: {
         type: DataTypes.DECIMAL(10, 2),
-        allowNull: true
+        allowNull: true,
+        get() {
+            const value = this.getDataValue('cost');
+            return value === null ? null : parseFloat(value);
+        }
     },
     stock_quantity: {
         type: DataTypes.INTEGER,
@@ -67,22 +75,38 @@ const Product = sequelize.define('Product', {
     weight: {
         type: DataTypes.DECIMAL(10, 2),
         allowNull: true,
-        comment: 'Weight in kilograms (kg)'
+        comment: 'Weight in kilograms (kg)',
+        get() {
+            const value = this.getDataValue('weight');
+            return value === null ? null : parseFloat(value);
+        }
     },
     length: {
         type: DataTypes.DECIMAL(10, 2),
         allowNull: true,
-        comment: 'Length in centimeters (cm)'
+        comment: 'Length in centimeters (cm)',
+        get() {
+            const value = this.getDataValue('length');
+            return value === null ? null : parseFloat(value);
+        }
     },
     width: {
         type: DataTypes.DECIMAL(10, 2),
         allowNull: true,
-        comment: 'Width in centimeters (cm)'
+        comment: 'Width in centimeters (cm)',
+        get() {
+            const value = this.getDataValue('width');
+            return value === null ? null : parseFloat(value);
+        }
     },
     height: {
         type: DataTypes.DECIMAL(10, 2),
         allowNull: true,
-        comment: 'Height in centimeters (cm)'
+        comment: 'Height in centimeters (cm)',
+        get() {
+            const value = this.getDataValue('height');
+            return value === null ? null : parseFloat(value);
+        }
     },
     is_active: {
         type: DataTypes.BOOLEAN,

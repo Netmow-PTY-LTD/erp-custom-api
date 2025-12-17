@@ -18,6 +18,14 @@ class SettingsRepository {
     return rows[0] || null;
   }
 
+  async findByName(name) {
+    const query = 'SELECT * FROM settingss WHERE name = ?';
+    const [rows] = await sequelize.query(query, {
+      replacements: [name]
+    });
+    return rows[0] || null;
+  }
+
   async create(data) {
     const query = 'INSERT INTO settingss (name, description, status) VALUES (?, ?, ?)';
     const [result] = await sequelize.query(query, {

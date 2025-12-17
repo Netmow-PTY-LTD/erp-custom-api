@@ -34,6 +34,13 @@ class OrderRepository {
                             attributes: ['id', 'name', 'sku', 'price', 'image_url']
                         }
                     ]
+                },
+                {
+                    model: Delivery,
+                    as: 'deliveries',
+                    limit: 1,
+                    order: [['created_at', 'DESC']],
+                    separate: true
                 }
             ],
             order: [['created_at', 'DESC']]
@@ -60,7 +67,8 @@ class OrderRepository {
                     ]
                 },
                 { model: Invoice, as: 'invoice' },
-                { model: Payment, as: 'payments' }
+                { model: Payment, as: 'payments' },
+                { model: Delivery, as: 'deliveries' }
             ]
         });
     }
@@ -120,6 +128,12 @@ class InvoiceRepository {
         const orderWhere = {};
 
         if (filters.status) where.status = filters.status;
+
+        // Filter for unpaid invoices (not paid and not cancelled)
+        if (filters.unpaid === true || filters.unpaid === 'true') {
+            where.status = { [Op.notIn]: ['paid', 'cancelled'] };
+        }
+
         if (filters.id) where.id = filters.id;
 
         // Filter by customer_id (belongs to Order)
@@ -157,6 +171,11 @@ class InvoiceRepository {
                             attributes: ['id', 'name', 'email', 'phone', 'company']
                         }
                     ]
+                },
+                {
+                    model: Payment,
+                    as: 'payments',
+                    attributes: ['id', 'amount', 'payment_date', 'payment_method', 'status']
                 }
             ],
             order: [['created_at', 'DESC']],
@@ -174,8 +193,18 @@ class InvoiceRepository {
                     include: [
                         {
                             model: Customer,
-                            as: 'customer',
-                            attributes: ['id', 'name', 'email', 'phone', 'company']
+                            as: 'customer'
+                        },
+                        {
+                            model: OrderItem,
+                            as: 'items',
+                            include: [
+                                {
+                                    model: require('../products/products.model').Product,
+                                    as: 'product',
+                                    attributes: ['id', 'name', 'sku', 'price', 'image_url']
+                                }
+                            ]
                         }
                     ]
                 },
@@ -186,6 +215,12 @@ class InvoiceRepository {
 
     async create(data) {
         return await Invoice.create(data);
+    }
+
+    async update(id, data) {
+        const invoice = await Invoice.findByPk(id);
+        if (!invoice) return null;
+        return await invoice.update(data);
     }
 
     async findByOrderId(orderId) {
@@ -256,12 +291,18 @@ class PaymentRepository {
                             model: require('../customers/customers.model').Customer,
                             as: 'customer',
                             attributes: ['id', 'name', 'email', 'phone', 'company']
+                        },
+                        {
+                            model: Invoice,
+                            as: 'invoice'
                         }
                     ]
                 },
                 { model: Invoice, as: 'invoice' }
             ],
-            order: [['created_at', 'DESC']]
+            order: [['created_at', 'DESC']],
+            distinct: true,
+            col: 'id'
         });
     }
 
@@ -277,6 +318,10 @@ class PaymentRepository {
                             model: Customer,
                             as: 'customer',
                             attributes: ['id', 'name', 'email', 'phone', 'company']
+                        },
+                        {
+                            model: Invoice,
+                            as: 'invoice'
                         }
                     ]
                 },
@@ -296,10 +341,39 @@ class DeliveryRepository {
     }
 }
 
+class SalesRouteRepository {
+    async create(data) {
+        return await SalesRoute.create(data);
+    }
+
+    async findAll(filters = {}, limit = 10, offset = 0) {
+        const where = {};
+        if (filters.is_active !== undefined) where.is_active = filters.is_active;
+        if (filters.search) {
+            where[Op.or] = [
+                { route_name: { [Op.like]: `%${filters.search}%` } },
+                { description: { [Op.like]: `%${filters.search}%` } }
+            ];
+        }
+
+        return await SalesRoute.findAndCountAll({
+            where,
+            limit,
+            offset,
+            order: [['created_at', 'DESC']]
+        });
+    }
+
+    async findById(id) {
+        return await SalesRoute.findByPk(id);
+    }
+}
+
 module.exports = {
     OrderRepository: new OrderRepository(),
     InvoiceRepository: new InvoiceRepository(),
     WarehouseRepository: new WarehouseRepository(),
     PaymentRepository: new PaymentRepository(),
-    DeliveryRepository: new DeliveryRepository()
+    DeliveryRepository: new DeliveryRepository(),
+    SalesRouteRepository: new SalesRouteRepository()
 };

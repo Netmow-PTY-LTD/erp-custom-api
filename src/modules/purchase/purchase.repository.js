@@ -172,6 +172,17 @@ class PurchaseInvoiceRepository {
                             model: Supplier,
                             as: 'supplier',
                             attributes: ['id', 'name', 'email', 'phone', 'contact_person']
+                        },
+                        {
+                            model: PurchaseOrderItem,
+                            as: 'items',
+                            include: [
+                                {
+                                    model: require('../products/products.model').Product,
+                                    as: 'product',
+                                    attributes: ['id', 'name', 'sku', 'price', 'image_url']
+                                }
+                            ]
                         }
                     ]
                 },
@@ -182,6 +193,12 @@ class PurchaseInvoiceRepository {
 
     async create(data) {
         return await PurchaseInvoice.create(data);
+    }
+
+    async update(id, data) {
+        const invoice = await PurchaseInvoice.findByPk(id);
+        if (!invoice) return null;
+        return await invoice.update(data);
     }
 
     async findByPurchaseOrderId(purchaseOrderId) {

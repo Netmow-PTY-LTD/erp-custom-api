@@ -1,4 +1,4 @@
-const { OrderRepository, InvoiceRepository, WarehouseRepository, PaymentRepository, DeliveryRepository } = require('./sales.repository');
+const { OrderRepository, InvoiceRepository, WarehouseRepository, PaymentRepository, DeliveryRepository, SalesRouteRepository } = require('./sales.repository');
 
 
 class SalesService {
@@ -6,8 +6,24 @@ class SalesService {
     async getAllOrders(filters = {}, page = 1, limit = 10) {
         const offset = (page - 1) * limit;
         const result = await OrderRepository.findAll(filters, limit, offset);
+
+        // Transform deliveries array to single delivery object
+        const transformedRows = result.rows.map(order => {
+            const orderData = order.toJSON();
+            // Convert deliveries array to single delivery object (latest one)
+            orderData.delivery = orderData.deliveries && orderData.deliveries.length > 0
+                ? orderData.deliveries[0]
+                : null;
+
+            // Add delivery_status field
+            orderData.delivery_status = orderData.delivery ? orderData.delivery.status : null;
+
+            delete orderData.deliveries;
+            return orderData;
+        });
+
         return {
-            data: result.rows,
+            data: transformedRows,
             total: result.count
         };
     }
@@ -17,7 +33,17 @@ class SalesService {
         if (!order) {
             throw new Error('Order not found');
         }
-        return order;
+
+        const orderData = order.toJSON();
+
+        // Add delivery_status from the latest delivery
+        if (orderData.deliveries && orderData.deliveries.length > 0) {
+            orderData.delivery_status = orderData.deliveries[0].status;
+        } else {
+            orderData.delivery_status = null;
+        }
+
+        return orderData;
     }
 
     async createOrder(data, userId) {
@@ -100,8 +126,30 @@ class SalesService {
     async getAllInvoices(filters = {}, page = 1, limit = 10) {
         const offset = (page - 1) * limit;
         const result = await InvoiceRepository.findAll(filters, limit, offset);
+
+        // Calculate remaining balance for each invoice
+        const invoicesWithBalance = result.rows.map(invoice => {
+            const invoiceData = invoice.toJSON();
+
+            // Calculate total paid amount from completed payments
+            const paidAmount = invoiceData.payments
+                ? invoiceData.payments
+                    .filter(payment => payment.status === 'completed')
+                    .reduce((sum, payment) => sum + parseFloat(payment.amount), 0)
+                : 0;
+
+            const totalAmount = parseFloat(invoiceData.total_amount);
+            const remainingBalance = totalAmount - paidAmount;
+
+            // Add calculated fields
+            invoiceData.paid_amount = paidAmount;
+            invoiceData.remaining_balance = remainingBalance;
+
+            return invoiceData;
+        });
+
         return {
-            data: result.rows,
+            data: invoicesWithBalance,
             total: result.count
         };
     }
@@ -111,7 +159,24 @@ class SalesService {
         if (!invoice) {
             throw new Error('Invoice not found');
         }
-        return invoice;
+
+        const invoiceData = invoice.toJSON();
+
+        // Calculate total paid amount from completed payments
+        const paidAmount = invoiceData.payments
+            ? invoiceData.payments
+                .filter(payment => payment.status === 'completed')
+                .reduce((sum, payment) => sum + parseFloat(payment.amount), 0)
+            : 0;
+
+        const totalAmount = parseFloat(invoiceData.total_amount);
+        const remainingBalance = totalAmount - paidAmount;
+
+        // Add calculated fields
+        invoiceData.paid_amount = paidAmount;
+        invoiceData.remaining_balance = remainingBalance;
+
+        return invoiceData;
     }
 
     async createInvoice(data, userId) {
@@ -133,6 +198,26 @@ class SalesService {
         };
 
         return await InvoiceRepository.create(invoiceData);
+    }
+
+    async updateInvoiceStatus(id, status, userId) {
+        const invoice = await InvoiceRepository.findById(id);
+        if (!invoice) {
+            throw new Error('Invoice not found');
+        }
+
+        const updatedInvoice = await InvoiceRepository.update(id, {
+            status,
+            updated_at: new Date()
+        });
+
+        // If invoice is marked as paid, update the Order payment_status to 'paid'
+        if (status === 'paid' && invoice.order_id) {
+            const { OrderRepository } = require('./sales.repository');
+            await OrderRepository.update(invoice.order_id, { payment_status: 'paid' });
+        }
+
+        return updatedInvoice;
     }
 
     // Warehouses
@@ -161,8 +246,23 @@ class SalesService {
     async getAllPayments(filters = {}, page = 1, limit = 10) {
         const offset = (page - 1) * limit;
         const result = await PaymentRepository.findAll(filters, limit, offset);
+
+        const processedIds = new Set();
+        const data = [];
+
+        for (const row of result.rows) {
+            if (processedIds.has(row.id)) continue;
+            processedIds.add(row.id);
+
+            const payment = row.toJSON();
+            if (!payment.invoice && payment.order && payment.order.invoice) {
+                payment.invoice = payment.order.invoice;
+            }
+            data.push(payment);
+        }
+
         return {
-            data: result.rows,
+            data,
             total: result.count
         };
     }
@@ -172,7 +272,13 @@ class SalesService {
         if (!payment) {
             throw new Error('Payment not found');
         }
-        return payment;
+
+        const paymentData = payment.toJSON();
+        if (!paymentData.invoice && paymentData.order && paymentData.order.invoice) {
+            paymentData.invoice = paymentData.order.invoice;
+        }
+
+        return paymentData;
     }
 
     async createPayment(data, userId) {
@@ -186,10 +292,39 @@ class SalesService {
         const reference_number = data.reference_number || `REF-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
 
         let invoice_id = data.invoice_id;
+        let invoice = null;
+
         if (!invoice_id) {
-            const invoice = await InvoiceRepository.findByOrderId(order.id);
+            invoice = await InvoiceRepository.findByOrderId(order.id);
             if (invoice) {
                 invoice_id = invoice.id;
+            }
+        } else {
+            invoice = await InvoiceRepository.findById(invoice_id);
+        }
+
+        // If invoice exists, validate payment amount against remaining balance
+        if (invoice) {
+            const invoiceData = invoice.toJSON ? invoice.toJSON() : invoice;
+
+            // Calculate total paid amount from completed payments
+            const paidAmount = invoiceData.payments
+                ? invoiceData.payments
+                    .filter(payment => payment.status === 'completed')
+                    .reduce((sum, payment) => sum + parseFloat(payment.amount), 0)
+                : 0;
+
+            const totalAmount = parseFloat(invoiceData.total_amount);
+            const remainingBalance = totalAmount - paidAmount;
+
+            // Check if invoice is already fully paid
+            if (remainingBalance <= 0) {
+                throw new Error('Invoice is already fully paid');
+            }
+
+            // Check if payment amount exceeds remaining balance
+            if (parseFloat(data.amount) > remainingBalance) {
+                throw new Error(`Payment amount (${data.amount}) exceeds remaining balance (${remainingBalance.toFixed(2)})`);
             }
         }
 
@@ -197,7 +332,8 @@ class SalesService {
             ...data,
             invoice_id,
             reference_number,
-            created_by: userId
+            created_by: userId,
+            status: data.status || 'completed' // Default to completed
         };
 
         return await PaymentRepository.create(paymentData);
@@ -205,43 +341,47 @@ class SalesService {
 
     // Deliveries
     async createDelivery(orderId, data, userId) {
-        // Verify order exists
-        const order = await OrderRepository.findById(orderId);
-        if (!order) {
-            throw new Error('Order not found');
-        }
-
-        // Generate delivery number
-        const delivery_number = `DEL-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
-
-        const deliveryData = {
-            ...data,
-            order_id: orderId,
-            delivery_number,
-            delivery_address: data.delivery_address || order.shipping_address,
-            created_by: userId
-        };
-
-        // Convert delivery_date string to Date object if provided
-        if (data.delivery_date) {
-            deliveryData.delivery_date = new Date(data.delivery_date);
-        }
-
-        // If status is 'delivered', set delivered_at
-        if (data.status === 'delivered' && !data.delivered_at) {
-            deliveryData.delivered_at = data.delivery_date ? new Date(data.delivery_date) : new Date();
-        }
-
+        // ... (existing implementation)
         const delivery = await DeliveryRepository.create(deliveryData);
 
-        // Update Order status
+        // Update Order status based on delivery status
         if (data.status === 'delivered') {
             await OrderRepository.update(orderId, { status: 'delivered' });
         } else if (data.status === 'in_transit') {
             await OrderRepository.update(orderId, { status: 'shipped' });
+        } else if (data.status === 'confirmed') {
+            await OrderRepository.update(orderId, { status: 'confirmed' });
         }
 
         return delivery;
+    }
+
+    // Sales Routes
+    async getAllSalesRoutes(filters = {}, page = 1, limit = 10) {
+        const offset = (page - 1) * limit;
+        const result = await SalesRouteRepository.findAll(filters, limit, offset);
+        return {
+            data: result.rows,
+            total: result.count
+        };
+    }
+
+    async createSalesRoute(data, userId) {
+        // Map camelCase to snake_case if present
+        const routeData = {
+            ...data,
+            route_name: data.routeName || data.route_name,
+            zoom_level: data.zoomLevel || data.zoom_level,
+            postal_code: data.postalCode || data.postal_code,
+            center_lat: data.centerLat || data.center_lat,
+            center_lng: data.centerLng || data.center_lng,
+            coverage_radius: data.coverageRadius || data.coverage_radius,
+            created_by: userId
+        };
+
+        // Remove camelCase keys to be clean (optional, but good practice if model has strict checking, though Sequelize ignores extras usually)
+
+        return await SalesRouteRepository.create(routeData);
     }
 }
 

@@ -76,6 +76,38 @@ const SalesRoute = sequelize.define('SalesRoute', {
         type: DataTypes.STRING(255),
         allowNull: true
     },
+    zoom_level: {
+        type: DataTypes.INTEGER,
+        allowNull: true
+    },
+    country: {
+        type: DataTypes.STRING(100),
+        allowNull: true
+    },
+    state: {
+        type: DataTypes.STRING(100),
+        allowNull: true
+    },
+    city: {
+        type: DataTypes.STRING(100),
+        allowNull: true
+    },
+    postal_code: {
+        type: DataTypes.STRING(20),
+        allowNull: true
+    },
+    center_lat: {
+        type: DataTypes.FLOAT,
+        allowNull: true
+    },
+    center_lng: {
+        type: DataTypes.FLOAT,
+        allowNull: true
+    },
+    coverage_radius: {
+        type: DataTypes.FLOAT,
+        allowNull: true
+    },
     is_active: {
         type: DataTypes.BOOLEAN,
         defaultValue: true
@@ -122,15 +154,27 @@ const Order = sequelize.define('Order', {
     total_amount: {
         type: DataTypes.DECIMAL(10, 2),
         allowNull: false,
-        defaultValue: 0.00
+        defaultValue: 0.00,
+        get() {
+            const value = this.getDataValue('total_amount');
+            return value === null ? null : parseFloat(value);
+        }
     },
     tax_amount: {
         type: DataTypes.DECIMAL(10, 2),
-        defaultValue: 0.00
+        defaultValue: 0.00,
+        get() {
+            const value = this.getDataValue('tax_amount');
+            return value === null ? null : parseFloat(value);
+        }
     },
     discount_amount: {
         type: DataTypes.DECIMAL(10, 2),
-        defaultValue: 0.00
+        defaultValue: 0.00,
+        get() {
+            const value = this.getDataValue('discount_amount');
+            return value === null ? null : parseFloat(value);
+        }
     },
     shipping_address: {
         type: DataTypes.TEXT,
@@ -193,20 +237,36 @@ const OrderItem = sequelize.define('OrderItem', {
     },
     unit_price: {
         type: DataTypes.DECIMAL(10, 2),
-        allowNull: false
+        allowNull: false,
+        get() {
+            const value = this.getDataValue('unit_price');
+            return value === null ? null : parseFloat(value);
+        }
     },
     discount: {
         type: DataTypes.DECIMAL(10, 2),
         allowNull: true,
-        defaultValue: 0.00
+        defaultValue: 0.00,
+        get() {
+            const value = this.getDataValue('discount');
+            return value === null ? null : parseFloat(value);
+        }
     },
     line_total: {
         type: DataTypes.DECIMAL(10, 2),
-        allowNull: true
+        allowNull: true,
+        get() {
+            const value = this.getDataValue('line_total');
+            return value === null ? null : parseFloat(value);
+        }
     },
     total_price: {
         type: DataTypes.DECIMAL(10, 2),
-        allowNull: false
+        allowNull: false,
+        get() {
+            const value = this.getDataValue('total_price');
+            return value === null ? null : parseFloat(value);
+        }
     },
     created_at: {
         type: DataTypes.DATE,
@@ -249,7 +309,11 @@ const Invoice = sequelize.define('Invoice', {
     },
     total_amount: {
         type: DataTypes.DECIMAL(10, 2),
-        allowNull: false
+        allowNull: false,
+        get() {
+            const value = this.getDataValue('total_amount');
+            return value === null ? null : parseFloat(value);
+        }
     },
     status: {
         type: DataTypes.ENUM('draft', 'sent', 'paid', 'overdue', 'cancelled'),
@@ -291,7 +355,11 @@ const Payment = sequelize.define('Payment', {
     },
     amount: {
         type: DataTypes.DECIMAL(10, 2),
-        allowNull: false
+        allowNull: false,
+        get() {
+            const value = this.getDataValue('amount');
+            return value === null ? null : parseFloat(value);
+        }
     },
     payment_date: {
         type: DataTypes.DATE,
@@ -365,7 +433,7 @@ const Delivery = sequelize.define('Delivery', {
         allowNull: true
     },
     status: {
-        type: DataTypes.ENUM('pending', 'in_transit', 'delivered', 'failed', 'returned'),
+        type: DataTypes.ENUM('pending', 'confirmed', 'in_transit', 'delivered', 'failed', 'returned'),
         defaultValue: 'pending'
     },
     notes: {
