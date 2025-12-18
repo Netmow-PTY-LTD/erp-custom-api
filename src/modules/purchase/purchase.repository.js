@@ -15,11 +15,28 @@ class PurchaseOrderRepository {
         }
 
         return await PurchaseOrder.findAndCountAll({
+            attributes: {
+                include: [
+                    [
+                        sequelize.literal(`(
+                            SELECT COALESCE(SUM(pp.amount), 0)
+                            FROM purchase_payments AS pp
+                            WHERE pp.purchase_order_id = PurchaseOrder.id
+                        )`),
+                        'total_paid_amount'
+                    ]
+                ]
+            },
             where,
             limit,
             offset,
             include: [
-                { model: PurchaseOrderItem, as: 'items' }
+                { model: PurchaseOrderItem, as: 'items' },
+                {
+                    model: require('../suppliers/suppliers.model').Supplier,
+                    as: 'supplier',
+                    attributes: ['id', 'name']
+                }
             ],
             order: [['created_at', 'DESC']]
         });
@@ -68,7 +85,9 @@ class PurchaseOrderRepository {
                     ...item,
                     purchase_order_id: order.id,
                     discount: discount,
-                    line_total: line_total
+                    line_total: line_total,
+                    tax_amount: item.tax_amount || 0,
+                    purchase_tax_percent: item.purchase_tax_percent || 0
                 };
             });
 
@@ -138,6 +157,19 @@ class PurchaseInvoiceRepository {
         const { Supplier } = require('../suppliers/suppliers.model');
 
         return await PurchaseInvoice.findAndCountAll({
+            attributes: {
+                include: [
+                    [
+                        sequelize.literal(`(
+                            SELECT COALESCE(SUM(amount), 0)
+                            FROM purchase_payments AS pp
+                            WHERE
+                                pp.invoice_id = PurchaseInvoice.id
+                        )`),
+                        'paid_amount'
+                    ]
+                ]
+            },
             where,
             limit,
             offset,
@@ -163,6 +195,19 @@ class PurchaseInvoiceRepository {
     async findById(id) {
         const { Supplier } = require('../suppliers/suppliers.model');
         return await PurchaseInvoice.findByPk(id, {
+            attributes: {
+                include: [
+                    [
+                        sequelize.literal(`(
+                            SELECT COALESCE(SUM(amount), 0)
+                            FROM purchase_payments AS pp
+                            WHERE
+                                pp.invoice_id = PurchaseInvoice.id
+                        )`),
+                        'paid_amount'
+                    ]
+                ]
+            },
             include: [
                 {
                     model: PurchaseOrder,
@@ -171,7 +216,7 @@ class PurchaseInvoiceRepository {
                         {
                             model: Supplier,
                             as: 'supplier',
-                            attributes: ['id', 'name', 'email', 'phone', 'contact_person']
+                            attributes: ['id', 'name', 'email', 'phone', 'contact_person', 'address', 'city']
                         },
                         {
                             model: PurchaseOrderItem,

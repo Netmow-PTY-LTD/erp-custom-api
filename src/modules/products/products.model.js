@@ -45,6 +45,26 @@ const Product = sequelize.define('Product', {
             return value === null ? null : parseFloat(value);
         }
     },
+    purchase_tax: {
+        type: DataTypes.DECIMAL(5, 2),
+        allowNull: true,
+        defaultValue: 0.00,
+        comment: 'Purchase tax percentage',
+        get() {
+            const value = this.getDataValue('purchase_tax');
+            return value === null ? null : parseFloat(value);
+        }
+    },
+    sales_tax: {
+        type: DataTypes.DECIMAL(5, 2),
+        allowNull: true,
+        defaultValue: 0.00,
+        comment: 'Sales tax percentage',
+        get() {
+            const value = this.getDataValue('sales_tax');
+            return value === null ? null : parseFloat(value);
+        }
+    },
     stock_quantity: {
         type: DataTypes.INTEGER,
         allowNull: false,

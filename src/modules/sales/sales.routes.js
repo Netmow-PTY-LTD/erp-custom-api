@@ -633,7 +633,7 @@ router.routesMeta = [
                 invoices: ['id', 'invoice_number', 'status', 'total_amount'],
                 payments: ['id', 'amount', 'payment_date', 'payment_method'],
                 deliveries: ['id', 'delivery_number', 'delivery_date', 'status', 'notes'],
-                calculated: ['delivery_status']
+                calculated: ['delivery_status', 'total_invoice_amount', 'total_discount', 'total_payable_amount', 'total_paid_amount']
             },
             relationships: [
                 'orders.customer_id -> customers.id (FK)',
@@ -654,6 +654,10 @@ router.routesMeta = [
                 status: 'pending',
                 delivery_status: 'delivered',
                 total_amount: 100.00,
+                total_invoice_amount: 100.00,
+                total_discount: 10.00,
+                total_payable_amount: 90.00,
+                total_paid_amount: 20.00,
                 shipping_address: '123 Main St, New York, NY',
                 billing_address: '123 Main St, New York, NY',
                 notes: 'Please deliver between 9 AM and 5 PM',

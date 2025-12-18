@@ -12,6 +12,8 @@ class ProductService {
             // Convert numeric fields to proper numbers
             price: productData.price ? parseFloat(productData.price) : null,
             cost: productData.cost ? parseFloat(productData.cost) : null,
+            purchase_tax: productData.purchase_tax ? parseFloat(productData.purchase_tax) : 0,
+            sales_tax: productData.sales_tax ? parseFloat(productData.sales_tax) : 0,
             stock_quantity: productData.stock_quantity ? parseInt(productData.stock_quantity) : 0,
             min_stock_level: productData.min_stock_level ? parseInt(productData.min_stock_level) : null,
             max_stock_level: productData.max_stock_level ? parseInt(productData.max_stock_level) : null,

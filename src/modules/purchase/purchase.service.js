@@ -5,8 +5,20 @@ class PurchaseService {
     async getAllPurchaseOrders(filters = {}, page = 1, limit = 10) {
         const offset = (page - 1) * limit;
         const result = await PurchaseOrderRepository.findAll(filters, limit, offset);
+
+        const data = result.rows.map(row => {
+            const order = row.get({ plain: true });
+            const paid = parseFloat(order.total_paid_amount || 0);
+            const total = parseFloat(order.total_amount || 0);
+            return {
+                ...order,
+                total_paid_amount: paid,
+                total_due_amount: total - paid
+            };
+        });
+
         return {
-            data: result.rows,
+            data,
             total: result.count
         };
     }
@@ -25,19 +37,48 @@ class PurchaseService {
         // Generate PO number
         const po_number = `PO-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
 
-        // Calculate total amount
+        // Calculate total amount, discount amount, and tax amount
         let total_amount = 0;
+        let discount_amount = 0;
+        let tax_amount = 0;
+
         if (items && Array.isArray(items)) {
-            total_amount = items.reduce((sum, item) => {
-                const discount = item.discount || 0;
-                return sum + ((Number(item.quantity) * Number(item.unit_cost)) - discount);
-            }, 0);
+            const { ProductRepository } = require('../products/products.repository');
+
+            // Use Promise.all to handle async product fetching
+            items = await Promise.all(items.map(async (item) => {
+                const quantity = Number(item.quantity) || 0;
+                const unit_cost = Number(item.unit_cost) || 0;
+                const discount = Number(item.discount) || 0;
+
+                // Fetch product to get purchase_tax
+                const product = await ProductRepository.findById(item.product_id);
+                const purchase_tax_rate = product && product.purchase_tax ? Number(product.purchase_tax) : 0;
+
+                const subtotal = quantity * unit_cost;
+                const line_total = subtotal - discount;
+
+                // Calculate item tax
+                const item_tax_amount = (line_total * purchase_tax_rate) / 100;
+
+                discount_amount += discount;
+                total_amount += line_total;
+                tax_amount += item_tax_amount;
+
+                return {
+                    ...item,
+                    tax_amount: item_tax_amount,
+                    purchase_tax_percent: purchase_tax_rate  // Store the tax percentage
+                };
+            }));
         }
 
         const orderData = {
             ...orderInfo,
             po_number,
             total_amount,
+            discount_amount,
+            tax_amount,
             created_by: userId
         };
 
@@ -65,8 +106,20 @@ class PurchaseService {
     async getAllPurchaseInvoices(filters = {}, page = 1, limit = 10) {
         const offset = (page - 1) * limit;
         const result = await PurchaseInvoiceRepository.findAll(filters, limit, offset);
+
+        const data = result.rows.map(row => {
+            const invoice = row.get({ plain: true });
+            const paid = parseFloat(invoice.paid_amount || 0);
+            const total = parseFloat(invoice.total_amount || 0);
+            return {
+                ...invoice,
+                paid_amount: paid,
+                due_amount: total - paid
+            };
+        });
+
         return {
-            data: result.rows,
+            data,
             total: result.count
         };
     }
@@ -76,7 +129,12 @@ class PurchaseService {
         if (!invoice) {
             throw new Error('Purchase invoice not found');
         }
-        return invoice;
+
+        const data = invoice.toJSON();
+        data.paid_amount = parseFloat(data.paid_amount || 0);
+        data.due_amount = parseFloat(data.total_amount || 0) - data.paid_amount;
+
+        return data;
     }
 
     async createPurchaseInvoice(data, userId) {

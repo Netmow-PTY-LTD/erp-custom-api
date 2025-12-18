@@ -43,27 +43,91 @@ class SalesService {
             orderData.delivery_status = null;
         }
 
+        // Calculate totals
+        orderData.total_invoice_amount = orderData.invoice ? parseFloat(orderData.invoice.total_amount) : 0;
+
+        // Total Discount
+        const itemsDiscount = orderData.items ? orderData.items.reduce((sum, item) => sum + (parseFloat(item.discount) || 0), 0) : 0;
+        const orderDiscount = parseFloat(orderData.discount_amount) || 0;
+        orderData.total_discount = itemsDiscount + orderDiscount;
+
+        // Total Payable Amount
+        // Sum(items.total_price) + tax - orderDiscount
+        const itemsTotal = orderData.items ? orderData.items.reduce((sum, item) => sum + (parseFloat(item.total_price) || 0), 0) : 0;
+        const tax = parseFloat(orderData.tax_amount) || 0;
+        orderData.total_payable_amount = itemsTotal + tax - orderDiscount;
+
+        // Total Paid Amount
+        orderData.total_paid_amount = orderData.payments
+            ? orderData.payments
+                .filter(p => p.status === 'completed')
+                .reduce((sum, p) => sum + parseFloat(p.amount), 0)
+            : 0;
+
         return orderData;
     }
 
     async createOrder(data, userId) {
-        const { items, ...orderInfo } = data;
+        const { items, sales_tax_percent, ...orderInfo } = data;
 
         // Generate a unique order number
         const order_number = `ORD-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
 
-        // Calculate total amount
+        // Calculate total amount, discount amount, and tax amount
         let total_amount = 0;
+        let discount_amount = 0;
+        let item_level_tax = 0; // Tax from individual products
+
         if (items && Array.isArray(items)) {
-            total_amount = items.reduce((sum, item) => {
-                return sum + (Number(item.quantity) * Number(item.unit_price));
-            }, 0);
+            const { ProductRepository } = require('../products/products.repository');
+
+            // Use Promise.all to handle async product fetching
+            items = await Promise.all(items.map(async (item) => {
+                const quantity = Number(item.quantity) || 0;
+                const unit_price = Number(item.unit_price) || 0;
+                const discount = Number(item.discount) || 0;
+
+                // Fetch product to get sales_tax
+                const product = await ProductRepository.findById(item.product_id);
+                const sales_tax_rate = product && product.sales_tax ? Number(product.sales_tax) : 0;
+
+                const subtotal = quantity * unit_price;
+                const line_total = subtotal - discount;
+
+                // Calculate item tax (from product's sales_tax)
+                const item_tax_amount = (line_total * sales_tax_rate) / 100;
+
+                discount_amount += discount;
+                total_amount += line_total;
+                item_level_tax += item_tax_amount;
+
+                return {
+                    ...item,
+                    tax_amount: item_tax_amount,
+                    sales_tax_percent: sales_tax_rate  // Store the tax percentage
+                };
+            }));
         }
+
+        // Calculate order-level tax if sales_tax_percent is provided
+        let order_level_tax = 0;
+        const tax_percent = sales_tax_percent ? Number(sales_tax_percent) : 0;
+
+        if (tax_percent > 0) {
+            // Apply order-level tax on total_amount (after item discounts)
+            order_level_tax = (total_amount * tax_percent) / 100;
+        }
+
+        // Total tax is sum of item-level tax and order-level tax
+        const tax_amount = item_level_tax + order_level_tax;
 
         const orderData = {
             ...orderInfo,
             order_number,
             total_amount,
+            discount_amount,
+            tax_amount,
+            sales_tax_percent: tax_percent,
             created_by: userId
         };
 

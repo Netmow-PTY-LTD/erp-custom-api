@@ -92,6 +92,8 @@ class OrderRepository {
                     order_id: order.id,
                     discount: discount,
                     line_total: line_total,
+                    tax_amount: item.tax_amount || 0,
+                    sales_tax_percent: item.sales_tax_percent || 0,
                     total_price: line_total
                 };
             });

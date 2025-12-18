@@ -11,6 +11,7 @@ const app = express();
 
 // CORS configuration
 const allowedOrigins = [
+  'http://192.168.0.176:5000',
   'http://192.168.68.103:5000',
   'https://test1.miyn.app',
   'https://test3.miyn.app',

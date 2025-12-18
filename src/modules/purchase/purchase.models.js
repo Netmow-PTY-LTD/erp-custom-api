@@ -126,6 +126,24 @@ const PurchaseOrderItem = sequelize.define('PurchaseOrderItem', {
             return value === null ? null : parseFloat(value);
         }
     },
+    tax_amount: {
+        type: DataTypes.DECIMAL(10, 2),
+        allowNull: true,
+        defaultValue: 0.00,
+        get() {
+            const value = this.getDataValue('tax_amount');
+            return value === null ? null : parseFloat(value);
+        }
+    },
+    purchase_tax_percent: {
+        type: DataTypes.DECIMAL(5, 2),
+        allowNull: true,
+        defaultValue: 0.00,
+        get() {
+            const value = this.getDataValue('purchase_tax_percent');
+            return value === null ? null : parseFloat(value);
+        }
+    },
     created_at: {
         type: DataTypes.DATE,
         defaultValue: DataTypes.NOW
