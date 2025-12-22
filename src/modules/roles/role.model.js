@@ -13,6 +13,29 @@ const Role = sequelize.define('Role', {
     allowNull: false,
     unique: true,
   },
+  display_name: {
+    type: DataTypes.STRING(255),
+    allowNull: true,
+  },
+  description: {
+    type: DataTypes.TEXT,
+    allowNull: true,
+  },
+  status: {
+    type: DataTypes.ENUM('active', 'inactive'),
+    defaultValue: 'active',
+  },
+  permissions: {
+    type: DataTypes.TEXT,
+    allowNull: true,
+    get() {
+      const val = this.getDataValue('permissions');
+      return val ? JSON.parse(val) : [];
+    },
+    set(val) {
+      this.setDataValue('permissions', JSON.stringify(val));
+    },
+  },
   created_at: {
     type: DataTypes.DATE,
     defaultValue: DataTypes.NOW,
