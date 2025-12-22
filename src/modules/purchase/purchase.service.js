@@ -31,60 +31,146 @@ class PurchaseService {
         return po;
     }
 
+    // async createPurchaseOrder(data, userId) {
+    //     const { items, ...orderInfo } = data;
+
+    //     // Generate PO number
+    //     const po_number = `PO-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
+
+    //     // Calculate total amount, discount amount, and tax amount
+    //     let total_amount = 0;
+    //     let discount_amount = 0;
+    //     let tax_amount = 0;
+
+    //     if (items && Array.isArray(items)) {
+    //         const { ProductRepository } = require('../products/products.repository');
+
+    //         // Use Promise.all to handle async product fetching
+    //         items = await Promise.all(
+    //             items.map(async (item) => {
+    //             const quantity = Number(item.quantity) || 0;
+    //             const unit_cost = Number(item.unit_cost) || 0;
+    //             const discount = Number(item.discount) || 0;
+
+    //             // Fetch product to get purchase_tax
+    //             const product = await ProductRepository.findById(item.product_id);
+    //             const purchase_tax_rate = product && product.purchase_tax ? Number(product.purchase_tax) : 0;
+
+    //             const subtotal = quantity * unit_cost;
+    //             const line_total = subtotal - discount;
+
+    //             // Calculate item tax
+    //             const item_tax_amount = (line_total * purchase_tax_rate) / 100;
+
+    //             discount_amount += discount;
+    //             total_amount += line_total;
+    //             tax_amount += item_tax_amount;
+
+    //             return {
+    //                 ...item,
+    //                 tax_amount: item_tax_amount,
+    //                 purchase_tax_percent: purchase_tax_rate  // Store the tax percentage
+    //             };
+    //         })
+    //     );
+    //     }
+
+    //     const orderData = {
+    //         ...orderInfo,
+    //         po_number,
+    //         total_amount,
+    //         discount_amount,
+    //         tax_amount,
+    //         created_by: userId
+    //     };
+
+    //     const order = await PurchaseOrderRepository.create(orderData, items || []);
+    //     return order;
+    // }
+
     async createPurchaseOrder(data, userId) {
-        const { items, ...orderInfo } = data;
+    const { items = [], ...orderInfo } = data;
 
-        // Generate PO number
-        const po_number = `PO-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
+    if (!Array.isArray(items) || items.length === 0) {
+        throw new Error('Purchase order must contain at least one item');
+    }
 
-        // Calculate total amount, discount amount, and tax amount
-        let total_amount = 0;
-        let discount_amount = 0;
-        let tax_amount = 0;
+    const { ProductRepository } = require('../products/products.repository');
+    const { PurchaseOrderRepository } = require('./purchaseOrder.repository');
 
-        if (items && Array.isArray(items)) {
-            const { ProductRepository } = require('../products/products.repository');
+    // Strong PO number (collision-safe)
+    const po_number = `PO-${Date.now()}-${Math.random().toString(36).substring(2, 8).toUpperCase()}`;
 
-            // Use Promise.all to handle async product fetching
-            items = await Promise.all(items.map(async (item) => {
-                const quantity = Number(item.quantity) || 0;
-                const unit_cost = Number(item.unit_cost) || 0;
-                const discount = Number(item.discount) || 0;
+    let total_amount = 0;
+    let discount_amount = 0;
+    let tax_amount = 0;
 
-                // Fetch product to get purchase_tax
-                const product = await ProductRepository.findById(item.product_id);
-                const purchase_tax_rate = product && product.purchase_tax ? Number(product.purchase_tax) : 0;
+    /* ----------------------------------
+       Fetch all products in one query
+    -----------------------------------*/
+    const productIds = items.map(i => i.product_id);
+    const products = await ProductRepository.findByIds(productIds);
 
-                const subtotal = quantity * unit_cost;
-                const line_total = subtotal - discount;
+    const productMap = new Map(
+        products.map(p => [String(p._id), p])
+    );
 
-                // Calculate item tax
-                const item_tax_amount = (line_total * purchase_tax_rate) / 100;
+    /* ----------------------------------
+       Process items
+    -----------------------------------*/
+    const processedItems = items.map(item => {
+        const quantity = Number(item.quantity) || 0;
+        const unit_cost = Number(item.unit_cost) || 0;
+        const discount = Number(item.discount) || 0;
 
-                discount_amount += discount;
-                total_amount += line_total;
-                tax_amount += item_tax_amount;
-
-                return {
-                    ...item,
-                    tax_amount: item_tax_amount,
-                    purchase_tax_percent: purchase_tax_rate  // Store the tax percentage
-                };
-            }));
+        if (quantity <= 0 || unit_cost < 0) {
+            throw new Error('Invalid quantity or unit cost');
         }
 
-        const orderData = {
-            ...orderInfo,
-            po_number,
-            total_amount,
-            discount_amount,
-            tax_amount,
-            created_by: userId
-        };
+        const product = productMap.get(String(item.product_id));
+        if (!product) {
+            throw new Error(`Product not found: ${item.product_id}`);
+        }
 
-        const order = await PurchaseOrderRepository.create(orderData, items || []);
-        return order;
-    }
+        const purchase_tax_percent = Number(product.purchase_tax) || 0;
+
+        const subtotal = quantity * unit_cost;
+        const line_total = Math.max(subtotal - discount, 0);
+        const item_tax_amount = (line_total * purchase_tax_percent) / 100;
+
+        discount_amount += discount;
+        total_amount += line_total;
+        tax_amount += item_tax_amount;
+
+        return {
+            ...item,
+            quantity,
+            unit_cost,
+            discount,
+            tax_amount: item_tax_amount,
+            purchase_tax_percent
+        };
+    });
+
+    /* ----------------------------------
+       Prepare order data
+    -----------------------------------*/
+    const orderData = {
+        ...orderInfo,
+        po_number,
+        total_amount,
+        discount_amount,
+        tax_amount,
+        grand_total: total_amount + tax_amount,
+        created_by: userId
+    };
+
+    /* ----------------------------------
+       Persist (transaction ready)
+    -----------------------------------*/
+    return PurchaseOrderRepository.create(orderData, processedItems);
+}
+
 
     async updatePurchaseOrder(id, data) {
         const order = await PurchaseOrderRepository.update(id, data);
