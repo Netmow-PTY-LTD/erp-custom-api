@@ -45,6 +45,7 @@ app.use('/uploads', express.static('public/uploads'));
 
 app.use('/api', routes);
 
+
 // Root endpoint
 app.get('/', (req, res) => res.json({ ok: true, message: 'ERP API (modular)' }));
 
