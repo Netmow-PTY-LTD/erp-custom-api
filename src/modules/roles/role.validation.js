@@ -11,6 +11,9 @@ exports.createSchema = z.object({
   menu: z.array(z.string()).optional(),
   dashboard: z.array(z.string()).optional(),
   custom: z.record(z.any()).optional(),
+}).refine(data => data.role || data.name, {
+  message: "Either 'role' or 'name' must be provided",
+  path: ['name']
 });
 
 exports.updateSchema = z.object({

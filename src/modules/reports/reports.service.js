@@ -21,22 +21,78 @@ class ReportService {
     async getSalesSummary(startDate, endDate) {
         const { start, end } = this._getDateRange(startDate, endDate);
 
-        const sql = `
+        // Main summary query with proper DATE filtering
+        const summarySql = `
             SELECT 
                 COUNT(*) as total_orders,
-                SUM(total_amount) as total_revenue,
-                AVG(total_amount) as average_order_value
+                COALESCE(SUM(total_amount), 0) as total_sales,
+                COALESCE(AVG(total_amount), 0) as average_order_value,
+                COALESCE(SUM(tax_amount), 0) as total_tax,
+                COALESCE(SUM(discount_amount), 0) as total_discount
             FROM orders
-            WHERE order_date BETWEEN :start AND :end
-            AND status != 'cancelled'
+            WHERE DATE(order_date) BETWEEN :start AND :end
         `;
 
-        const result = await sequelize.query(sql, {
+        const summaryResult = await sequelize.query(summarySql, {
             replacements: { start, end },
             type: QueryTypes.SELECT
         });
 
-        return result[0];
+        // Status breakdown query
+        const statusSql = `
+            SELECT 
+                status,
+                COUNT(*) as count,
+                COALESCE(SUM(total_amount), 0) as amount
+            FROM orders
+            WHERE DATE(order_date) BETWEEN :start AND :end
+            GROUP BY status
+            ORDER BY amount DESC
+        `;
+
+        const statusBreakdown = await sequelize.query(statusSql, {
+            replacements: { start, end },
+            type: QueryTypes.SELECT
+        });
+
+        // Payment status breakdown query
+        const paymentStatusSql = `
+            SELECT 
+                payment_status,
+                COUNT(*) as count,
+                COALESCE(SUM(total_amount), 0) as amount
+            FROM orders
+            WHERE DATE(order_date) BETWEEN :start AND :end
+            GROUP BY payment_status
+            ORDER BY amount DESC
+        `;
+
+        const paymentStatusBreakdown = await sequelize.query(paymentStatusSql, {
+            replacements: { start, end },
+            type: QueryTypes.SELECT
+        });
+
+        return {
+            start_date: start,
+            end_date: end,
+            summary: {
+                total_orders: parseInt(summaryResult[0].total_orders) || 0,
+                total_sales: parseFloat(summaryResult[0].total_sales) || 0,
+                average_order_value: parseFloat(summaryResult[0].average_order_value) || 0,
+                total_tax: parseFloat(summaryResult[0].total_tax) || 0,
+                total_discount: parseFloat(summaryResult[0].total_discount) || 0
+            },
+            status_breakdown: statusBreakdown.map(row => ({
+                status: row.status,
+                count: parseInt(row.count) || 0,
+                amount: parseFloat(row.amount) || 0
+            })),
+            payment_status_breakdown: paymentStatusBreakdown.map(row => ({
+                payment_status: row.payment_status,
+                count: parseInt(row.count) || 0,
+                amount: parseFloat(row.amount) || 0
+            }))
+        };
     }
 
     async getTopCustomers(startDate, endDate, limit = 5) {
@@ -84,6 +140,101 @@ class ReportService {
             replacements: { start, end, limit },
             type: QueryTypes.SELECT
         });
+    }
+
+    async getSalesByCustomer(startDate, endDate, page = 1, limit = 10) {
+        const { start, end } = this._getDateRange(startDate, endDate);
+        const offset = (page - 1) * limit;
+
+        const sql = `
+            SELECT 
+                c.name as customer,
+                COUNT(o.id) as orders,
+                COALESCE(SUM(o.total_amount), 0) as sales
+            FROM customers c
+            LEFT JOIN orders o ON c.id = o.customer_id 
+                AND DATE(o.order_date) BETWEEN :start AND :end
+                AND o.status != 'cancelled'
+            GROUP BY c.id, c.name
+            ORDER BY sales DESC
+            LIMIT :limit OFFSET :offset
+        `;
+
+        const countSql = `
+            SELECT COUNT(DISTINCT id) as total FROM customers
+        `;
+
+        const rows = await sequelize.query(sql, {
+            replacements: { start, end, limit, offset },
+            type: QueryTypes.SELECT
+        });
+
+        const countResult = await sequelize.query(countSql, { type: QueryTypes.SELECT });
+
+        return {
+            rows,
+            total: countResult[0].total
+        };
+    }
+
+    async getAccountReceivables(startDate, endDate, page = 1, limit = 10) {
+        const { start, end } = this._getDateRange(startDate, endDate);
+        const offset = (page - 1) * limit;
+
+        const whereClause = `
+            o.payment_status != 'paid'
+            AND o.status != 'cancelled'
+            AND DATE(o.order_date) BETWEEN :start AND :end
+        `;
+
+        const sql = `
+            SELECT 
+                COALESCE(i.invoice_number, o.order_number) as invoiceNumber,
+                c.name as customer,
+                DATE_FORMAT(o.order_date, '%Y-%m-%d') as date,
+                DATE_FORMAT(COALESCE(i.due_date, o.due_date, o.created_at), '%Y-%m-%d') as due,
+                o.total_amount as total,
+                COALESCE(SUM(p.amount), 0) as paid,
+                (o.total_amount - COALESCE(SUM(p.amount), 0)) as balance
+            FROM orders o
+            JOIN customers c ON o.customer_id = c.id
+            LEFT JOIN invoices i ON o.id = i.order_id
+            LEFT JOIN payments p ON o.id = p.order_id
+            WHERE ${whereClause}
+            GROUP BY o.id, c.name, i.invoice_number, o.order_number, o.order_date, i.due_date, o.due_date, o.created_at, o.total_amount
+            HAVING balance > 0
+            ORDER BY o.order_date DESC
+            LIMIT :limit OFFSET :offset
+        `;
+
+        const countSql = `
+            SELECT COUNT(*) as total 
+            FROM orders o 
+            WHERE ${whereClause}
+        `;
+
+        const rows = await sequelize.query(sql, {
+            replacements: { start, end, limit, offset },
+            type: QueryTypes.SELECT
+        });
+
+        const countResult = await sequelize.query(countSql, {
+            replacements: { start, end },
+            type: QueryTypes.SELECT
+        });
+
+        // Ensure numeric values are numbers
+        const formattedRows = rows.map(row => ({
+            ...row,
+            total: parseFloat(row.total),
+            paid: parseFloat(row.paid),
+            balance: parseFloat(row.balance)
+        }));
+
+        return {
+            rows: formattedRows,
+            total: countResult[0].total
+        };
     }
 
     // --- Purchase Reports ---
@@ -148,14 +299,57 @@ class ReportService {
     async getInventoryValuation() {
         const sql = `
             SELECT 
-                SUM(stock_quantity * price) as total_sales_value,
-                SUM(stock_quantity * cost_price) as total_cost_value
+                SUM(stock_quantity) as total_units,
+                SUM(stock_quantity * cost) as total_Valuation,
+                SUM(stock_quantity * price) as potential_Sales_Value
             FROM products
             WHERE is_active = true
         `;
 
         const result = await sequelize.query(sql, { type: QueryTypes.SELECT });
-        return result[0];
+
+        // Ensure numbers are returned, not nulls
+        return {
+            total_units: parseInt(result[0].total_units) || 0,
+            total_Valuation: parseFloat(result[0].total_Valuation) || 0,
+            potential_Sales_Value: parseFloat(result[0].potential_Sales_Value) || 0
+        };
+    }
+
+    async getLowStockList(page = 1, limit = 10) {
+        const offset = (page - 1) * limit;
+
+        const sql = `
+            SELECT 
+                sku,
+                name as product,
+                stock_quantity as stock,
+                min_stock_level as minLevel
+            FROM products
+            WHERE stock_quantity <= min_stock_level
+            AND is_active = true
+            ORDER BY stock_quantity ASC
+            LIMIT :limit OFFSET :offset
+        `;
+
+        const countSql = `
+            SELECT COUNT(*) as total
+            FROM products
+            WHERE stock_quantity <= min_stock_level
+            AND is_active = true
+        `;
+
+        const rows = await sequelize.query(sql, {
+            replacements: { limit, offset },
+            type: QueryTypes.SELECT
+        });
+
+        const countResult = await sequelize.query(countSql, { type: QueryTypes.SELECT });
+
+        return {
+            rows,
+            total: countResult[0].total
+        };
     }
 
     // --- HR Reports ---

@@ -4,13 +4,46 @@ const jwt = require('jsonwebtoken');
 const { jwtSecret, jwtExpiresIn } = require('../../core/config/env');
 
 exports.login = async (email, password) => {
-  const user = await repo.findByEmail(email);
+  const user = await repo.findByEmailWithRole(email);
   if (!user) throw { status: 400, message: 'Invalid credentials' };
   const ok = await bcrypt.compare(password, user.password);
   if (!ok) throw { status: 400, message: 'Invalid credentials' };
+
+  // Generate token
   const token = jwt.sign({ id: user.id, email: user.email, role_id: user.role_id }, jwtSecret, { expiresIn: jwtExpiresIn });
-  delete user.password;
-  return { user, token };
+
+  // Get role menus and dashboards
+  const roleMenus = await repo.getRoleMenus();
+  const roleDashboards = await repo.getRoleDashboards();
+
+  // Build hierarchical menu structure
+  const buildMenuTree = (menus, parentId = null) => {
+    return menus
+      .filter(menu => menu.parent_id === parentId)
+      .map(menu => ({
+        id: menu.id,
+        title: menu.title,
+        icon: menu.icon,
+        path: menu.path,
+        parent_id: menu.parent_id,
+        sort_order: menu.sort_order,
+        is_active: menu.is_active,
+        children: buildMenuTree(menus, menu.id)
+      }));
+  };
+
+  const menuTree = buildMenuTree(roleMenus);
+
+  // Prepare user data
+  const userData = user.toJSON();
+  delete userData.password;
+
+  return {
+    user: userData,
+    token,
+    menus: menuTree,
+    dashboards: roleDashboards
+  };
 };
 
 exports.register = async (userData) => {
@@ -33,10 +66,40 @@ exports.register = async (userData) => {
 };
 
 exports.getCurrentUser = async (userId) => {
-  const user = await repo.findById(userId);
+  const user = await repo.findByIdWithRole(userId);
   if (!user) throw { status: 404, message: 'User not found' };
-  delete user.password;
-  return user;
+
+  // Get role menus and dashboards
+  const roleMenus = await repo.getRoleMenus();
+  const roleDashboards = await repo.getRoleDashboards();
+
+  // Build hierarchical menu structure
+  const buildMenuTree = (menus, parentId = null) => {
+    return menus
+      .filter(menu => menu.parent_id === parentId)
+      .map(menu => ({
+        id: menu.id,
+        title: menu.title,
+        icon: menu.icon,
+        path: menu.path,
+        parent_id: menu.parent_id,
+        sort_order: menu.sort_order,
+        is_active: menu.is_active,
+        children: buildMenuTree(menus, menu.id)
+      }));
+  };
+
+  const menuTree = buildMenuTree(roleMenus);
+
+  // Prepare user data
+  const userData = user.toJSON();
+  delete userData.password;
+
+  return {
+    user: userData,
+    menus: menuTree,
+    dashboards: roleDashboards
+  };
 };
 
 exports.refreshToken = async (token) => {

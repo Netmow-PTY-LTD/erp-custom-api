@@ -33,9 +33,9 @@ router.routesMeta = [
       sideEffects: ['Creates role_settings entry']
     },
     sampleRequest: {
-      role: 'Sales Manager',
-      display_name: 'Sales Department Manager',
-      description: 'Manages sales team and operations',
+      role: 'Regional Sales Manager',
+      display_name: 'Regional Sales Department Manager',
+      description: 'Manages regional sales team and operations',
       status: 'active',
       permissions: ['sales.view', 'sales.create'],
       menu: ['sales', 'dashboard'],

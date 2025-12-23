@@ -32,7 +32,7 @@ class PurchaseService {
     }
 
     async createPurchaseOrder(data, userId) {
-        const { items, ...orderInfo } = data;
+        let { items, ...orderInfo } = data;
 
         // Generate PO number
         const po_number = `PO-${Date.now()}-${Math.floor(Math.random() * 1000)}`;

@@ -18,11 +18,15 @@ router.routesMeta = [
     handler: handlerWithFields(controller.login, loginSchema),
     description: 'Authenticate user and get access token',
     database: {
-      tables: ['users', 'roles'],
+      tables: ['users', 'roles', 'role_settings', 'role_menus', 'role_dashboards'],
       mainTable: 'users',
       requiredFields: ['email', 'password'],
-      relationships: ['users.role_id -> roles.id (FK)'],
-      sideEffects: ['Updates last_login timestamp']
+      relationships: [
+        'users.role_id -> roles.id (FK)',
+        'roles.id -> role_settings.role_id (FK)',
+        'role_menus.parent_id -> role_menus.id (Self-referencing FK)'
+      ],
+      sideEffects: ['Generates JWT token']
     },
     sampleRequest: {
       email: 'admin@example.com',
@@ -37,11 +41,90 @@ router.routesMeta = [
           name: 'Admin User',
           email: 'admin@example.com',
           role_id: 1,
-          role_name: 'Admin'
+          created_at: '2025-01-01T00:00:00.000Z',
+          role: {
+            id: 1,
+            name: 'admin',
+            display_name: 'Administrator',
+            description: 'Full system access',
+            status: 'active',
+            permissions: ['users.create', 'users.read', 'users.update', 'users.delete'],
+            created_at: '2025-01-01T00:00:00.000Z',
+            RoleSettings: {
+              id: 1,
+              role_id: 1,
+              menu: null,
+              dashboard: null,
+              custom: null
+            }
+          }
         },
         token: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...',
-        refreshToken: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...',
-        expiresIn: 3600
+        menus: [
+          {
+            id: 1,
+            title: 'Dashboard',
+            icon: 'dashboard',
+            path: '/dashboard',
+            parent_id: null,
+            sort_order: 1,
+            is_active: true,
+            children: []
+          },
+          {
+            id: 2,
+            title: 'Users',
+            icon: 'people',
+            path: null,
+            parent_id: null,
+            sort_order: 2,
+            is_active: true,
+            children: [
+              {
+                id: 3,
+                title: 'User List',
+                icon: null,
+                path: '/users',
+                parent_id: 2,
+                sort_order: 1,
+                is_active: true,
+                children: []
+              },
+              {
+                id: 4,
+                title: 'Roles',
+                icon: null,
+                path: '/roles',
+                parent_id: 2,
+                sort_order: 2,
+                is_active: true,
+                children: []
+              }
+            ]
+          }
+        ],
+        dashboards: [
+          {
+            id: 1,
+            name: 'Total Users',
+            slug: 'total_users',
+            type: 'stat',
+            size: '1x1',
+            is_active: true,
+            created_at: '2025-01-01T00:00:00.000Z',
+            updated_at: '2025-01-01T00:00:00.000Z'
+          },
+          {
+            id: 2,
+            name: 'Sales Chart',
+            slug: 'sales_chart',
+            type: 'chart',
+            size: '2x1',
+            is_active: true,
+            created_at: '2025-01-01T00:00:00.000Z',
+            updated_at: '2025-01-01T00:00:00.000Z'
+          }
+        ]
       }
     }
   },
@@ -89,37 +172,72 @@ router.routesMeta = [
     handler: controller.me,
     description: 'Get current authenticated user information',
     database: {
-      tables: ['users', 'roles', 'permissions', 'role_permissions'],
+      tables: ['users', 'roles', 'role_settings', 'role_menus', 'role_dashboards'],
       mainTable: 'users',
       fields: {
         users: ['id', 'name', 'email', 'role_id', 'created_at'],
-        roles: ['id', 'name', 'description'],
-        permissions: ['id', 'name', 'slug']
+        roles: ['id', 'name', 'display_name', 'description', 'status', 'permissions', 'created_at'],
+        role_settings: ['id', 'role_id', 'menu', 'dashboard', 'custom'],
+        role_menus: ['id', 'title', 'icon', 'path', 'parent_id', 'sort_order', 'is_active'],
+        role_dashboards: ['id', 'name', 'slug', 'type', 'size', 'is_active']
       },
       relationships: [
         'users.role_id -> roles.id (FK)',
-        'roles.id -> role_permissions.role_id',
-        'role_permissions.permission_id -> permissions.id'
+        'roles.id -> role_settings.role_id (FK)',
+        'role_menus.parent_id -> role_menus.id (Self-referencing FK)'
       ]
     },
     sampleResponse: {
       status: true,
+      message: 'User retrieved successfully',
       data: {
-        id: 1,
-        name: 'Admin User',
-        email: 'admin@example.com',
-        role_id: 1,
-        role: {
+        user: {
           id: 1,
-          name: 'Admin',
-          permissions: [
-            'users.create',
-            'users.read',
-            'users.update',
-            'users.delete'
-          ]
+          name: 'Admin User',
+          email: 'admin@example.com',
+          role_id: 1,
+          created_at: '2025-01-01T00:00:00.000Z',
+          role: {
+            id: 1,
+            name: 'admin',
+            display_name: 'Administrator',
+            description: 'Full system access',
+            status: 'active',
+            permissions: ['users.create', 'users.read', 'users.update', 'users.delete'],
+            created_at: '2025-01-01T00:00:00.000Z',
+            RoleSettings: {
+              id: 1,
+              role_id: 1,
+              menu: null,
+              dashboard: null,
+              custom: null
+            }
+          }
         },
-        created_at: '2025-01-01T00:00:00.000Z'
+        menus: [
+          {
+            id: 1,
+            title: 'Dashboard',
+            icon: 'dashboard',
+            path: '/dashboard',
+            parent_id: null,
+            sort_order: 1,
+            is_active: true,
+            children: []
+          }
+        ],
+        dashboards: [
+          {
+            id: 1,
+            name: 'Total Users',
+            slug: 'total_users',
+            type: 'stat',
+            size: '1x1',
+            is_active: true,
+            created_at: '2025-01-01T00:00:00.000Z',
+            updated_at: '2025-01-01T00:00:00.000Z'
+          }
+        ]
       }
     }
   },

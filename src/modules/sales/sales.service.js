@@ -68,7 +68,7 @@ class SalesService {
     }
 
     async createOrder(data, userId) {
-        const { items, sales_tax_percent, ...orderInfo } = data;
+        let { items, sales_tax_percent, ...orderInfo } = data;
 
         // Generate a unique order number
         const order_number = `ORD-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
@@ -446,6 +446,124 @@ class SalesService {
         // Remove camelCase keys to be clean (optional, but good practice if model has strict checking, though Sequelize ignores extras usually)
 
         return await SalesRouteRepository.create(routeData);
+    }
+
+    // Reports & Charts
+    async getReportsCharts(start_date, end_date) {
+        const { Op } = require('sequelize');
+        const { sequelize } = require('../../core/database/sequelize');
+
+        // Build where condition with date range
+        // Use DATE() function to compare only the date part, ignoring time
+        const whereCondition = sequelize.where(
+            sequelize.fn('DATE', sequelize.col('order_date')),
+            {
+                [Op.between]: [start_date, end_date]
+            }
+        );
+
+        // Group by date (MySQL)
+        const dateFormat = sequelize.fn('DATE', sequelize.col('order_date'));
+
+        // Query to aggregate sales data
+        const results = await OrderRepository.model.findAll({
+            attributes: [
+                [dateFormat, 'date'],
+                [sequelize.fn('SUM', sequelize.col('total_amount')), 'amount'],
+                [sequelize.fn('COUNT', sequelize.col('id')), 'order_count']
+            ],
+            where: whereCondition,
+            group: [dateFormat],
+            order: [[dateFormat, 'ASC']],
+            raw: true
+        });
+
+        // Format the results
+        const chartData = results.map(row => ({
+            date: row.date,
+            amount: parseFloat(row.amount) || 0,
+            order_count: parseInt(row.order_count) || 0
+        }));
+
+        return {
+            start_date,
+            end_date,
+            data: chartData
+        };
+    }
+
+    // Sales Summary Report
+    async getSalesSummary(start_date, end_date) {
+        const { Op } = require('sequelize');
+        const { sequelize } = require('../../core/database/sequelize');
+
+        // Build where condition with date range
+        // Use DATE() function to compare only the date part, ignoring time
+        const whereCondition = sequelize.where(
+            sequelize.fn('DATE', sequelize.col('order_date')),
+            {
+                [Op.between]: [start_date, end_date]
+            }
+        );
+
+        // Get summary statistics
+        const summary = await OrderRepository.model.findOne({
+            attributes: [
+                [sequelize.fn('COUNT', sequelize.col('id')), 'total_orders'],
+                [sequelize.fn('SUM', sequelize.col('total_amount')), 'total_sales'],
+                [sequelize.fn('AVG', sequelize.col('total_amount')), 'average_order_value'],
+                [sequelize.fn('SUM', sequelize.col('tax_amount')), 'total_tax'],
+                [sequelize.fn('SUM', sequelize.col('discount_amount')), 'total_discount']
+            ],
+            where: whereCondition,
+            raw: true
+        });
+
+        // Get status breakdown
+        const statusBreakdown = await OrderRepository.model.findAll({
+            attributes: [
+                'status',
+                [sequelize.fn('COUNT', sequelize.col('id')), 'count'],
+                [sequelize.fn('SUM', sequelize.col('total_amount')), 'amount']
+            ],
+            where: whereCondition,
+            group: ['status'],
+            raw: true
+        });
+
+        // Get payment status breakdown
+        const paymentStatusBreakdown = await OrderRepository.model.findAll({
+            attributes: [
+                'payment_status',
+                [sequelize.fn('COUNT', sequelize.col('id')), 'count'],
+                [sequelize.fn('SUM', sequelize.col('total_amount')), 'amount']
+            ],
+            where: whereCondition,
+            group: ['payment_status'],
+            raw: true
+        });
+
+        return {
+            start_date,
+            end_date,
+            summary: {
+                total_orders: parseInt(summary.total_orders) || 0,
+                total_sales: parseFloat(summary.total_sales) || 0,
+                average_order_value: parseFloat(summary.average_order_value) || 0,
+                total_tax: parseFloat(summary.total_tax) || 0,
+                total_discount: parseFloat(summary.total_discount) || 0
+            },
+            status_breakdown: statusBreakdown.map(row => ({
+                status: row.status,
+                count: parseInt(row.count) || 0,
+                amount: parseFloat(row.amount) || 0
+            })),
+            payment_status_breakdown: paymentStatusBreakdown.map(row => ({
+                payment_status: row.payment_status,
+                count: parseInt(row.count) || 0,
+                amount: parseFloat(row.amount) || 0
+            }))
+        };
     }
 }
 

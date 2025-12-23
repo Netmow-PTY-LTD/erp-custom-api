@@ -97,19 +97,25 @@ exports.findAll = async (page, limit) => {
 exports.update = async (id, data) => {
   const role = await Role.findByPk(id);
   if (!role) return null;
-  if (data.role || data.name) await role.update({ name: data.role || data.name });
-  if (data.display_name !== undefined) await role.update({ display_name: data.display_name });
-  if (data.description !== undefined) await role.update({ description: data.description });
-  if (data.status !== undefined) await role.update({ status: data.status });
-  if (data.permissions !== undefined) await role.update({ permissions: data.permissions });
+
+  const roleUpdatePayload = {};
+  if (data.role || data.name) roleUpdatePayload.name = data.role || data.name;
+  if (data.display_name !== undefined) roleUpdatePayload.display_name = data.display_name;
+  if (data.description !== undefined) roleUpdatePayload.description = data.description;
+  if (data.status !== undefined) roleUpdatePayload.status = data.status;
+  if (data.permissions !== undefined) roleUpdatePayload.permissions = data.permissions;
+
+  if (Object.keys(roleUpdatePayload).length > 0) {
+    await role.update(roleUpdatePayload);
+  }
 
   if (data.menu || data.dashboard || data.custom) {
     const settings = await RoleSettings.findOne({ where: { role_id: id } });
-    const payload = {
-      menu: JSON.stringify(data.menu || []),
-      dashboard: JSON.stringify(data.dashboard || []),
-      custom: JSON.stringify(data.custom || {}),
-    };
+    const payload = {};
+    if (data.menu !== undefined) payload.menu = JSON.stringify(data.menu || []);
+    if (data.dashboard !== undefined) payload.dashboard = JSON.stringify(data.dashboard || []);
+    if (data.custom !== undefined) payload.custom = JSON.stringify(data.custom || {});
+
     if (settings) {
       await settings.update(payload);
     } else {

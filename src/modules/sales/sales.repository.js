@@ -3,6 +3,10 @@ const { Op } = require('sequelize');
 const { sequelize } = require('../../core/database/sequelize');
 
 class OrderRepository {
+    constructor() {
+        this.model = Order;
+    }
+
     async findAll(filters = {}, limit = 10, offset = 0) {
         const where = {};
         if (filters.status) where.status = filters.status;
