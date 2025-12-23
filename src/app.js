@@ -17,7 +17,9 @@ const allowedOrigins = [
   'https://test3.miyn.app',
   'http://localhost:5173',
   'http://localhost:5174',
-  'https://erpinleadsit.netlify.app'
+  'https://erpinleadsit.netlify.app',
+  'https://erp.inleadsit.com',
+  'http://erp.inleadsit.com'
 ];
 
 app.use(cors({
