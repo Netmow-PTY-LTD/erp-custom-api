@@ -3,6 +3,7 @@ const cors = require('cors');
 
 
 
+const { sequelize } = require('./core/database/sequelize');
 const routes = require('./routes'); // your main API routes
 const routesTree = require('./routes/routesTree'); // new routes-tree
 require('dotenv').config();
@@ -61,6 +62,38 @@ app.get('/debug-env', (req, res) => {
     NODE_ENV: process.env.NODE_ENV
   };
   res.json(envVars);
+});
+
+// --- Public Route: Check Database Status ---
+app.get('/check-db-status', async (req, res) => {
+  try {
+    await sequelize.authenticate();
+    res.json({
+      status: 'success',
+      message: 'Database connection is healthy.',
+      config: {
+        host: process.env.DB_HOST,
+        port: process.env.DB_PORT,
+        database: process.env.DB_NAME
+      }
+    });
+  } catch (error) {
+    res.status(500).json({
+      status: 'error',
+      message: 'Database connection failed.',
+      reason: error.message,
+      error_details: {
+        name: error.name,
+        code: error.code || error.parent?.code,
+        errno: error.errno || error.parent?.errno,
+        syscall: error.syscall || error.parent?.syscall,
+        hostname: error.address || error.parent?.address,
+        port: error.port || error.parent?.port,
+        fatal: error.fatal || error.parent?.fatal,
+        original: error.original ? error.original.message : undefined
+      }
+    });
+  }
 });
 // ----------------------------------------------------------------
 
