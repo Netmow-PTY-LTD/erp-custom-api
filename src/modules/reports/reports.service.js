@@ -208,9 +208,14 @@ class ReportService {
         `;
 
         const countSql = `
-            SELECT COUNT(*) as total 
-            FROM orders o 
-            WHERE ${whereClause}
+            SELECT COUNT(*) as total FROM (
+                SELECT o.id
+                FROM orders o
+                LEFT JOIN payments p ON o.id = p.order_id
+                WHERE ${whereClause}
+                GROUP BY o.id, o.total_amount
+                HAVING (o.total_amount - COALESCE(SUM(p.amount), 0)) > 0
+            ) as count_table
         `;
 
         const rows = await sequelize.query(sql, {

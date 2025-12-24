@@ -38,7 +38,8 @@ class PurchaseOrderRepository {
                     attributes: ['id', 'name']
                 }
             ],
-            order: [['created_at', 'DESC']]
+            order: [['created_at', 'DESC']],
+            distinct: true
         });
     }
 
