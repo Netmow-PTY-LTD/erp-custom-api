@@ -1,0 +1,951 @@
+const express = require('express');
+const router = express.Router();
+const salesController = require('./sales.controller');
+const { verifyToken } = require('../../core/middleware/auth');
+const { moduleCheck } = require('../../core/middleware/moduleCheck');
+const { handlerWithFields } = require('../../core/utils/zodTypeView');
+const validate = require('../../core/middleware/validate');
+const { createWarehouse, createOrder, createInvoice, createPayment, createDelivery, updateInvoiceStatus, createSalesRoute } = require('./sales.validation');
+// Module name for routes-tree grouping
+router.moduleName = 'Sales & Orders';
+router.use(verifyToken);
+router.use(moduleCheck('sales'));
+// Define routes metadata
+router.routesMeta = [
+    // --- Orders ---
+    {
+        path: '/orders',
+        method: 'GET',
+        middlewares: [],
+        handler: (req, res) => salesController.getAllOrders(req, res),
+        description: 'Get all orders with pagination',
+        database: {
+            tables: ['orders', 'order_items', 'customers', 'products', 'deliveries'],
+            mainTable: 'orders',
+            fields: {
+                orders: ['id', 'order_number', 'customer_id', 'order_date', 'status', 'total_amount', 'tax_amount', 'discount_amount', 'shipping_address', 'billing_address', 'payment_status', 'notes', 'due_date', 'created_at'],
+                customers: ['id', 'name', 'email', 'phone', 'company'],
+                order_items: ['id', 'order_id', 'product_id', 'quantity', 'unit_price', 'discount', 'line_total'],
+                products: ['id', 'name', 'sku', 'price', 'image_url'],
+                delivery: ['id', 'delivery_number', 'delivery_date', 'status', 'notes'],
+                calculated: ['delivery_status']
+            },
+            relationships: [
+                'orders.customer_id -> customers.id (FK)',
+                'order_items.order_id -> orders.id (FK)',
+                'order_items.product_id -> products.id (FK)',
+                'orders.id -> deliveries.order_id (HasOne - Latest delivery only)'
+            ]
+        },
+        queryParams: {
+            page: 'Page number (default: 1)',
+            limit: 'Items per page (default: 10)',
+            status: 'Filter by order status',
+            customer_id: 'Filter by customer ID',
+            search: 'Search by order number'
+        },
+        sampleResponse: {
+            success: true,
+            message: 'Orders retrieved successfully',
+            pagination: {
+                total: 10,
+                page: '1',
+                limit: '10',
+                totalPage: 1
+            },
+            data: [
+                {
+                    id: 1,
+                    order_number: 'ORD-1733130000000',
+                    customer_id: 1,
+                    total_amount: '150.00',
+                    status: 'pending',
+                    delivery_status: 'delivered',
+                    notes: 'Please deliver between 9 AM and 5 PM',
+                    due_date: '2025-12-15',
+                    created_at: '2025-12-03T05:00:00.000Z',
+                    customer: {
+                        id: 1,
+                        name: 'John Doe',
+                        email: 'john@example.com',
+                        phone: '+1234567890',
+                        company: 'ABC Corp'
+                    },
+                    items: [
+                        {
+                            id: 1,
+                            order_id: 1,
+                            product_id: 1,
+                            quantity: 2,
+                            unit_price: 50.00,
+                            discount: 5.00,
+                            line_total: 95.00,
+                            product: {
+                                id: 1,
+                                name: 'Wireless Mouse',
+                                sku: 'MOU-001',
+                                price: 29.99,
+                                image_url: 'http://example.com/thumb.jpg'
+                            }
+                        }
+                    ],
+                    delivery: {
+                        id: 1,
+                        delivery_number: 'DEL-123456',
+                        delivery_date: '2025-12-09',
+                        status: 'delivered',
+                        notes: 'Left at reception'
+                    }
+                }
+            ]
+        }
+    },
+    {
+        path: '/orders',
+        method: 'POST',
+        middlewares: [validate(createOrder)],
+        handler: handlerWithFields((req, res) => salesController.createOrder(req, res), createOrder),
+        description: 'Create a new order. `order_number` and `total_amount` are auto-generated.',
+        database: {
+            tables: ['orders', 'order_items', 'stock_movements', 'products'],
+            mainTable: 'orders',
+            requiredFields: ['customer_id', 'items'],
+            optionalFields: ['shipping_address', 'billing_address', 'notes', 'due_date'],
+            autoGeneratedFields: ['id', 'order_number', 'total_amount', 'created_at', 'updated_at'],
+            relationships: [
+                'orders.customer_id -> customers.id (FK)',
+                'order_items.order_id -> orders.id (FK)',
+                'order_items.product_id -> products.id (FK)'
+            ],
+            sideEffects: [
+                'Decreases products.stock_quantity for each item',
+                'Creates stock_movements records (movement_type: sale, quantity: negative)',
+                'Updates product stock levels automatically'
+            ]
+        },
+        sampleRequest: {
+            customer_id: 1,
+            shipping_address: '123 Main St, New York, NY',
+            billing_address: '123 Main St, New York, NY',
+            notes: 'Please deliver between 9 AM and 5 PM',
+            due_date: '2025-12-15',
+            items: [
+                {
+                    product_id: 1,
+                    quantity: 2,
+                    unit_price: 50.00,
+                    discount: 5.00,
+                    line_total: 95.00
+                }
+            ]
+        },
+        sampleResponse: {
+            status: true,
+            message: 'Order created successfully',
+            data: {
+                id: 1,
+                order_number: 'ORD-1733130000000-123',
+                total_amount: 100.00,
+                created_by: 1
+            }
+        }
+    },
+    // --- Invoices ---
+    {
+        path: '/orders/invoices',
+        method: 'GET',
+        middlewares: [],
+        handler: (req, res) => salesController.getAllInvoices(req, res),
+        description: 'Get all invoices with pagination. Returns paid_amount and remaining_balance for each invoice.',
+        database: {
+            tables: ['invoices', 'orders', 'customers', 'payments'],
+            mainTable: 'invoices',
+            fields: {
+                invoices: ['id', 'invoice_number', 'order_id', 'invoice_date', 'due_date', 'total_amount', 'status', 'created_at'],
+                orders: ['id', 'order_number', 'customer_id', 'total_amount', 'status'],
+                customers: ['id', 'name', 'email', 'phone', 'company'],
+                payments: ['id', 'amount', 'payment_date', 'payment_method', 'status'],
+                calculated: ['paid_amount', 'remaining_balance']
+            },
+            relationships: [
+                'invoices.order_id -> orders.id (FK)',
+                'orders.customer_id -> customers.id (FK)',
+                'invoices.id -> payments.invoice_id (HasMany)'
+            ]
+        },
+        queryParams: {
+            page: 'Page number (default: 1)',
+            limit: 'Items per page (default: 10)',
+            status: 'Filter by invoice status',
+            customer_id: 'Filter by customer ID',
+            search: 'Search by invoice number, customer name, or customer ID'
+        },
+        sampleResponse: {
+            success: true,
+            message: 'Invoices retrieved successfully',
+            pagination: {
+                total: 5,
+                page: '1',
+                limit: '10',
+                totalPage: 1
+            },
+            data: [
+                {
+                    id: 1,
+                    invoice_number: 'INV-1733130000000',
+                    order_id: 1,
+                    total_amount: '150.00',
+                    paid_amount: 50.00,
+                    remaining_balance: 100.00,
+                    status: 'sent',
+                    created_at: '2025-12-03T05:00:00.000Z',
+                    order: {
+                        id: 1,
+                        order_number: 'ORD-1733130000000-123',
+                        customer_id: 1,
+                        total_amount: '150.00',
+                        status: 'pending',
+                        customer: {
+                            id: 1,
+                            name: 'John Doe',
+                            email: 'john@example.com',
+                            phone: '+1234567890',
+                            company: 'ABC Corp'
+                        }
+                    },
+                    payments: [
+                        {
+                            id: 1,
+                            amount: '50.00',
+                            payment_date: '2025-12-10T10:00:00.000Z',
+                            payment_method: 'credit_card',
+                            status: 'completed'
+                        }
+                    ]
+                }
+            ]
+        }
+    },
+    {
+        path: '/orders/invoices/unpaid',
+        method: 'GET',
+        middlewares: [],
+        handler: (req, res) => salesController.getUnpaidInvoices(req, res),
+        description: 'Get all unpaid invoices (not paid and not cancelled) with pagination',
+        database: {
+            tables: ['invoices', 'orders', 'customers', 'payments'],
+            mainTable: 'invoices',
+            fields: {
+                invoices: ['id', 'invoice_number', 'order_id', 'invoice_date', 'due_date', 'total_amount', 'status', 'created_at'],
+                orders: ['id', 'order_number', 'customer_id', 'total_amount', 'status'],
+                customers: ['id', 'name', 'email', 'phone', 'company']
+            },
+            relationships: [
+                'invoices.order_id -> orders.id (FK)',
+                'orders.customer_id -> customers.id (FK)'
+            ]
+        },
+        queryParams: {
+            page: 'Page number (default: 1)',
+            limit: 'Items per page (default: 10)',
+            customer_id: 'Filter by customer ID',
+            search: 'Search by invoice number, customer name, or customer ID'
+        },
+        sampleResponse: {
+            success: true,
+            message: 'Invoices retrieved successfully',
+            pagination: {
+                total: 5,
+                page: '1',
+                limit: '10',
+                totalPage: 1
+            },
+            data: [
+                {
+                    id: 1,
+                    invoice_number: 'INV-1733130000000',
+                    total_amount: '150.00',
+                    paid_amount: 50.00,
+                    remaining_balance: 100.00,
+                    status: 'sent'
+                }
+            ]
+        }
+    },
+    {
+        path: '/orders/invoices/unpaid/customer/:customerId',
+        method: 'GET',
+        middlewares: [],
+        handler: (req, res) => salesController.getUnpaidInvoicesByCustomer(req, res),
+        description: 'Get all unpaid invoices for a specific customer',
+        database: {
+            tables: ['invoices', 'orders', 'customers'],
+            mainTable: 'invoices',
+            fields: {
+                invoices: ['id', 'invoice_number', 'order_id', 'total_amount', 'status'],
+                orders: ['id', 'order_number', 'customer_id'],
+                customers: ['id', 'name']
+            },
+            relationships: [
+                'invoices.order_id -> orders.id (FK)',
+                'orders.customer_id -> customers.id (FK)'
+            ]
+        },
+        queryParams: {
+            page: 'Page number (default: 1)',
+            limit: 'Items per page (default: 10)',
+            search: 'Search by invoice number'
+        },
+        sampleResponse: {
+            success: true,
+            message: 'Invoices retrieved successfully',
+            data: []
+        }
+    },
+    {
+        path: '/orders/invoices',
+        method: 'POST',
+        middlewares: [validate(createInvoice)],
+        handler: handlerWithFields((req, res) => salesController.createInvoice(req, res), createInvoice),
+        description: 'Create an invoice from an order. `invoice_number` and `total_amount` are auto-generated from the order.',
+        database: {
+            tables: ['invoices', 'orders'],
+            mainTable: 'invoices',
+            requiredFields: ['order_id'],
+            optionalFields: ['due_date'],
+            autoGeneratedFields: ['id', 'invoice_number', 'total_amount', 'invoice_date', 'created_at'],
+            relationships: ['invoices.order_id -> orders.id (FK)']
+        },
+        sampleRequest: {
+            order_id: 1,
+            due_date: '2025-01-01'
+        },
+        sampleResponse: {
+            status: true,
+            message: 'Invoice created successfully'
+        }
+    },
+    {
+        path: '/orders/invoices/:id/status',
+        method: 'PATCH',
+        middlewares: [validate(require('./sales.validation').updateInvoiceStatus)],
+        handler: (req, res) => salesController.updateInvoiceStatus(req, res),
+        description: 'Update invoice status (e.g., mark as paid)',
+        database: {
+            tables: ['invoices', 'orders'],
+            mainTable: 'invoices',
+            requiredFields: ['status'],
+            relationships: ['invoices.order_id -> orders.id (FK)'],
+            sideEffects: [
+                'Updates invoices.status',
+                'Updates invoices.updated_at',
+                'If status is paid, updates orders.payment_status to paid'
+            ]
+        },
+        sampleRequest: {
+            status: 'paid'
+        },
+        sampleResponse: {
+            status: true,
+            message: 'Invoice status updated successfully'
+        }
+    },
+    {
+        path: '/orders/invoices/customer/:customerId',
+        method: 'GET',
+        middlewares: [],
+        handler: (req, res) => salesController.getInvoicesByCustomer(req, res),
+        description: 'Get all invoices for a specific customer',
+        database: {
+            tables: ['invoices', 'customers'],
+            mainTable: 'invoices',
+            fields: {
+                invoices: ['id', 'invoice_number', 'order_id', 'total_amount', 'status', 'created_at'],
+                customers: ['id', 'name']
+            },
+            relationships: [
+                'invoices.order_id -> orders.id (FK)',
+                'orders.customer_id -> customers.id (FK)'
+            ]
+        },
+        queryParams: {
+            page: 'Page number (default: 1)',
+            limit: 'Items per page (default: 10)',
+            status: 'Filter by invoice status',
+            search: 'Search by invoice number'
+        },
+        sampleResponse: {
+            success: true,
+            message: 'Customer invoices retrieved successfully',
+            pagination: {
+                total: 3,
+                page: '1',
+                limit: '10',
+                totalPage: 1
+            },
+            data: [
+                {
+                    id: 1,
+                    invoice_number: 'INV-1733130000000',
+                    order_id: 1,
+                    total_amount: '150.00',
+                    status: 'sent',
+                    created_at: '2025-12-03T05:00:00.000Z'
+                }
+            ]
+        }
+    },
+    {
+        path: '/orders/invoices/:id',
+        method: 'GET',
+        middlewares: [],
+        handler: (req, res) => salesController.getInvoiceById(req, res),
+        description: 'Get invoice details by ID. Returns paid_amount and remaining_balance.',
+        database: {
+            tables: ['invoices', 'orders', 'customers', 'payments'],
+            mainTable: 'invoices',
+            fields: {
+                invoices: ['id', 'invoice_number', 'order_id', 'invoice_date', 'due_date', 'total_amount', 'status', 'created_at', 'created_by'],
+                orders: ['id', 'order_number', 'customer_id', 'total_amount', 'status'],
+                customers: ['id', 'name', 'email', 'phone', 'company', 'address', 'city', 'state', 'country', 'postal_code', 'tax_id'],
+                payments: ['id', 'amount', 'payment_date', 'payment_method', 'status'],
+                calculated: ['paid_amount', 'remaining_balance']
+            },
+            relationships: [
+                'invoices.order_id -> orders.id (FK)',
+                'orders.customer_id -> customers.id (FK)',
+                'invoices.id -> payments.invoice_id (HasMany)'
+            ]
+        },
+        sampleResponse: {
+            status: true,
+            message: 'Invoice retrieved successfully',
+            data: {
+                id: 1,
+                invoice_number: 'INV-1733130000000-123',
+                order_id: 1,
+                invoice_date: '2025-12-08T10:00:00.000Z',
+                due_date: '2025-12-15',
+                total_amount: '100.00',
+                paid_amount: 30.00,
+                remaining_balance: 70.00,
+                status: 'sent',
+                created_by: 1,
+                created_at: '2025-12-08T10:00:00.000Z',
+                order: {
+                    id: 1,
+                    order_number: 'ORD-1733130000000-123',
+                    customer_id: 1,
+                    total_amount: 100.00,
+                    status: 'pending',
+                    items: [
+                        {
+                            id: 1,
+                            order_id: 1,
+                            product_id: 1,
+                            quantity: 2,
+                            unit_price: 50.00,
+                            discount: 5.00,
+                            line_total: 95.00,
+                            product: {
+                                id: 1,
+                                name: 'Wireless Mouse',
+                                sku: 'MOU-001',
+                                price: 29.99,
+                                image_url: 'http://example.com/thumb.jpg'
+                            }
+                        }
+                    ]
+                },
+                payments: [
+                    {
+                        id: 1,
+                        amount: '30.00',
+                        payment_date: '2025-12-10T10:00:00.000Z',
+                        payment_method: 'credit_card',
+                        status: 'completed'
+                    }
+                ]
+            }
+        }
+    },
+    // --- Payments ---
+    {
+        path: '/orders/payments',
+        method: 'GET',
+        middlewares: [],
+        handler: (req, res) => salesController.getAllPayments(req, res),
+        description: 'Get all payments with pagination and search',
+        database: {
+            tables: ['payments', 'orders', 'invoices', 'customers'],
+            mainTable: 'payments',
+            fields: {
+                payments: ['id', 'order_id', 'invoice_id', 'amount', 'payment_date', 'payment_method', 'reference_number', 'status', 'created_at'],
+                orders: ['id', 'order_number', 'customer_id'],
+                customers: ['id', 'name', 'email', 'phone', 'company'],
+                invoices: ['id', 'invoice_number']
+            },
+            relationships: [
+                'payments.order_id -> orders.id (FK)',
+                'payments.invoice_id -> invoices.id (FK)',
+                'orders.customer_id -> customers.id (FK)'
+            ]
+        },
+        queryParams: {
+            page: 'Page number (default: 1)',
+            limit: 'Items per page (default: 10)',
+            order_id: 'Filter by order ID',
+            payment_method: 'Filter by payment method',
+            search: 'Search by reference number'
+        },
+        sampleResponse: {
+            success: true,
+            message: 'Payments retrieved successfully',
+            pagination: {
+                total: 25,
+                page: '1',
+                limit: '10',
+                totalPage: 3
+            },
+            data: [
+                {
+                    id: 1,
+                    order_id: 1,
+                    invoice_id: 1,
+                    amount: '100.00',
+                    payment_method: 'credit_card',
+                    reference_number: 'REF-123456',
+                    payment_date: '2025-12-08T10:00:00.000Z',
+                    created_at: '2025-12-08T10:00:00.000Z',
+                    order: {
+                        id: 1,
+                        order_number: 'ORD-1733130000000-123',
+                        total_amount: '100.00',
+                        customer: {
+                            id: 1,
+                            name: 'John Doe',
+                            email: 'john@example.com',
+                            phone: '+1234567890',
+                            company: 'ABC Corp'
+                        }
+                    },
+                    invoice: {
+                        id: 1,
+                        invoice_number: 'INV-1733130000000-123'
+                    }
+                }
+            ]
+        }
+    },
+    {
+        path: '/orders/payments',
+        method: 'POST',
+        middlewares: [validate(createPayment)],
+        handler: handlerWithFields((req, res) => salesController.createPayment(req, res), createPayment),
+        description: 'Record a payment for an order. Validates that payment amount does not exceed remaining balance.',
+        database: {
+            tables: ['payments', 'orders', 'invoices'],
+            mainTable: 'payments',
+            requiredFields: ['order_id', 'amount', 'payment_method'],
+            optionalFields: ['invoice_id', 'reference_number', 'status'],
+            autoGeneratedFields: ['id', 'payment_date', 'created_at'],
+            relationships: [
+                'payments.order_id -> orders.id (FK)',
+                'payments.invoice_id -> invoices.id (FK)'
+            ],
+            validations: [
+                'Payment amount must not exceed invoice remaining balance',
+                'Cannot create payment if invoice is already fully paid',
+                'Status defaults to "completed" if not provided'
+            ]
+        },
+        sampleRequest: {
+            order_id: 1,
+            amount: 100.00,
+            payment_method: 'credit_card'
+        },
+        sampleResponse: {
+            status: true,
+            message: 'Payment recorded successfully'
+        }
+    },
+    {
+        path: '/orders/payments/:id',
+        method: 'GET',
+        middlewares: [],
+        handler: (req, res) => salesController.getPaymentById(req, res),
+        description: 'Get payment details by ID',
+        database: {
+            tables: ['payments', 'orders', 'invoices'],
+            mainTable: 'payments',
+            fields: {
+                payments: ['id', 'order_id', 'invoice_id', 'amount', 'payment_method', 'reference_number', 'payment_date', 'created_at'],
+                orders: ['id', 'order_number'],
+                invoices: ['id', 'invoice_number']
+            },
+            relationships: [
+                'payments.order_id -> orders.id (FK)',
+                'payments.invoice_id -> invoices.id (FK)'
+            ]
+        },
+        sampleResponse: {
+            status: true,
+            message: 'Payment retrieved successfully',
+            data: {
+                id: 1,
+                order_id: 1,
+                invoice_id: 1,
+                amount: '100.00',
+                payment_method: 'credit_card',
+                reference_number: 'REF-123456',
+                payment_date: '2025-12-08T10:00:00.000Z',
+                created_at: '2025-12-08T10:00:00.000Z',
+                order: {
+                    id: 1,
+                    order_number: 'ORD-1733130000000-123'
+                },
+                invoice: {
+                    id: 1,
+                    invoice_number: 'INV-1733130000000-123'
+                }
+            }
+        }
+    },
+    {
+        path: '/orders/:id',
+        method: 'GET',
+        middlewares: [],
+        handler: (req, res) => salesController.getOrderById(req, res),
+        description: 'Get order details with populated customer and product information',
+        database: {
+            tables: ['orders', 'customers', 'order_items', 'products', 'invoices', 'payments', 'deliveries'],
+            mainTable: 'orders',
+            fields: {
+                orders: ['id', 'order_number', 'customer_id', 'order_date', 'status', 'total_amount', 'shipping_address', 'billing_address', 'notes', 'due_date'],
+                customers: ['id', 'name', 'email', 'phone', 'company'],
+                order_items: ['id', 'order_id', 'product_id', 'quantity', 'unit_price', 'discount', 'line_total', 'total_price'],
+                products: ['id', 'name', 'sku', 'price', 'image_url'],
+                invoices: ['id', 'invoice_number', 'status', 'total_amount'],
+                payments: ['id', 'amount', 'payment_date', 'payment_method'],
+                deliveries: ['id', 'delivery_number', 'delivery_date', 'status', 'notes'],
+                calculated: ['delivery_status', 'total_invoice_amount', 'total_discount', 'total_payable_amount', 'total_paid_amount']
+            },
+            relationships: [
+                'orders.customer_id -> customers.id (FK)',
+                'order_items.order_id -> orders.id (FK)',
+                'order_items.product_id -> products.id (FK)',
+                'invoices.order_id -> orders.id (HasOne)',
+                'payments.order_id -> orders.id (HasMany)',
+                'orders.id -> deliveries.order_id (HasMany)'
+            ]
+        },
+        sampleResponse: {
+            status: true,
+            data: {
+                id: 1,
+                order_number: 'ORD-1733130000000-123',
+                customer_id: 1,
+                order_date: '2025-12-08T10:00:00.000Z',
+                status: 'pending',
+                delivery_status: 'delivered',
+                total_amount: 100.00,
+                total_invoice_amount: 100.00,
+                total_discount: 10.00,
+                total_payable_amount: 90.00,
+                total_paid_amount: 20.00,
+                shipping_address: '123 Main St, New York, NY',
+                billing_address: '123 Main St, New York, NY',
+                notes: 'Please deliver between 9 AM and 5 PM',
+                due_date: '2025-12-15',
+                customer: {
+                    id: 1,
+                    name: 'John Doe',
+                    email: 'john@example.com',
+                    phone: '+1234567890',
+                    company: 'ABC Corp'
+                },
+                items: [
+                    {
+                        id: 1,
+                        order_id: 1,
+                        product_id: 1,
+                        quantity: 2,
+                        unit_price: 50.00,
+                        discount: 5.00,
+                        line_total: 95.00,
+                        total_price: 95.00,
+                        product: {
+                            id: 1,
+                            name: 'Wireless Mouse',
+                            sku: 'MOU-001',
+                            price: '29.99',
+                            image_url: 'http://example.com/thumb.jpg'
+                        }
+                    }
+                ],
+                invoice: null,
+                payments: [],
+                deliveries: []
+            }
+        }
+    },
+    {
+        path: '/orders/:id/deliver',
+        method: 'POST',
+        middlewares: [validate(createDelivery)],
+        handler: handlerWithFields((req, res) => salesController.createDelivery(req, res), createDelivery),
+        description: 'Record order delivery',
+        database: {
+            tables: ['deliveries', 'orders'],
+            mainTable: 'deliveries',
+            requiredFields: ['status'],
+            optionalFields: ['delivery_date', 'delivery_address', 'delivery_person_name', 'delivery_person_phone', 'tracking_number', 'notes'],
+            autoGeneratedFields: ['id', 'delivery_number', 'delivered_at', 'created_at'],
+            relationships: ['deliveries.order_id -> orders.id (FK)'],
+            sideEffects: [
+                'Updates orders.status to delivered (if status=delivered)',
+                'Updates orders.status to shipped (if status=in_transit)',
+                'Updates orders.status to confirmed (if status=confirmed)',
+                'Sets deliveries.delivered_at timestamp when status is delivered',
+                'Allowed status values: pending, confirmed, in_transit, delivered, failed, returned'
+            ]
+        },
+        sampleRequest: {
+            status: 'confirmed',
+            delivery_date: '2025-12-09',
+            notes: 'Delivery confirmed by customer'
+        },
+        sampleResponse: {
+            status: true,
+            message: 'Delivery recorded successfully'
+        }
+    },
+    // --- Warehouses ---
+    {
+        path: '/warehouses',
+        method: 'GET',
+        middlewares: [],
+        handler: (req, res) => salesController.getWarehouses(req, res),
+        description: 'List all warehouses',
+        database: {
+            tables: ['warehouses'],
+            mainTable: 'warehouses',
+            fields: {
+                warehouses: ['id', 'name', 'location']
+            }
+        },
+        sampleResponse: {
+            status: true,
+            data: [
+                {
+                    id: 1,
+                    name: 'Main Warehouse',
+                    location: 'New York'
+                }
+            ]
+        }
+    },
+    {
+        path: '/warehouses',
+        method: 'POST',
+        middlewares: [validate(createWarehouse)],
+        handler: handlerWithFields((req, res) => salesController.createWarehouse(req, res), createWarehouse),
+        description: 'Add a new warehouse',
+        database: {
+            tables: ['warehouses'],
+            mainTable: 'warehouses',
+            requiredFields: ['name', 'location'],
+            optionalFields: ['capacity', 'is_active'],
+            autoGeneratedFields: ['id', 'created_at', 'updated_at']
+        },
+        sampleRequest: {
+            name: 'West Coast Hub',
+            location: 'Los Angeles',
+            capacity: 10000
+        },
+        sampleResponse: {
+            status: true,
+            message: 'Warehouse created successfully'
+        }
+    },
+    // --- Sales Routes ---
+    {
+        path: '/routes',
+        method: 'GET',
+        middlewares: [],
+        handler: (req, res) => salesController.getSalesRoutes(req, res),
+        description: 'List all sales routes',
+        database: {
+            tables: ['sales_routes'],
+            mainTable: 'sales_routes',
+            fields: {
+                sales_routes: ['id', 'route_name', 'description', 'start_location', 'end_location', 'is_active', 'zoom_level', 'country', 'state', 'city', 'postal_code', 'center_lat', 'center_lng', 'coverage_radius']
+            }
+        },
+        sampleResponse: {
+            status: true,
+            data: []
+        }
+    },
+    {
+        path: '/sales-route',
+        method: 'POST',
+        middlewares: [validate(createSalesRoute)],
+        handler: handlerWithFields((req, res) => salesController.createSalesRoute(req, res), createSalesRoute),
+        description: 'Create a new sales route with map details',
+        database: {
+            tables: ['sales_routes'],
+            mainTable: 'sales_routes',
+            requiredFields: ['route_name'],
+            optionalFields: ['description', 'assigned_sales_rep_id', 'start_location', 'end_location', 'is_active', 'zoom_level', 'country', 'state', 'city', 'postal_code', 'center_lat', 'center_lng', 'coverage_radius'],
+            autoGeneratedFields: ['id', 'created_at', 'updated_at']
+        },
+        sampleRequest: {
+            routeName: 'Downtown Route',
+            description: 'Main downtown delivery area',
+            zoomLevel: 12,
+            country: 'USA',
+            state: 'NY',
+            city: 'New York',
+            postalCode: '10001',
+            centerLat: 40.7128,
+            centerLng: -74.0060,
+            coverageRadius: 5.5
+        },
+        sampleResponse: {
+            status: true,
+            message: 'Sales route created successfully',
+            data: {
+                id: 1,
+                route_name: 'Downtown Route',
+                zoom_level: 12,
+                country: 'USA'
+            }
+        }
+    },
+    // --- Reports & Charts ---
+    {
+        path: '/reports/sales/summary',
+        method: 'GET',
+        middlewares: [],
+        handler: (req, res) => salesController.getSalesSummary(req, res),
+        description: 'Get sales summary with datewise filter',
+        database: {
+            tables: ['orders'],
+            mainTable: 'orders',
+            fields: {
+                orders: ['id', 'order_date', 'total_amount', 'tax_amount', 'discount_amount', 'status', 'payment_status'],
+                calculated: ['total_orders', 'total_sales', 'average_order_value', 'total_tax', 'total_discount']
+            }
+        },
+        queryParams: {
+            start_date: 'Start date for filtering (YYYY-MM-DD) - Required',
+            end_date: 'End date for filtering (YYYY-MM-DD) - Required'
+        },
+        sampleResponse: {
+            status: true,
+            message: 'Sales summary retrieved successfully',
+            data: {
+                start_date: '2025-01-01',
+                end_date: '2025-12-31',
+                summary: {
+                    total_orders: 150,
+                    total_sales: 320000,
+                    average_order_value: 2133.33,
+                    total_tax: 25600,
+                    total_discount: 15000
+                },
+                status_breakdown: [
+                    { status: 'pending', count: 30, amount: 64000 },
+                    { status: 'confirmed', count: 50, amount: 106666.67 },
+                    { status: 'delivered', count: 70, amount: 149333.33 }
+                ],
+                payment_status_breakdown: [
+                    { payment_status: 'paid', count: 100, amount: 213333.33 },
+                    { payment_status: 'pending', count: 50, amount: 106666.67 }
+                ]
+            }
+        },
+        examples: [
+            {
+                title: 'Get sales summary for 2025',
+                url: '/api/reports/sales/summary?start_date=2025-01-01&end_date=2025-12-31'
+            },
+            {
+                title: 'Get sales summary for December 2025',
+                url: '/api/reports/sales/summary?start_date=2025-12-01&end_date=2025-12-31'
+            }
+        ]
+    },
+    {
+        path: '/reports/charts',
+        method: 'GET',
+        middlewares: [],
+        handler: (req, res) => salesController.getReportsCharts(req, res),
+        description: 'Get sales chart data with datewise filter',
+        database: {
+            tables: ['orders'],
+            mainTable: 'orders',
+            fields: {
+                orders: ['id', 'order_date', 'total_amount'],
+                calculated: ['date', 'amount', 'order_count']
+            }
+        },
+        queryParams: {
+            start_date: 'Start date for filtering (YYYY-MM-DD) - Required',
+            end_date: 'End date for filtering (YYYY-MM-DD) - Required'
+        },
+        sampleResponse: {
+            status: true,
+            message: 'Chart data retrieved successfully',
+            data: {
+                start_date: '2025-01-01',
+                end_date: '2025-01-31',
+                data: [
+                    { date: '2025-01-01', amount: 5000, order_count: 15 },
+                    { date: '2025-01-02', amount: 6000, order_count: 18 },
+                    { date: '2025-01-03', amount: 4500, order_count: 13 },
+                    { date: '2025-01-04', amount: 7200, order_count: 21 },
+                    { date: '2025-01-05', amount: 8100, order_count: 24 }
+                ]
+            }
+        },
+        examples: [
+            {
+                title: 'Get daily data for January 2025',
+                url: '/api/sales/reports/charts?start_date=2025-01-01&end_date=2025-01-31',
+                response: {
+                    data: [
+                        { date: '2025-01-01', amount: 5000, order_count: 15 },
+                        { date: '2025-01-02', amount: 6000, order_count: 18 }
+                    ]
+                }
+            },
+            {
+                title: 'Get data for a specific week',
+                url: '/api/sales/reports/charts?start_date=2025-12-01&end_date=2025-12-07',
+                response: {
+                    data: [
+                        { date: '2025-12-01', amount: 5000, order_count: 15 },
+                        { date: '2025-12-02', amount: 6000, order_count: 18 }
+                    ]
+                }
+            },
+            {
+                title: 'Get data for entire year',
+                url: '/api/sales/reports/charts?start_date=2025-01-01&end_date=2025-12-31',
+                response: {
+                    data: [
+                        { date: '2025-01-01', amount: 5000, order_count: 15 },
+                        { date: '2025-01-02', amount: 6000, order_count: 18 }
+                    ]
+                }
+            }
+        ]
+    }
+];
+// Register routes
+router.routesMeta.forEach(r => {
+    router[r.method.toLowerCase()](r.path, ...r.middlewares, r.handler);
+});
+module.exports = router;
