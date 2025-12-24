@@ -89,7 +89,7 @@ class PurchaseService {
     // }
 
     async createPurchaseOrder(data, userId) {
-    const { items = [], ...orderInfo } = data;
+        let { items, ...orderInfo } = data;
 
     if (!Array.isArray(items) || items.length === 0) {
         throw new Error('Purchase order must contain at least one item');

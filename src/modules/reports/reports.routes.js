@@ -100,6 +100,66 @@ router.routesMeta = [
             ]
         }
     },
+    {
+        path: '/sales/by-customer',
+        method: 'GET',
+        middlewares: [validate(dateRangeSchema, 'query')],
+        handler: (req, res) => reportController.getSalesByCustomer(req, res),
+        description: 'Get sales grouped by customer',
+        queryParams: { startDate: 'YYYY-MM-DD', endDate: 'YYYY-MM-DD', page: 'Number', limit: 'Number' },
+        sampleResponse: {
+            success: true,
+            message: 'Sales by customer retrieved',
+            pagination: {
+                total: 2,
+                page: 1,
+                limit: 10,
+                totalPage: 1
+            },
+            data: [
+                { customer: "Tech Solutions Sdn Bhd", orders: 12, sales: 15000.00 },
+                { customer: "Global Trading Co", orders: 5, sales: 8000.00 }
+            ]
+        }
+    },
+    {
+        path: '/customers/account-receivables',
+        method: 'GET',
+        middlewares: [validate(dateRangeSchema, 'query')],
+        handler: (req, res) => reportController.getAccountReceivables(req, res),
+        description: 'Get account receivables (unpaid invoices)',
+        queryParams: { startDate: 'YYYY-MM-DD', endDate: 'YYYY-MM-DD', page: 'Number', limit: 'Number' },
+        sampleResponse: {
+            success: true,
+            message: 'Account receivables retrieved',
+            pagination: {
+                total: 6,
+                page: 1,
+                limit: 10,
+                totalPage: 1
+            },
+            data: [
+                {
+                    invoiceNumber: "INV-20251012-D72F5C",
+                    customer: "Modern Enterprises",
+                    date: "2025-10-12",
+                    due: "2025-10-19",
+                    total: 1325,
+                    paid: 0,
+                    balance: 1325
+                },
+                {
+                    invoiceNumber: "INV2025003",
+                    customer: "Innovative Systems",
+                    date: "2025-10-03",
+                    due: "2025-11-02",
+                    total: 715.5,
+                    paid: 0,
+                    balance: 715.5
+                }
+            ]
+        }
+    },
 
     // --- Purchase ---
     {
@@ -171,13 +231,38 @@ router.routesMeta = [
         method: 'GET',
         middlewares: [],
         handler: (req, res) => reportController.getInventoryValuation(req, res),
-        description: 'Get total inventory valuation',
+        description: 'Get total inventory valuation, units and potential sales',
         sampleResponse: {
             status: true,
             data: {
-                total_sales_value: 150000.00,
-                total_cost_value: 95000.00
+                total_units: 1500,
+                total_Valuation: 95000.00,
+                potential_Sales_Value: 150000.00
             }
+        }
+    },
+    {
+        path: '/inventory/low-stock-list',
+        method: 'GET',
+        middlewares: [],
+        handler: (req, res) => reportController.getLowStockList(req, res),
+        description: 'Get list of products with low stock',
+        queryParams: {
+            page: 'Page number (default: 1)',
+            limit: 'Items per page (default: 10)'
+        },
+        sampleResponse: {
+            status: true,
+            pagination: {
+                total: 2,
+                page: 1,
+                limit: 10,
+                totalPage: 1
+            },
+            data: [
+                { sku: "SKU004", product: "Laptop Computer", stock: -16, minLevel: 5 },
+                { sku: "SKU010", product: "Cable Management", stock: 1, minLevel: 10 }
+            ]
         }
     },
 

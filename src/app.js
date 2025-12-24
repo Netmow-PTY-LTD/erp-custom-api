@@ -18,7 +18,9 @@ const allowedOrigins = [
   'http://localhost:5173',
   'http://localhost:5174',
   'https://erpinleadsit.netlify.app',
-  'http://localhost:5000'
+  'http://localhost:5000',
+  'https://erp.inleadsit.com',
+  'http://erp.inleadsit.com'
 ];
 
 app.use(cors({
@@ -44,8 +46,24 @@ app.use('/uploads', express.static('public/uploads'));
 
 app.use('/api', routes);
 
+
 // Root endpoint
 app.get('/', (req, res) => res.json({ ok: true, message: 'ERP API (modular)' }));
+
+// --- DEBUG: View Environment Variables (REMOVE IN PRODUCTION) ---
+app.get('/debug-env', (req, res) => {
+  const envVars = {
+    DB_HOST: process.env.DB_HOST,
+    DB_PORT: process.env.DB_PORT,
+    DB_NAME: process.env.DB_NAME,
+    DB_USER: process.env.DB_USER,
+    DB_PASSWORD: process.env.DB_PASSWORD, // Showing FULL password for debugging
+    PORT: process.env.PORT,
+    NODE_ENV: process.env.NODE_ENV
+  };
+  res.json(envVars);
+});
+// ----------------------------------------------------------------
 
 // Routes tree page
 app.use('/routes-tree', routesTree);

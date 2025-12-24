@@ -5,9 +5,15 @@ class ReportController {
     // Sales
     async getSalesSummary(req, res) {
         try {
-            const { startDate, endDate } = req.query;
-            const data = await ReportService.getSalesSummary(startDate, endDate);
-            return success(res, 'Sales summary retrieved', data);
+            const start_date = req.query.start_date || req.query.startDate;
+            const end_date = req.query.end_date || req.query.endDate;
+
+            if (!start_date || !end_date) {
+                return error(res, 'start_date and end_date are required', 400);
+            }
+
+            const data = await ReportService.getSalesSummary(start_date, end_date);
+            return success(res, 'Sales summary retrieved successfully', data);
         } catch (err) {
             return error(res, err.message, 500);
         }
@@ -39,6 +45,46 @@ class ReportController {
                 page: 1,
                 limit,
                 totalPage: 1
+            });
+        } catch (err) {
+            return error(res, err.message, 500);
+        }
+    }
+
+    async getSalesByCustomer(req, res) {
+        try {
+            const startDate = req.query.start_date || req.query.startDate;
+            const endDate = req.query.end_date || req.query.endDate;
+            const page = parseInt(req.query.page) || 1;
+            const limit = parseInt(req.query.limit) || 10;
+
+            const result = await ReportService.getSalesByCustomer(startDate, endDate, page, limit);
+
+            return successWithPagination(res, 'Sales by customer retrieved', result.rows, {
+                total: result.total,
+                page,
+                limit,
+                totalPage: Math.ceil(result.total / limit)
+            });
+        } catch (err) {
+            return error(res, err.message, 500);
+        }
+    }
+
+    async getAccountReceivables(req, res) {
+        try {
+            const startDate = req.query.start_date || req.query.startDate;
+            const endDate = req.query.end_date || req.query.endDate;
+            const page = parseInt(req.query.page) || 1;
+            const limit = parseInt(req.query.limit) || 10;
+
+            const result = await ReportService.getAccountReceivables(startDate, endDate, page, limit);
+
+            return successWithPagination(res, 'Account receivables retrieved', result.rows, {
+                total: result.total,
+                page,
+                limit,
+                totalPage: Math.ceil(result.total / limit)
             });
         } catch (err) {
             return error(res, err.message, 500);
@@ -86,6 +132,24 @@ class ReportController {
         try {
             const data = await ReportService.getInventoryValuation();
             return success(res, 'Inventory valuation retrieved', data);
+        } catch (err) {
+            return error(res, err.message, 500);
+        }
+    }
+
+    async getLowStockList(req, res) {
+        try {
+            const page = parseInt(req.query.page) || 1;
+            const limit = parseInt(req.query.limit) || 10;
+
+            const result = await ReportService.getLowStockList(page, limit);
+
+            return successWithPagination(res, 'Low stock list retrieved', result.rows, {
+                total: result.total,
+                page,
+                limit,
+                totalPage: Math.ceil(result.total / limit)
+            });
         } catch (err) {
             return error(res, err.message, 500);
         }

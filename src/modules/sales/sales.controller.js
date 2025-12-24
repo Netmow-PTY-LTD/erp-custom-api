@@ -265,6 +265,40 @@ class SalesController {
             return error(res, err.message, 400);
         }
     }
+
+    // Reports & Charts
+    async getReportsCharts(req, res) {
+        try {
+            const start_date = req.query.start_date;
+            const end_date = req.query.end_date;
+
+            if (!start_date || !end_date) {
+                return error(res, 'start_date and end_date are required', 400);
+            }
+
+            const chartData = await SalesService.getReportsCharts(start_date, end_date);
+            return success(res, 'Chart data retrieved successfully', chartData);
+        } catch (err) {
+            return error(res, err.message, 500);
+        }
+    }
+
+    async getSalesSummary(req, res) {
+        try {
+            const start_date = req.query.start_date;
+            const end_date = req.query.end_date;
+
+            if (!start_date || !end_date) {
+                return error(res, 'start_date and end_date are required', 400);
+            }
+
+            const summaryData = await SalesService.getSalesSummary(start_date, end_date);
+            return success(res, 'Sales summary retrieved successfully', summaryData);
+        } catch (err) {
+            return error(res, err.message, 500);
+        }
+    }
+
 }
 
 module.exports = new SalesController();

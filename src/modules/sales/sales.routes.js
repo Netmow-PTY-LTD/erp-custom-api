@@ -829,6 +829,127 @@ router.routesMeta = [
                 country: 'USA'
             }
         }
+    },
+
+    // --- Reports & Charts ---
+    {
+        path: '/reports/sales/summary',
+        method: 'GET',
+        middlewares: [],
+        handler: (req, res) => salesController.getSalesSummary(req, res),
+        description: 'Get sales summary with datewise filter',
+        database: {
+            tables: ['orders'],
+            mainTable: 'orders',
+            fields: {
+                orders: ['id', 'order_date', 'total_amount', 'tax_amount', 'discount_amount', 'status', 'payment_status'],
+                calculated: ['total_orders', 'total_sales', 'average_order_value', 'total_tax', 'total_discount']
+            }
+        },
+        queryParams: {
+            start_date: 'Start date for filtering (YYYY-MM-DD) - Required',
+            end_date: 'End date for filtering (YYYY-MM-DD) - Required'
+        },
+        sampleResponse: {
+            status: true,
+            message: 'Sales summary retrieved successfully',
+            data: {
+                start_date: '2025-01-01',
+                end_date: '2025-12-31',
+                summary: {
+                    total_orders: 150,
+                    total_sales: 320000,
+                    average_order_value: 2133.33,
+                    total_tax: 25600,
+                    total_discount: 15000
+                },
+                status_breakdown: [
+                    { status: 'pending', count: 30, amount: 64000 },
+                    { status: 'confirmed', count: 50, amount: 106666.67 },
+                    { status: 'delivered', count: 70, amount: 149333.33 }
+                ],
+                payment_status_breakdown: [
+                    { payment_status: 'paid', count: 100, amount: 213333.33 },
+                    { payment_status: 'pending', count: 50, amount: 106666.67 }
+                ]
+            }
+        },
+        examples: [
+            {
+                title: 'Get sales summary for 2025',
+                url: '/api/reports/sales/summary?start_date=2025-01-01&end_date=2025-12-31'
+            },
+            {
+                title: 'Get sales summary for December 2025',
+                url: '/api/reports/sales/summary?start_date=2025-12-01&end_date=2025-12-31'
+            }
+        ]
+    },
+    {
+        path: '/reports/charts',
+        method: 'GET',
+        middlewares: [],
+        handler: (req, res) => salesController.getReportsCharts(req, res),
+        description: 'Get sales chart data with datewise filter',
+        database: {
+            tables: ['orders'],
+            mainTable: 'orders',
+            fields: {
+                orders: ['id', 'order_date', 'total_amount'],
+                calculated: ['date', 'amount', 'order_count']
+            }
+        },
+        queryParams: {
+            start_date: 'Start date for filtering (YYYY-MM-DD) - Required',
+            end_date: 'End date for filtering (YYYY-MM-DD) - Required'
+        },
+        sampleResponse: {
+            status: true,
+            message: 'Chart data retrieved successfully',
+            data: {
+                start_date: '2025-01-01',
+                end_date: '2025-01-31',
+                data: [
+                    { date: '2025-01-01', amount: 5000, order_count: 15 },
+                    { date: '2025-01-02', amount: 6000, order_count: 18 },
+                    { date: '2025-01-03', amount: 4500, order_count: 13 },
+                    { date: '2025-01-04', amount: 7200, order_count: 21 },
+                    { date: '2025-01-05', amount: 8100, order_count: 24 }
+                ]
+            }
+        },
+        examples: [
+            {
+                title: 'Get daily data for January 2025',
+                url: '/api/sales/reports/charts?start_date=2025-01-01&end_date=2025-01-31',
+                response: {
+                    data: [
+                        { date: '2025-01-01', amount: 5000, order_count: 15 },
+                        { date: '2025-01-02', amount: 6000, order_count: 18 }
+                    ]
+                }
+            },
+            {
+                title: 'Get data for a specific week',
+                url: '/api/sales/reports/charts?start_date=2025-12-01&end_date=2025-12-07',
+                response: {
+                    data: [
+                        { date: '2025-12-01', amount: 5000, order_count: 15 },
+                        { date: '2025-12-02', amount: 6000, order_count: 18 }
+                    ]
+                }
+            },
+            {
+                title: 'Get data for entire year',
+                url: '/api/sales/reports/charts?start_date=2025-01-01&end_date=2025-12-31',
+                response: {
+                    data: [
+                        { date: '2025-01-01', amount: 5000, order_count: 15 },
+                        { date: '2025-01-02', amount: 6000, order_count: 18 }
+                    ]
+                }
+            }
+        ]
     }
 ];
 

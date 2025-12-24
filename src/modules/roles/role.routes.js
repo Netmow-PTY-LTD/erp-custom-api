@@ -33,7 +33,11 @@ router.routesMeta = [
       sideEffects: ['Creates role_settings entry']
     },
     sampleRequest: {
-      name: 'Sales Manager',
+      role: 'Regional Sales Manager',
+      display_name: 'Regional Sales Department Manager',
+      description: 'Manages regional sales team and operations',
+      status: 'active',
+      permissions: ['sales.view', 'sales.create'],
       menu: ['sales', 'dashboard'],
       dashboard: ['overview', 'revenue'],
       custom: { theme: 'dark' }
@@ -43,7 +47,11 @@ router.routesMeta = [
       message: 'created',
       data: {
         id: 5,
-        name: 'Sales Manager',
+        role: 'Sales Manager',
+        display_name: 'Sales Department Manager',
+        description: 'Manages sales team and operations',
+        status: 'active',
+        permissions: ['sales.view', 'sales.create'],
         settings: {
           menu: ['sales', 'dashboard'],
           dashboard: ['overview', 'revenue'],
@@ -119,7 +127,11 @@ router.routesMeta = [
       data: [
         {
           id: 1,
-          name: 'Admin',
+          role: 'Admin',
+          display_name: 'System Administrator',
+          description: 'Full system access',
+          status: 'active',
+          permissions: ['*'],
           settings: {
             menu: ['all'],
             dashboard: ['main'],
