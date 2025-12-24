@@ -15,6 +15,9 @@ const sequelize = process.env.DATABASE_URL
       port: process.env.DB_PORT ? parseInt(process.env.DB_PORT, 10) : 3306,
       dialect: 'mysql',
       logging: false, // set true to see SQL queries
+      dialectOptions: process.env.DB_SOCKET_PATH ? {
+        socketPath: process.env.DB_SOCKET_PATH
+      } : {}
     }
   );
 
