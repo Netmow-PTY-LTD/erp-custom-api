@@ -493,6 +493,59 @@ const Delivery = sequelize.define('Delivery', {
     updatedAt: 'updated_at'
 });
 
+// SalesRouteStaff Junction Table (for many-to-many relationship)
+const SalesRouteStaff = sequelize.define('SalesRouteStaff', {
+    id: {
+        type: DataTypes.INTEGER,
+        primaryKey: true,
+        autoIncrement: true
+    },
+    sales_route_id: {
+        type: DataTypes.INTEGER,
+        allowNull: false,
+        references: {
+            model: 'sales_routes',
+            key: 'id'
+        }
+    },
+    staff_id: {
+        type: DataTypes.INTEGER,
+        allowNull: false,
+        references: {
+            model: 'staffs',
+            key: 'id'
+        }
+    },
+    assigned_at: {
+        type: DataTypes.DATE,
+        defaultValue: DataTypes.NOW
+    },
+    assigned_by: {
+        type: DataTypes.INTEGER,
+        allowNull: true
+    },
+    created_at: {
+        type: DataTypes.DATE,
+        defaultValue: DataTypes.NOW
+    },
+    updated_at: {
+        type: DataTypes.DATE,
+        defaultValue: DataTypes.NOW
+    }
+}, {
+    tableName: 'sales_route_staff',
+    timestamps: true,
+    createdAt: 'created_at',
+    updatedAt: 'updated_at',
+    indexes: [
+        {
+            unique: true,
+            fields: ['sales_route_id', 'staff_id']
+        }
+    ]
+});
+
+
 // Associations
 Order.belongsTo(Customer, { foreignKey: 'customer_id', as: 'customer' });
 
@@ -515,6 +568,7 @@ Delivery.belongsTo(Order, { foreignKey: 'order_id' });
 module.exports = {
     Warehouse,
     SalesRoute,
+    SalesRouteStaff,
     Order,
     OrderItem,
     Invoice,

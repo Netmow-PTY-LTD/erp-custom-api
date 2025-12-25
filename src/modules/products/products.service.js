@@ -383,6 +383,34 @@ class ProductService {
     async getStockDetails() {
         return await ProductRepository.getStockDetails();
     }
+
+    async getProductStats() {
+        const stats = await ProductRepository.getStats();
+
+        // Format to match user request
+        return [
+            {
+                label: "Total Products",
+                value: stats.totalProducts,
+                color: "bg-blue-600"
+            },
+            {
+                label: "Active Products",
+                value: stats.activeProducts,
+                color: "bg-green-700"
+            },
+            {
+                label: "Low Stock",
+                value: stats.lowStockProducts,
+                color: "bg-red-600"
+            },
+            {
+                label: "Total Stock",
+                value: stats.totalStock || 0,
+                color: "bg-cyan-500"
+            }
+        ];
+    }
 }
 
 module.exports = new ProductService();

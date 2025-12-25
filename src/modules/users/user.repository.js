@@ -1,5 +1,6 @@
 const { User } = require('./user.model');
 const { Role } = require('../roles/role.model');
+const { SalesRoute, SalesRouteStaff } = require('../sales/sales.models');
 const { Op } = require('sequelize');
 
 class UserRepository {
@@ -21,11 +22,22 @@ class UserRepository {
       where,
       limit,
       offset,
-      include: [{
-        model: Role,
-        as: 'role',
-        attributes: ['id', 'name']
-      }],
+      include: [
+        {
+          model: Role,
+          as: 'role',
+          attributes: ['id', 'name']
+        },
+        {
+          model: SalesRoute,
+          as: 'assignedRoutes',
+          through: {
+            model: SalesRouteStaff,
+            attributes: ['assigned_at', 'assigned_by']
+          },
+          attributes: ['id', 'route_name', 'description', 'is_active']
+        }
+      ],
       attributes: { exclude: ['password'] },
       order: [['created_at', 'DESC']]
     });

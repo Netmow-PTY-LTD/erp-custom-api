@@ -12,6 +12,7 @@ class SupplierRepository {
         if (filters.search) {
             where[Op.or] = [
                 { name: { [Op.like]: `%${filters.search}%` } },
+                { code: { [Op.like]: `%${filters.search}%` } },
                 { email: { [Op.like]: `%${filters.search}%` } },
                 { contact_person: { [Op.like]: `%${filters.search}%` } }
             ];
@@ -31,6 +32,10 @@ class SupplierRepository {
 
     async findByEmail(email) {
         return await Supplier.findOne({ where: { email } });
+    }
+
+    async findByCode(code) {
+        return await Supplier.findOne({ where: { code } });
     }
 
     async create(data) {

@@ -89,17 +89,17 @@ class OrderRepository {
 
             const items = itemsData.map(item => {
                 const discount = item.discount || 0;
-                const subtotal = item.quantity * item.unit_price;
-                const line_total = item.line_total || (subtotal - discount);
+                const total_price = item.quantity * item.unit_price; // Before discount
+                const line_total = item.line_total || (total_price - discount); // After discount
 
                 return {
                     ...item,
                     order_id: order.id,
                     discount: discount,
+                    total_price: total_price,
                     line_total: line_total,
                     tax_amount: item.tax_amount || 0,
-                    sales_tax_percent: item.sales_tax_percent || 0,
-                    total_price: line_total
+                    sales_tax_percent: item.sales_tax_percent || 0
                 };
             });
 
@@ -126,6 +126,29 @@ class OrderRepository {
         if (!order) return null;
         await order.destroy();
         return order;
+    }
+
+    async getStats() {
+        const [totalOrders, pendingOrders, deliveredOrders, totalValueResult] = await Promise.all([
+            // Total Orders
+            Order.count(),
+
+            // Pending Orders
+            Order.count({ where: { status: 'pending' } }),
+
+            // Delivered Orders
+            Order.count({ where: { status: 'delivered' } }),
+
+            // Total Value
+            Order.sum('total_amount', { where: { status: { [Op.not]: 'cancelled' } } })
+        ]);
+
+        return {
+            totalOrders,
+            pendingOrders,
+            deliveredOrders,
+            totalValue: totalValueResult || 0
+        };
     }
 }
 
@@ -215,7 +238,22 @@ class InvoiceRepository {
                         }
                     ]
                 },
-                { model: Payment, as: 'payments' }
+                {
+                    model: Payment,
+                    as: 'payments',
+                    include: [
+                        {
+                            model: require('../users/user.model').User,
+                            as: 'creator',
+                            attributes: ['id', 'name', 'email']
+                        }
+                    ]
+                },
+                {
+                    model: require('../users/user.model').User,
+                    as: 'creator',
+                    attributes: ['id', 'name', 'email']
+                }
             ]
         });
     }
@@ -372,7 +410,31 @@ class SalesRouteRepository {
     }
 
     async findById(id) {
-        return await SalesRoute.findByPk(id);
+        const { Customer } = require('../customers/customers.model');
+
+        return await SalesRoute.findByPk(id, {
+            include: [
+                {
+                    model: Customer,
+                    as: 'customers',
+                    attributes: ['id', 'name', 'email', 'phone', 'company', 'address', 'city', 'latitude', 'longitude'],
+                    required: false,
+                    include: [
+                        {
+                            model: Order,
+                            as: 'orders',
+                            attributes: ['id', 'order_number', 'order_date', 'total_amount', 'status'],
+                            limit: 1,
+                            order: [['order_date', 'DESC']],
+                            required: true // Only show customers with orders
+                        }
+                    ]
+                }
+            ],
+            order: [
+                [{ model: Customer, as: 'customers' }, { model: Order, as: 'orders' }, 'order_date', 'DESC']
+            ]
+        });
     }
 }
 

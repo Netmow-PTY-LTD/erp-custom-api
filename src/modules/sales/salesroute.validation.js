@@ -18,7 +18,12 @@ const updateRoute = z.object({
     is_active: z.boolean().optional()
 });
 
+const assignStaff = z.object({
+    staff: z.array(z.number().int().positive()).min(1, 'At least one staff member must be assigned')
+});
+
 module.exports = {
     createRoute,
-    updateRoute
+    updateRoute,
+    assignStaff
 };

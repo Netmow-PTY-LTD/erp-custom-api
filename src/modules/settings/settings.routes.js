@@ -32,17 +32,14 @@ const settingsController = new SettingsController(settingsService);
 // Module name for routes-tree grouping
 router.moduleName = 'Settings';
 
-router.use(verifyToken);
-router.use(moduleCheck('settings'));
-
 // Define routes metadata with comprehensive documentation
 router.routesMeta = [
     {
         path: '/company/profile',
         method: 'GET',
-        middlewares: [],
+        middlewares: [], // Public endpoint - no authentication required
         handler: (req, res) => settingsController.getCompanyProfile(req, res),
-        description: 'Get company profile information',
+        description: 'Get company profile information (Public)',
         sampleResponse: {
             status: true,
             data: {
@@ -64,7 +61,7 @@ router.routesMeta = [
     {
         path: '/company/profile',
         method: 'PUT',
-        middlewares: [validate(updateCompanyProfile)],
+        middlewares: [verifyToken, moduleCheck('settings'), validate(updateCompanyProfile)],
         handler: handlerWithFields((req, res) => settingsController.updateCompanyProfile(req, res), updateCompanyProfile),
         description: 'Update company profile information',
         sampleRequest: {

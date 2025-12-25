@@ -47,15 +47,21 @@ class SalesService {
         orderData.total_invoice_amount = orderData.invoice ? parseFloat(orderData.invoice.total_amount) : 0;
 
         // Total Discount
-        const itemsDiscount = orderData.items ? orderData.items.reduce((sum, item) => sum + (parseFloat(item.discount) || 0), 0) : 0;
-        const orderDiscount = parseFloat(orderData.discount_amount) || 0;
-        orderData.total_discount = itemsDiscount + orderDiscount;
+        // discount_amount in DB is the sum of item discounts (populated in createOrder)
+        // So we strictly use the DB value, or recalculate from items. Let's use DB value.
+        orderData.total_discount = parseFloat(orderData.discount_amount) || 0;
+
+        // Net Amount (after discount, before tax)
+        // = total_amount - discount_amount OR sum of line_total
+        const itemsLineTotal = orderData.items ? orderData.items.reduce((sum, item) => sum + (parseFloat(item.line_total) || 0), 0) : 0;
+        orderData.net_amount = itemsLineTotal;
 
         // Total Payable Amount
-        // Sum(items.total_price) + tax - orderDiscount
-        const itemsTotal = orderData.items ? orderData.items.reduce((sum, item) => sum + (parseFloat(item.total_price) || 0), 0) : 0;
+        // This is the actual amount customer needs to pay
+        // = Sum of line_total (after discount) + tax
         const tax = parseFloat(orderData.tax_amount) || 0;
-        orderData.total_payable_amount = itemsTotal + tax - orderDiscount;
+
+        orderData.total_payable_amount = itemsLineTotal + tax;
 
         // Total Paid Amount
         orderData.total_paid_amount = orderData.payments
@@ -91,14 +97,14 @@ class SalesService {
                 const product = await ProductRepository.findById(item.product_id);
                 const sales_tax_rate = product && product.sales_tax ? Number(product.sales_tax) : 0;
 
-                const subtotal = quantity * unit_price;
-                const line_total = subtotal - discount;
+                const total_price = quantity * unit_price; // Before discount
+                const line_total = total_price - discount; // After discount
 
-                // Calculate item tax (from product's sales_tax)
+                // Calculate item tax (from product's sales_tax) on line_total
                 const item_tax_amount = (line_total * sales_tax_rate) / 100;
 
                 discount_amount += discount;
-                total_amount += line_total;
+                total_amount += total_price; // Sum of total_price (before discount)
                 item_level_tax += item_tax_amount;
 
                 return {
@@ -191,7 +197,7 @@ class SalesService {
         const offset = (page - 1) * limit;
         const result = await InvoiceRepository.findAll(filters, limit, offset);
 
-        // Calculate remaining balance for each invoice
+        // Calculate remaining balance for each invoice using order amounts
         const invoicesWithBalance = result.rows.map(invoice => {
             const invoiceData = invoice.toJSON();
 
@@ -202,12 +208,23 @@ class SalesService {
                     .reduce((sum, payment) => sum + parseFloat(payment.amount), 0)
                 : 0;
 
-            const totalAmount = parseFloat(invoiceData.total_amount);
-            const remainingBalance = totalAmount - paidAmount;
+            // Get order amounts
+            const orderTotalAmount = invoiceData.order ? parseFloat(invoiceData.order.total_amount) : 0;
+            const orderDiscountAmount = invoiceData.order ? parseFloat(invoiceData.order.discount_amount) : 0;
+            const orderTaxAmount = invoiceData.order ? parseFloat(invoiceData.order.tax_amount) : 0;
+
+            // Set invoice total_amount from order
+            invoiceData.total_amount = orderTotalAmount;
+
+            // Calculate remaining balance from order amounts
+            // remaining_balance = total_amount - discount_amount + tax_amount - paid_amount
+            const totalPayable = orderTotalAmount - orderDiscountAmount + orderTaxAmount;
+            const remainingBalance = totalPayable - paidAmount;
 
             // Add calculated fields
             invoiceData.paid_amount = paidAmount;
             invoiceData.remaining_balance = remainingBalance;
+            invoiceData.total_payable = totalPayable;
 
             return invoiceData;
         });
@@ -233,12 +250,23 @@ class SalesService {
                 .reduce((sum, payment) => sum + parseFloat(payment.amount), 0)
             : 0;
 
-        const totalAmount = parseFloat(invoiceData.total_amount);
-        const remainingBalance = totalAmount - paidAmount;
+        // Get order amounts
+        const orderTotalAmount = invoiceData.order ? parseFloat(invoiceData.order.total_amount) : 0;
+        const orderDiscountAmount = invoiceData.order ? parseFloat(invoiceData.order.discount_amount) : 0;
+        const orderTaxAmount = invoiceData.order ? parseFloat(invoiceData.order.tax_amount) : 0;
+
+        // Set invoice total_amount from order
+        invoiceData.total_amount = orderTotalAmount;
+
+        // Calculate remaining balance from order amounts
+        // remaining_balance = total_amount - discount_amount + tax_amount - paid_amount
+        const totalPayable = orderTotalAmount - orderDiscountAmount + orderTaxAmount;
+        const remainingBalance = totalPayable - paidAmount;
 
         // Add calculated fields
         invoiceData.paid_amount = paidAmount;
         invoiceData.remaining_balance = remainingBalance;
+        invoiceData.total_payable = totalPayable; // Also add total payable for reference
 
         return invoiceData;
     }
@@ -378,8 +406,15 @@ class SalesService {
                     .reduce((sum, payment) => sum + parseFloat(payment.amount), 0)
                 : 0;
 
-            const totalAmount = parseFloat(invoiceData.total_amount);
-            const remainingBalance = totalAmount - paidAmount;
+            // Get order amounts for correct calculation
+            const orderTotalAmount = invoiceData.order ? parseFloat(invoiceData.order.total_amount) : parseFloat(invoiceData.total_amount);
+            const orderDiscountAmount = invoiceData.order ? parseFloat(invoiceData.order.discount_amount) : 0;
+            const orderTaxAmount = invoiceData.order ? parseFloat(invoiceData.order.tax_amount) : 0;
+
+            // Calculate remaining balance from order amounts
+            // remaining_balance = total_amount - discount_amount + tax_amount - paid_amount
+            const totalPayable = orderTotalAmount - orderDiscountAmount + orderTaxAmount;
+            const remainingBalance = totalPayable - paidAmount;
 
             // Check if invoice is already fully paid
             if (remainingBalance <= 0) {
@@ -400,7 +435,49 @@ class SalesService {
             status: data.status || 'completed' // Default to completed
         };
 
-        return await PaymentRepository.create(paymentData);
+        const payment = await PaymentRepository.create(paymentData);
+
+        // Update Invoice and Order status based on new balance
+        if (invoice) {
+            // Re-fetch invoice with payments to get the updated total paid
+            const updatedInvoice = await InvoiceRepository.findById(invoice.id);
+            const invoiceData = updatedInvoice.toJSON();
+
+            const totalPaid = invoiceData.payments
+                ? invoiceData.payments
+                    .filter(p => p.status === 'completed')
+                    .reduce((sum, p) => sum + parseFloat(p.amount), 0)
+                : 0;
+
+            const invoiceTotal = parseFloat(invoiceData.total_amount);
+
+            // Determine statuses
+            let newInvoiceStatus = invoiceData.status;
+            let newOrderPaymentStatus = 'unpaid';
+
+            if (totalPaid >= invoiceTotal) {
+                newInvoiceStatus = 'paid';
+                newOrderPaymentStatus = 'paid';
+            } else if (totalPaid > 0) {
+                newOrderPaymentStatus = 'partially_paid';
+            }
+
+            // Update Invoice Status if changed
+            if (newInvoiceStatus !== invoiceData.status) {
+                await InvoiceRepository.update(invoice.id, { status: newInvoiceStatus });
+            }
+
+            // Update Order Payment Status
+            if (order) {
+                await OrderRepository.update(order.id, { payment_status: newOrderPaymentStatus });
+            }
+        } else if (order) {
+            // If no invoice, just update order based on direct payments? 
+            // Current logic forces invoice for validation, but if we allow direct order payments later:
+            // checks order total vs order paid... (skipping for now to keep safe)
+        }
+
+        return payment;
     }
 
     // Deliveries
@@ -563,6 +640,17 @@ class SalesService {
                 count: parseInt(row.count) || 0,
                 amount: parseFloat(row.amount) || 0
             }))
+        };
+    }
+    async getOrderStats() {
+        const stats = await OrderRepository.getStats();
+
+        // Format to match user request
+        return {
+            total_orders: stats.totalOrders,
+            pending_orders: stats.pendingOrders,
+            delivered_orders: stats.deliveredOrders,
+            total_value: stats.totalValue.toLocaleString()
         };
     }
 }

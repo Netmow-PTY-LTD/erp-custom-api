@@ -144,6 +144,31 @@ router.routesMeta = [
         }
     },
     {
+        path: '/stats',
+        method: 'GET',
+        middlewares: [],
+        handler: (req, res) => productsController.getProductStats(req, res),
+        description: 'Get product statistics (Total, Active, Low Stock, Total Stock Quantity)',
+        database: {
+            tables: ['products'],
+            mainTable: 'products',
+            fields: {
+                calculated: ['totalProducts', 'activeProducts', 'lowStock', 'totalStock']
+            }
+        },
+        sampleResponse: {
+            status: true,
+            message: 'Product stats retrieved successfully',
+            data: [
+                {
+                    label: "Total Products",
+                    value: 150,
+                    color: "bg-blue-600"
+                }
+            ]
+        }
+    },
+    {
         path: '/stock',
         method: 'GET',
         middlewares: [],

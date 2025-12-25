@@ -60,6 +60,7 @@ exports.findAll = async (page, limit) => {
       order: [['id', 'DESC']],
       limit: parseInt(limit, 10),
       offset: parseInt(offset, 10),
+      distinct: true
     });
     const mapped = rows.map(r => {
       const p = r.get({ plain: true });
@@ -98,6 +99,11 @@ exports.update = async (id, data) => {
   const role = await Role.findByPk(id);
   if (!role) return null;
 
+  // SYSTEM SAFEGUARD: Prevent updating Superadmin role - REMOVED per user request
+  // if (role.name.toLowerCase() === 'superadmin' || role.name.toLowerCase() === 'super admin') {
+  //   throw new Error('System safeguarded: Cannot update Superadmin role');
+  // }
+
   const roleUpdatePayload = {};
   if (data.role || data.name) roleUpdatePayload.name = data.role || data.name;
   if (data.display_name !== undefined) roleUpdatePayload.display_name = data.display_name;
@@ -127,6 +133,14 @@ exports.update = async (id, data) => {
 };
 
 exports.delete = async (id) => {
+  const role = await Role.findByPk(id);
+  if (!role) return null; // or throw error
+
+  // SYSTEM SAFEGUARD: Prevent deleting Superadmin role
+  if (role.name.toLowerCase() === 'superadmin' || role.name.toLowerCase() === 'super admin') {
+    throw new Error('System safeguarded: Cannot delete Superadmin role');
+  }
+
   await Role.destroy({ where: { id } });
 };
 

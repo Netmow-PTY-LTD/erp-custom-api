@@ -400,6 +400,7 @@ router.routesMeta = [
     }
   }
 ];
+
 // Register routes from metadata
 router.routesMeta.forEach(r => {
   router[r.method.toLowerCase()](r.path, ...r.middlewares, r.handler);

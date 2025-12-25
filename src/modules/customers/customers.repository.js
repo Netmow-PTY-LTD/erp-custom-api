@@ -1,5 +1,6 @@
 const { Customer } = require('./customers.model');
 const { Op } = require('sequelize');
+const { sequelize } = require('../../core/database/sequelize');
 
 class CustomerRepository {
     async findAll(filters = {}, limit = 10, offset = 0) {
@@ -24,6 +25,19 @@ class CustomerRepository {
 
         return await Customer.findAndCountAll({
             where,
+            attributes: {
+                include: [
+                    [
+                        sequelize.literal(`(
+                            SELECT COALESCE(SUM(total_amount), 0)
+                            FROM orders AS o
+                            WHERE o.customer_id = Customer.id
+                            AND o.status != 'cancelled'
+                        )`),
+                        'total_sales'
+                    ]
+                ]
+            },
             limit,
             offset,
             order: [['created_at', 'DESC']]
@@ -64,6 +78,44 @@ class CustomerRepository {
             },
             attributes: ['id', 'name', 'company', 'address', 'city', 'latitude', 'longitude', 'phone', 'email']
         });
+    }
+
+    async getStats() {
+        const startOfMonth = new Date();
+        startOfMonth.setDate(1);
+        startOfMonth.setHours(0, 0, 0, 0);
+
+        const [activeCustomers, totalCustomers, newCustomers, revenueResult] = await Promise.all([
+            // Active Customers
+            Customer.count({ where: { is_active: true } }),
+
+            // Total Customers
+            Customer.count(),
+
+            // New Customers (This Month)
+            Customer.count({
+                where: {
+                    created_at: {
+                        [Op.gte]: startOfMonth
+                    }
+                }
+            }),
+
+            // Total Revenue (from paid orders)
+            sequelize.query(
+                `SELECT SUM(total_amount) as total FROM orders WHERE status != 'cancelled' AND payment_status = 'paid'`,
+                { type: sequelize.QueryTypes.SELECT }
+            )
+        ]);
+
+        const totalRevenue = revenueResult[0] && revenueResult[0].total ? parseFloat(revenueResult[0].total) : 0;
+
+        return {
+            activeCustomers,
+            totalCustomers,
+            newCustomers,
+            totalRevenue
+        };
     }
 }
 

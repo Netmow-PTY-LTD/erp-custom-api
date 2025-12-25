@@ -37,6 +37,26 @@ class SalesRouteService {
         }
         return route;
     }
+
+    async assignStaff(routeId, staffIds, assignedBy) {
+        if (!Array.isArray(staffIds)) {
+            throw new Error('Staff must be an array of user IDs');
+        }
+
+        const route = await SalesRouteRepository.assignStaff(routeId, staffIds, assignedBy);
+        if (!route) {
+            throw new Error('Sales route not found');
+        }
+        return route;
+    }
+
+    async getAssignedStaff(routeId) {
+        const route = await SalesRouteRepository.getAssignedStaff(routeId);
+        if (!route) {
+            throw new Error('Sales route not found');
+        }
+        return route;
+    }
 }
 
 module.exports = new SalesRouteService();

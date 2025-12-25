@@ -153,6 +153,30 @@ router.routesMeta = [
             }
         }
     },
+    {
+        path: '/orders/stats',
+        method: 'GET',
+        middlewares: [],
+        handler: (req, res) => salesController.getOrderStats(req, res),
+        description: 'Get order statistics (Total, Pending, Delivered, Total Value)',
+        database: {
+            tables: ['orders'],
+            mainTable: 'orders',
+            fields: {
+                calculated: ['totalOrders', 'pendingOrders', 'deliveredOrders', 'totalValue']
+            }
+        },
+        sampleResponse: {
+            status: true,
+            message: 'Order stats retrieved successfully',
+            data: {
+                total_orders: 25,
+                pending_orders: 5,
+                delivered_orders: 6,
+                total_value: "12,345.00"
+            }
+        }
+    },
     // --- Invoices ---
     {
         path: '/orders/invoices',

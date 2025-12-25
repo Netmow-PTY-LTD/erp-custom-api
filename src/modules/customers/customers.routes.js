@@ -148,6 +148,31 @@ router.routesMeta = [
         }
     },
     {
+        path: '/stats',
+        method: 'GET',
+        middlewares: [],
+        handler: (req, res) => customersController.getCustomerStats(req, res),
+        description: 'Get customer statistics (Active, Total, Revenue, New)',
+        database: {
+            tables: ['customers', 'orders'],
+            mainTable: 'customers',
+            fields: {
+                calculated: ['activeCustomers', 'totalCustomers', 'totalRevenue', 'newCustomers']
+            }
+        },
+        sampleResponse: {
+            status: true,
+            message: 'Customer stats retrieved successfully',
+            data: [
+                {
+                    label: "Active Customers",
+                    value: 123,
+                    color: "bg-green-600"
+                }
+            ]
+        }
+    },
+    {
         path: '/:id',
         method: 'GET',
         middlewares: [],

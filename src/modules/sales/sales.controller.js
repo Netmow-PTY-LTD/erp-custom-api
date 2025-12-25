@@ -60,6 +60,15 @@ class SalesController {
         }
     }
 
+    async getOrderStats(req, res) {
+        try {
+            const stats = await SalesService.getOrderStats();
+            return success(res, 'Order stats retrieved successfully', stats);
+        } catch (err) {
+            return error(res, err.message, 500);
+        }
+    }
+
     // Invoices
     async getAllInvoices(req, res) {
         try {

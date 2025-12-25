@@ -104,11 +104,43 @@ class ProductRepository {
 
         const totalStockValue = totalValueResult[0].totalValue || 0;
 
+
+
         return {
             total_products: totalProducts,
             low_stock_count: lowStockProducts.length,
             total_stock_value: parseFloat(totalStockValue).toFixed(2),
             low_stock_products: lowStockProducts
+        };
+    }
+
+    async getStats() {
+        const [activeProducts, totalProducts, lowStockProducts, totalStockResult] = await Promise.all([
+            // Active Products
+            Product.count({ where: { is_active: true } }),
+
+            // Total Products
+            Product.count(),
+
+            // Low Stock Products
+            Product.count({
+                where: {
+                    stock_quantity: {
+                        [Op.lte]: Sequelize.col('min_stock_level')
+                    },
+                    is_active: true
+                }
+            }),
+
+            // Total Stock Count
+            Product.sum('stock_quantity')
+        ]);
+
+        return {
+            activeProducts,
+            totalProducts,
+            lowStockProducts,
+            totalStock: totalStockResult || 0
         };
     }
 }

@@ -67,6 +67,15 @@ class CustomerController {
             return error(res, err.message, 500);
         }
     }
+
+    async getCustomerStats(req, res) {
+        try {
+            const stats = await CustomerService.getCustomerStats();
+            return success(res, 'Customer stats retrieved successfully', stats);
+        } catch (err) {
+            return error(res, err.message, 500);
+        }
+    }
 }
 
 module.exports = new CustomerController();

@@ -257,6 +257,15 @@ class ProductController {
             return error(res, err.message, 404);
         }
     }
+
+    async getProductStats(req, res) {
+        try {
+            const stats = await ProductService.getProductStats();
+            return success(res, 'Product stats retrieved successfully', stats);
+        } catch (err) {
+            return error(res, err.message, 500);
+        }
+    }
 }
 
 module.exports = new ProductController();

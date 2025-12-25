@@ -78,6 +78,34 @@ class CustomerService {
             }))
         };
     }
+
+    async getCustomerStats() {
+        const stats = await CustomerRepository.getStats();
+
+        // Format to match user request
+        return [
+            {
+                label: "Active Customers",
+                value: stats.activeCustomers,
+                color: "bg-green-600"
+            },
+            {
+                label: "Total Customers",
+                value: stats.totalCustomers,
+                color: "bg-blue-600"
+            },
+            {
+                label: "Total Revenue",
+                value: stats.totalRevenue.toLocaleString(),
+                color: "bg-yellow-600"
+            },
+            {
+                label: "New Customers",
+                value: stats.newCustomers,
+                color: "bg-purple-600"
+            }
+        ];
+    }
 }
 
 module.exports = new CustomerService();
