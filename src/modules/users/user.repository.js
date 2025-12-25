@@ -1,6 +1,5 @@
 const { User } = require('./user.model');
 const { Role } = require('../roles/role.model');
-const { SalesRoute, SalesRouteStaff } = require('../sales/sales.models');
 const { Op } = require('sequelize');
 
 class UserRepository {
@@ -27,15 +26,6 @@ class UserRepository {
           model: Role,
           as: 'role',
           attributes: ['id', 'name']
-        },
-        {
-          model: SalesRoute,
-          as: 'assignedRoutes',
-          through: {
-            model: SalesRouteStaff,
-            attributes: ['assigned_at', 'assigned_by']
-          },
-          attributes: ['id', 'route_name', 'description', 'is_active']
         }
       ],
       attributes: { exclude: ['password'] },

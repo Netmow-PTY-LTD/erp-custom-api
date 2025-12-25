@@ -31,7 +31,7 @@ SalesRoute.belongsToMany(Staff, {
     through: SalesRouteStaff,
     foreignKey: 'sales_route_id',
     otherKey: 'staff_id',
-    as: 'assignedStaff'
+    as: 'assignedStaffMembers'
 });
 
 Staff.belongsToMany(SalesRoute, {
