@@ -199,6 +199,16 @@ class AccountingController {
             return error(res, err.message, 404);
         }
     }
+
+    // --- Chart Data ---
+    async getChartData(req, res) {
+        try {
+            const chartData = await AccountingService.getChartData();
+            return success(res, 'Accounting chart data retrieved successfully', chartData);
+        } catch (err) {
+            return error(res, err.message, 500);
+        }
+    }
 }
 
 module.exports = new AccountingController();

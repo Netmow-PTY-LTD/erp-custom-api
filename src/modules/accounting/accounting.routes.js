@@ -454,6 +454,40 @@ router.routesMeta = [
             status: true,
             message: 'Debit head deleted successfully'
         }
+    },
+
+    // --- Charts ---
+    {
+        path: '/charts',
+        method: 'GET',
+        middlewares: [],
+        handler: (req, res) => accountingController.getChartData(req, res),
+        description: 'Get accounting chart data for last 30 days',
+        database: {
+            tables: ['incomes', 'expenses'],
+            mainTable: 'incomes',
+            fields: {
+                incomes: ['income_date', 'amount'],
+                expenses: ['expense_date', 'amount']
+            },
+            sideEffects: ['Aggregates daily income and expense data for the last 30 days']
+        },
+        sampleResponse: {
+            status: true,
+            message: 'Accounting chart data retrieved successfully',
+            data: [
+                {
+                    date: '2025-12-01',
+                    income: 4609,
+                    expense: 1711
+                },
+                {
+                    date: '2025-12-02',
+                    income: 3200,
+                    expense: 1500
+                }
+            ]
+        }
     }
 ];
 

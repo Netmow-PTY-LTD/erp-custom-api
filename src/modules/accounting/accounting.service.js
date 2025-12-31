@@ -133,6 +133,11 @@ class AccountingService {
         }
         return debitHead;
     }
+
+    // --- Chart Data ---
+    async getChartData() {
+        return await AccountingRepository.getChartData();
+    }
 }
 
 module.exports = new AccountingService();

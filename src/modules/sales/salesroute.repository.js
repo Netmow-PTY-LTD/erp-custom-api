@@ -52,6 +52,14 @@ class SalesRouteRepository {
                             ]
                         }
                     ]
+                },
+                {
+                    model: Staff,
+                    as: 'assignedStaffMembers',
+                    attributes: ['id', 'first_name', 'last_name', 'email', 'position'],
+                    through: {
+                        attributes: ['assigned_at', 'assigned_by']
+                    }
                 }
             ]
         });
