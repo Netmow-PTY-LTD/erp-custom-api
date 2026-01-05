@@ -18,28 +18,40 @@ class AttendanceService {
         return attendance;
     }
 
-    async checkIn(data, userId) {
-        // Check if already checked in for today
-        const existing = await AttendanceRepository.findByStaffAndDate(data.staff_id, data.date);
-        if (existing) {
-            throw new Error('Attendance record already exists for this date');
-        }
-
+    async recordAttendance(staffId, data, createdBy) {
         return await AttendanceRepository.create({
-            ...data,
-            status: data.status || 'present',
-            created_by: userId
+            staff_id: staffId,
+            date: data.date,
+            check_in: data.start_at,
+            check_out: data.end_at,
+            total_hours: data.total_hour,
+            status: 'present', // Default status, logic could be improved if needed
+            created_by: createdBy
         });
     }
 
-    async checkOut(data) {
-        const attendance = await AttendanceRepository.findByStaffAndDate(data.staff_id, data.date);
-        if (!attendance) {
-            throw new Error('No check-in record found for this date');
-        }
+    async recordFullDayLeave(staffId, data, createdBy) {
+        return await AttendanceRepository.create({
+            staff_id: staffId,
+            date: data.date,
+            check_in: null,
+            check_out: null,
+            total_hours: 0,
+            status: 'on_leave',
+            notes: data.reason,
+            created_by: createdBy
+        });
+    }
 
-        return await AttendanceRepository.update(attendance.id, {
-            check_out: data.check_out
+    async recordShortLeave(staffId, data, createdBy) {
+        return await AttendanceRepository.create({
+            staff_id: staffId,
+            date: data.date,
+            check_in: data.start_time,
+            check_out: data.end_time,
+            status: 'half_day',
+            notes: data.reason,
+            created_by: createdBy
         });
     }
 

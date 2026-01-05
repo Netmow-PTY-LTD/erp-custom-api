@@ -24,7 +24,8 @@ const allowedOrigins = [
   'http://localhost:5174',
   'https://erpinleadsit.netlify.app',
   'https://erp.inleadsit.com',
-  'http://erp.inleadsit.com'
+  'http://erp.inleadsit.com',
+  'https://test.inleadsit.com'
 ];
 
 app.use(cors({
@@ -225,9 +226,7 @@ app.get('/module-docs/attendance', (req, res) => {
   res.sendFile('module_docs/attendance_module.html', { root: __dirname + '/..' });
 });
 
-app.get('/module-docs/leaves', (req, res) => {
-  res.sendFile('module_docs/leaves_module.html', { root: __dirname + '/..' });
-});
+
 
 app.get('/module-docs/reports', (req, res) => {
   res.sendFile('module_docs/reports_module.html', { root: __dirname + '/..' });

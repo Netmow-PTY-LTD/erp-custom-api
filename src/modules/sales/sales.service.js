@@ -483,6 +483,11 @@ class SalesService {
     // Deliveries
     async createDelivery(orderId, data, userId) {
         // ... (existing implementation)
+        const deliveryData = {
+            order_id: orderId,
+            ...data,
+            created_by: userId
+        };
         const delivery = await DeliveryRepository.create(deliveryData);
 
         // Update Order status based on delivery status

@@ -32,21 +32,59 @@ class AttendanceController {
         }
     }
 
-    async checkIn(req, res) {
+    async recordAttendance(req, res) {
         try {
-            const attendance = await AttendanceService.checkIn(req.body, req.user.id);
-            return success(res, 'Checked in successfully', attendance, 201);
+            const staffId = req.params.id;
+            // Provide default creator ID is not present in req.user (e.g. system generated or no auth context)
+            const createdBy = req.user ? req.user.id : null;
+            const attendance = await AttendanceService.recordAttendance(staffId, req.body, createdBy);
+            return success(res, 'Attendance recorded successfully', attendance, 201);
         } catch (err) {
             return error(res, err.message, 400);
         }
     }
 
-    async checkOut(req, res) {
+    async recordFullDayLeave(req, res) {
         try {
-            const attendance = await AttendanceService.checkOut(req.body);
-            return success(res, 'Checked out successfully', attendance);
+            const staffId = req.params.id;
+            const createdBy = req.user ? req.user.id : null;
+            const leave = await AttendanceService.recordFullDayLeave(staffId, req.body, createdBy);
+            return success(res, 'Full day leave recorded successfully', leave, 201);
         } catch (err) {
             return error(res, err.message, 400);
+        }
+    }
+
+    async recordShortLeave(req, res) {
+        try {
+            const staffId = req.params.id;
+            const createdBy = req.user ? req.user.id : null;
+            const leave = await AttendanceService.recordShortLeave(staffId, req.body, createdBy);
+            return success(res, 'Short leave recorded successfully', leave, 201);
+        } catch (err) {
+            return error(res, err.message, 400);
+        }
+    }
+
+    async getStaffAttendance(req, res) {
+        try {
+            const staffId = req.params.id;
+            const page = parseInt(req.query.page) || 1;
+            const limit = parseInt(req.query.limit) || 10;
+            const filters = {
+                staff_id: staffId,
+                date: req.query.date,
+                status: req.query.status
+            };
+
+            const result = await AttendanceService.getAllAttendances(filters, page, limit);
+            return successWithPagination(res, 'Attendance records retrieved successfully', result.data, {
+                total: result.total,
+                page,
+                limit
+            });
+        } catch (err) {
+            return error(res, err.message, 500);
         }
     }
 

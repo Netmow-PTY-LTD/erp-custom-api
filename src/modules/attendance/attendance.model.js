@@ -23,6 +23,15 @@ const Attendance = sequelize.define('Attendance', {
         type: DataTypes.TIME,
         allowNull: true
     },
+    total_hours: {
+        type: DataTypes.DECIMAL(5, 2),
+        allowNull: true,
+        defaultValue: 0,
+        get() {
+            const value = this.getDataValue('total_hours');
+            return value === null ? null : parseFloat(value);
+        }
+    },
     status: {
         type: DataTypes.ENUM('present', 'absent', 'late', 'half_day', 'on_leave'),
         defaultValue: 'present'

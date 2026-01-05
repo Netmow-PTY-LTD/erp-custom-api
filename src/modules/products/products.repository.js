@@ -188,7 +188,7 @@ class CategoryRepository {
 
 class UnitRepository {
     async findAll(filters = {}, limit = 10, offset = 0) {
-        const where = { is_active: true };
+        const where = {};
 
         if (filters.search) {
             where[Op.or] = [

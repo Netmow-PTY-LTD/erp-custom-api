@@ -32,7 +32,7 @@ class ModuleCheckService {
             'departments',
             'staffs',
             'attendance',
-            'leaves',
+
             'payroll',
             'reports'
         ];
@@ -63,7 +63,7 @@ class ModuleCheckService {
             'departments',
             'staffs',
             'attendance',
-            'leaves',
+
             'payroll',
             'reports'
         ];

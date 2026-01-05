@@ -198,9 +198,9 @@ router.routesMeta = [
         handler: (req, res) => staffsController.deleteStaff(req, res),
         description: 'Remove a staff member',
         database: {
-            tables: ['staffs', 'attendance', 'leaves'],
+            tables: ['staffs', 'attendance'],
             mainTable: 'staffs',
-            sideEffects: ['May affect attendance and leave records']
+            sideEffects: ['May affect attendance records']
         },
         sampleResponse: {
             status: true,
