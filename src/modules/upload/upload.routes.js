@@ -46,7 +46,29 @@ router.routesMeta = [
                     alt_text: 'Product front view'
                 }
             }
-        }
+        },
+        examples: [
+            {
+                title: 'Upload product image',
+                description: 'Upload a single product image with metadata',
+                url: '/api/upload/image',
+                method: 'POST',
+                request: {
+                    image: '(Binary file data)',
+                    caption: 'New Product',
+                    alt_text: 'Product View'
+                },
+                response: {
+                    status: true,
+                    message: 'Image uploaded successfully',
+                    data: {
+                        filename: 'product-123.jpg',
+                        url: '/uploads/images/product-123.jpg',
+                        meta: { caption: 'New Product', alt_text: 'Product View' }
+                    }
+                }
+            }
+        ]
     },
     {
         path: '/images',
@@ -89,7 +111,30 @@ router.routesMeta = [
                     }
                 ]
             }
-        }
+        },
+        examples: [
+            {
+                title: 'Upload multiple images',
+                description: 'Upload a batch of images for a gallery',
+                url: '/api/upload/images',
+                method: 'POST',
+                request: {
+                    images: ['(Binary file 1)', '(Binary file 2)'],
+                    metadata: '[{"caption":"Img 1"},{"caption":"Img 2"}]'
+                },
+                response: {
+                    status: true,
+                    message: '2 images uploaded successfully',
+                    data: {
+                        count: 2,
+                        files: [
+                            { filename: 'img1.jpg', url: '/uploads/images/img1.jpg' },
+                            { filename: 'img2.jpg', url: '/uploads/images/img2.jpg' }
+                        ]
+                    }
+                }
+            }
+        ]
     },
     {
         path: '/images',
@@ -115,7 +160,23 @@ router.routesMeta = [
                     modified: '2025-12-05T12:00:00.000Z'
                 }
             ]
-        }
+        },
+        examples: [
+            {
+                title: 'List images',
+                description: 'Get a paginated list of uploaded images',
+                url: '/api/upload/images?page=1&limit=10',
+                method: 'GET',
+                response: {
+                    success: true,
+                    message: 'Images retrieved successfully',
+                    data: [
+                        { filename: 'img1.jpg', url: '/uploads/images/img1.jpg' },
+                        { filename: 'img2.jpg', url: '/uploads/images/img2.jpg' }
+                    ]
+                }
+            }
+        ]
     },
     {
         path: '/images/:filename',
@@ -129,7 +190,20 @@ router.routesMeta = [
             data: {
                 filename: 'product_image-1733400000000-123456789.jpg'
             }
-        }
+        },
+        examples: [
+            {
+                title: 'Delete image',
+                description: 'Remove an image file from the server',
+                url: '/api/upload/images/product-123.jpg',
+                method: 'DELETE',
+                response: {
+                    status: true,
+                    message: 'Image deleted successfully',
+                    data: { filename: 'product-123.jpg' }
+                }
+            }
+        ]
     }
 ];
 

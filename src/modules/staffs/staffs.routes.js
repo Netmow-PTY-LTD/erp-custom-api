@@ -69,7 +69,29 @@ router.routesMeta = [
                     created_at: '2025-12-03T05:00:00.000Z'
                 }
             ]
-        }
+        },
+        examples: [
+            {
+                title: 'Get all staff',
+                description: 'Retrieve a list of all staff members',
+                url: '/api/staffs?page=1&limit=10',
+                method: 'GET',
+                response: {
+                    success: true,
+                    message: 'Staff members retrieved successfully',
+                    pagination: { total: 5, page: '1', limit: '10', totalPage: 1 },
+                    data: [
+                        {
+                            id: 1,
+                            first_name: 'Michael',
+                            last_name: 'Johnson',
+                            position: 'Sales Manager',
+                            status: 'active'
+                        }
+                    ]
+                }
+            }
+        ]
     },
     {
         path: '/',
@@ -115,7 +137,27 @@ router.routesMeta = [
                 ],
                 created_at: '2025-12-02T10:00:00.000Z'
             }
-        }
+        },
+        examples: [
+            {
+                title: 'Create new staff',
+                description: 'Add a new employee to the system',
+                url: '/api/staffs',
+                method: 'POST',
+                request: {
+                    first_name: 'Jane',
+                    last_name: 'Smith',
+                    email: 'jane.smith@example.com',
+                    position: 'Sales Rep',
+                    hire_date: '2025-01-15'
+                },
+                response: {
+                    status: true,
+                    message: 'Staff member created successfully',
+                    data: { id: 2, first_name: 'Jane', last_name: 'Smith' }
+                }
+            }
+        ]
     },
     {
         path: '/:id',
@@ -161,7 +203,26 @@ router.routesMeta = [
                 created_at: '2025-12-02T10:00:00.000Z',
                 updated_at: '2025-12-02T10:00:00.000Z'
             }
-        }
+        },
+        examples: [
+            {
+                title: 'Get staff details',
+                description: 'Retrieve detailed information for a specific staff member',
+                url: '/api/staffs/1',
+                method: 'GET',
+                response: {
+                    status: true,
+                    data: {
+                        id: 1,
+                        first_name: 'John',
+                        last_name: 'Doe',
+                        position: 'Manager',
+                        email: 'john.doe@example.com',
+                        status: 'active'
+                    }
+                }
+            }
+        ]
     },
     {
         path: '/:id',
@@ -189,7 +250,21 @@ router.routesMeta = [
                 last_name: 'Doe',
                 updated_at: '2025-12-02T10:00:00.000Z'
             }
-        }
+        },
+        examples: [
+            {
+                title: 'Update staff details',
+                description: 'Update the position or salary of a staff member',
+                url: '/api/staffs/1',
+                method: 'PUT',
+                request: { position: 'Senior Manager', salary: 85000.00 },
+                response: {
+                    status: true,
+                    message: 'Staff member updated successfully',
+                    data: { id: 1, first_name: 'John', last_name: 'Doe', updated_at: '2025-12-02T10:00:00.000Z' }
+                }
+            }
+        ]
     },
     {
         path: '/:id',
@@ -205,7 +280,19 @@ router.routesMeta = [
         sampleResponse: {
             status: true,
             message: 'Staff member deleted successfully'
-        }
+        },
+        examples: [
+            {
+                title: 'Delete staff',
+                description: 'Remove a staff member from the system',
+                url: '/api/staffs/1',
+                method: 'DELETE',
+                response: {
+                    status: true,
+                    message: 'Staff member deleted successfully'
+                }
+            }
+        ]
     }
 ];
 

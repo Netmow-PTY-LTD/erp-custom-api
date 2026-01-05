@@ -25,7 +25,15 @@ class StaffService {
                 throw new Error('Staff with this email already exists');
             }
         }
-        return await StaffRepository.create({ ...data, created_by: userId });
+        // Sanitize data: convert empty strings to null
+        const cleanData = { ...data };
+        ['hire_date', 'thumb_url', 'position', 'phone', 'address', 'city', 'state', 'country', 'postal_code', 'notes'].forEach(field => {
+            if (cleanData[field] === '') {
+                cleanData[field] = null;
+            }
+        });
+
+        return await StaffRepository.create({ ...cleanData, created_by: userId });
     }
 
     async updateStaff(id, data) {
@@ -35,7 +43,15 @@ class StaffService {
                 throw new Error('Staff with this email already exists');
             }
         }
-        const staff = await StaffRepository.update(id, data);
+        // Sanitize data: convert empty strings to null
+        const cleanData = { ...data };
+        ['hire_date', 'thumb_url', 'position', 'phone', 'address', 'city', 'state', 'country', 'postal_code', 'notes'].forEach(field => {
+            if (cleanData[field] === '') {
+                cleanData[field] = null;
+            }
+        });
+
+        const staff = await StaffRepository.update(id, cleanData);
         if (!staff) {
             throw new Error('Staff not found');
         }

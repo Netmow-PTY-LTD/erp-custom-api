@@ -150,6 +150,72 @@ class OrderRepository {
             totalValue: totalValueResult || 0
         };
     }
+
+    async findAllBySalesRoute(filters = {}, limit = 10, offset = 0) {
+        const where = {};
+        const customerWhere = {};
+
+        // Filter by sales route
+        if (filters.sales_route_id) {
+            customerWhere.sales_route_id = filters.sales_route_id;
+        }
+
+        // Filter by order status
+        if (filters.status) {
+            where.status = filters.status;
+        }
+
+        // Search by order number
+        if (filters.search) {
+            where[Op.or] = [
+                { order_number: { [Op.like]: `%${filters.search}%` } }
+            ];
+        }
+
+        const { Customer } = require('../customers/customers.model');
+
+        return await Order.findAndCountAll({
+            where,
+            limit,
+            offset,
+            include: [
+                {
+                    model: Customer,
+                    as: 'customer',
+                    where: Object.keys(customerWhere).length > 0 ? customerWhere : undefined,
+                    required: true, // Only get orders with customers
+                    attributes: ['id', 'name', 'email', 'phone', 'company', 'address', 'city', 'sales_route_id'],
+                    include: [
+                        {
+                            model: SalesRoute,
+                            as: 'salesRoute',
+                            attributes: ['id', 'route_name', 'description']
+                        }
+                    ]
+                },
+                {
+                    model: OrderItem,
+                    as: 'items',
+                    include: [
+                        {
+                            model: require('../products/products.model').Product,
+                            as: 'product',
+                            attributes: ['id', 'name', 'sku', 'price', 'image_url']
+                        }
+                    ]
+                },
+                {
+                    model: Delivery,
+                    as: 'deliveries',
+                    limit: 1,
+                    order: [['created_at', 'DESC']],
+                    separate: true
+                }
+            ],
+            order: [['created_at', 'DESC']],
+            distinct: true
+        });
+    }
 }
 
 class InvoiceRepository {
@@ -425,16 +491,24 @@ class SalesRouteRepository {
                             as: 'orders',
                             attributes: ['id', 'order_number', 'order_date', 'total_amount', 'status'],
                             limit: 1,
-                            order: [['order_date', 'DESC']],
-                            required: true // Only show customers with orders
+                            order: [['order_date', 'DESC']], // This sorts the included orders
+                            required: false // Changed to false to allow customers without orders (or keep true if strict)
                         }
                     ]
                 }
-            ],
-            order: [
-                [{ model: Customer, as: 'customers' }, { model: Order, as: 'orders' }, 'order_date', 'DESC']
             ]
         });
+    }
+    async update(id, data) {
+        const route = await SalesRoute.findByPk(id);
+        if (!route) return null;
+        return await route.update(data);
+    }
+
+    async delete(id) {
+        const route = await SalesRoute.findByPk(id);
+        if (!route) return null;
+        return await route.destroy();
     }
 }
 

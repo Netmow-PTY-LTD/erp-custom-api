@@ -69,6 +69,27 @@ class SalesController {
         }
     }
 
+    async getOrdersBySalesRoute(req, res) {
+        try {
+            const page = parseInt(req.query.page) || 1;
+            const limit = parseInt(req.query.limit) || 10;
+            const filters = {
+                sales_route_id: req.query.sales_route_id || req.params.routeId,
+                status: req.query.status,
+                search: req.query.search
+            };
+
+            const result = await SalesService.getOrdersBySalesRoute(filters, page, limit);
+            return successWithPagination(res, 'Route-wise orders retrieved successfully', result.data, {
+                total: result.total,
+                page,
+                limit
+            });
+        } catch (err) {
+            return error(res, err.message, 500);
+        }
+    }
+
     // Invoices
     async getAllInvoices(req, res) {
         try {
@@ -272,6 +293,55 @@ class SalesController {
             return success(res, 'Sales route created successfully', route, 201);
         } catch (err) {
             return error(res, err.message, 400);
+        }
+    }
+
+    async getSalesRouteById(req, res) {
+        try {
+            const route = await SalesService.getSalesRouteById(req.params.id);
+            return success(res, 'Sales route retrieved successfully', route);
+        } catch (err) {
+            return error(res, err.message, 404);
+        }
+    }
+
+    async updateSalesRoute(req, res) {
+        try {
+            const route = await SalesService.updateSalesRoute(req.params.id, req.body, req.user.id);
+            return success(res, 'Sales route updated successfully', route);
+        } catch (err) {
+            return error(res, err.message, 400);
+        }
+    }
+
+    async deleteSalesRoute(req, res) {
+        try {
+            await SalesService.deleteSalesRoute(req.params.id);
+            return success(res, 'Sales route deleted successfully', null);
+        } catch (err) {
+            return error(res, err.message, 404);
+        }
+    }
+
+    async assignSalesRoute(req, res) {
+        try {
+            const { staff_id } = req.body;
+            if (!staff_id) {
+                return error(res, 'staff_id is required', 400);
+            }
+            const route = await SalesService.assignSalesRoute(req.params.id, staff_id, req.user.id);
+            return success(res, 'Sales route assigned successfully', route);
+        } catch (err) {
+            return error(res, err.message, 400);
+        }
+    }
+
+    async getSalesRouteAssignment(req, res) {
+        try {
+            const assignment = await SalesService.getSalesRouteAssignment(req.params.id);
+            return success(res, 'Sales route assignment retrieved successfully', assignment);
+        } catch (err) {
+            return error(res, err.message, 404);
         }
     }
 

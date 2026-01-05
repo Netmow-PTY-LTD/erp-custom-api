@@ -101,7 +101,45 @@ router.routesMeta = [
                     }
                 }
             ]
-        }
+        },
+        examples: [
+            {
+                title: 'Get all orders with default pagination',
+                description: 'Retrieve all orders with default settings (page 1, 10 items per page)',
+                url: '/api/sales/orders',
+                method: 'GET',
+                response: {
+                    success: true,
+                    message: 'Orders retrieved successfully',
+                    pagination: { total: 25, page: '1', limit: '10', totalPage: 3 },
+                    data: [{ id: 1, order_number: 'ORD-1733130000000', status: 'pending', total_amount: '150.00' }]
+                }
+            },
+            {
+                title: 'Filter orders by status',
+                description: 'Get only pending orders',
+                url: '/api/sales/orders?status=pending',
+                method: 'GET',
+                response: {
+                    success: true,
+                    message: 'Orders retrieved successfully',
+                    pagination: { total: 5, page: '1', limit: '10', totalPage: 1 },
+                    data: [{ id: 2, order_number: 'ORD-1733140000000', status: 'pending', total_amount: '200.00' }]
+                }
+            },
+            {
+                title: 'Search orders by order number',
+                description: 'Find specific order by searching order number',
+                url: '/api/sales/orders?search=ORD-123',
+                method: 'GET',
+                response: {
+                    success: true,
+                    message: 'Orders retrieved successfully',
+                    pagination: { total: 1, page: '1', limit: '10', totalPage: 1 },
+                    data: [{ id: 3, order_number: 'ORD-123456', status: 'confirmed', total_amount: '180.00' }]
+                }
+            }
+        ]
     },
     {
         path: '/orders',
@@ -151,7 +189,24 @@ router.routesMeta = [
                 total_amount: 100.00,
                 created_by: 1
             }
-        }
+        },
+        examples: [
+            {
+                title: 'Create simple order',
+                description: 'Create order with single item',
+                url: '/api/sales/orders',
+                method: 'POST',
+                request: {
+                    customer_id: 1,
+                    items: [{ product_id: 1, quantity: 2, unit_price: 50.00 }]
+                },
+                response: {
+                    status: true,
+                    message: 'Order created successfully',
+                    data: { id: 1, order_number: 'ORD-1733130000000-123' }
+                }
+            }
+        ]
     },
     {
         path: '/orders/stats',
@@ -175,7 +230,282 @@ router.routesMeta = [
                 delivered_orders: 6,
                 total_value: "12,345.00"
             }
-        }
+        },
+        examples: [
+            {
+                title: 'Get order statistics',
+                description: 'Retrieve current order statistics including totals and values',
+                url: '/api/sales/orders/stats',
+                method: 'GET',
+                response: {
+                    status: true,
+                    message: 'Order stats retrieved successfully',
+                    data: {
+                        total_orders: 25,
+                        pending_orders: 5,
+                        delivered_orders: 6,
+                        total_value: "12,345.00"
+                    }
+                }
+            }
+        ]
+    },
+    {
+        path: '/orders/by-route',
+        method: 'GET',
+        middlewares: [],
+        handler: (req, res) => salesController.getOrdersBySalesRoute(req, res),
+        description: 'Get all orders filtered by sales route with pagination. Returns orders with customer, sales route, items, and delivery information.',
+        database: {
+            tables: ['orders', 'customers', 'sales_routes', 'order_items', 'products', 'deliveries'],
+            mainTable: 'orders',
+            fields: {
+                orders: ['id', 'order_number', 'customer_id', 'order_date', 'status', 'total_amount', 'tax_amount', 'discount_amount', 'shipping_address', 'billing_address', 'payment_status', 'notes', 'due_date', 'created_at'],
+                customers: ['id', 'name', 'email', 'phone', 'company', 'address', 'city', 'sales_route_id'],
+                sales_routes: ['id', 'route_name', 'description'],
+                order_items: ['id', 'order_id', 'product_id', 'quantity', 'unit_price', 'discount', 'line_total'],
+                products: ['id', 'name', 'sku', 'price', 'image_url'],
+                deliveries: ['id', 'delivery_number', 'delivery_date', 'status', 'notes'],
+                calculated: ['delivery_status']
+            },
+            relationships: [
+                'orders.customer_id -> customers.id (FK)',
+                'customers.sales_route_id -> sales_routes.id (FK)',
+                'order_items.order_id -> orders.id (FK)',
+                'order_items.product_id -> products.id (FK)',
+                'orders.id -> deliveries.order_id (HasMany - Latest delivery only)'
+            ]
+        },
+        queryParams: {
+            page: 'Page number (default: 1)',
+            limit: 'Items per page (default: 10)',
+            sales_route_id: 'Filter by sales route ID (Required)',
+            status: 'Filter by order status',
+            search: 'Search by order number'
+        },
+        sampleResponse: {
+            success: true,
+            message: 'Route-wise orders retrieved successfully',
+            pagination: {
+                total: 15,
+                page: '1',
+                limit: '10',
+                totalPage: 2
+            },
+            data: [
+                {
+                    id: 1,
+                    order_number: 'ORD-1733130000000',
+                    customer_id: 1,
+                    total_amount: '150.00',
+                    status: 'pending',
+                    delivery_status: 'delivered',
+                    notes: 'Please deliver between 9 AM and 5 PM',
+                    due_date: '2025-12-15',
+                    created_at: '2025-12-03T05:00:00.000Z',
+                    customer: {
+                        id: 1,
+                        name: 'John Doe',
+                        email: 'john@example.com',
+                        phone: '+1234567890',
+                        company: 'ABC Corp',
+                        address: '123 Main St',
+                        city: 'New York',
+                        sales_route_id: 1,
+                        salesRoute: {
+                            id: 1,
+                            route_name: 'North Route',
+                            description: 'Northern area coverage'
+                        }
+                    },
+                    items: [
+                        {
+                            id: 1,
+                            order_id: 1,
+                            product_id: 1,
+                            quantity: 2,
+                            unit_price: 50.00,
+                            discount: 5.00,
+                            line_total: 95.00,
+                            product: {
+                                id: 1,
+                                name: 'Wireless Mouse',
+                                sku: 'MOU-001',
+                                price: 29.99,
+                                image_url: 'http://example.com/thumb.jpg'
+                            }
+                        }
+                    ],
+                    delivery: {
+                        id: 1,
+                        delivery_number: 'DEL-123456',
+                        delivery_date: '2025-12-09',
+                        status: 'delivered',
+                        notes: 'Left at reception'
+                    }
+                }
+            ]
+        },
+        examples: [
+            {
+                title: 'Get all orders for sales route 1',
+                description: 'Retrieve all orders from customers assigned to sales route 1',
+                url: '/api/sales/orders/by-route?sales_route_id=1',
+                method: 'GET',
+                response: {
+                    success: true,
+                    message: 'Route-wise orders retrieved successfully',
+                    pagination: {
+                        total: 15,
+                        page: '1',
+                        limit: '10',
+                        totalPage: 2
+                    },
+                    data: [
+                        {
+                            id: 1,
+                            order_number: 'ORD-1733130000000',
+                            customer_id: 1,
+                            total_amount: '150.00',
+                            status: 'pending',
+                            delivery_status: 'delivered',
+                            customer: {
+                                id: 1,
+                                name: 'John Doe',
+                                email: 'john@example.com',
+                                sales_route_id: 1,
+                                salesRoute: {
+                                    id: 1,
+                                    route_name: 'North Route',
+                                    description: 'Northern area coverage'
+                                }
+                            },
+                            items: [
+                                {
+                                    id: 1,
+                                    quantity: 2,
+                                    unit_price: 50.00,
+                                    product: {
+                                        id: 1,
+                                        name: 'Wireless Mouse',
+                                        sku: 'MOU-001'
+                                    }
+                                }
+                            ],
+                            delivery: {
+                                id: 1,
+                                delivery_number: 'DEL-123456',
+                                status: 'delivered'
+                            }
+                        }
+                    ]
+                }
+            },
+            {
+                title: 'Get pending orders for route 2 with pagination',
+                description: 'Get pending orders from route 2, page 1, 20 items per page',
+                url: '/api/sales/orders/by-route?sales_route_id=2&status=pending&page=1&limit=20',
+                method: 'GET',
+                response: {
+                    success: true,
+                    message: 'Route-wise orders retrieved successfully',
+                    pagination: {
+                        total: 45,
+                        page: '1',
+                        limit: '20',
+                        totalPage: 3
+                    },
+                    data: [
+                        {
+                            id: 5,
+                            order_number: 'ORD-1733140000000',
+                            customer_id: 5,
+                            total_amount: '250.00',
+                            status: 'pending',
+                            delivery_status: null,
+                            customer: {
+                                id: 5,
+                                name: 'Jane Smith',
+                                email: 'jane@example.com',
+                                sales_route_id: 2,
+                                salesRoute: {
+                                    id: 2,
+                                    route_name: 'South Route',
+                                    description: 'Southern area coverage'
+                                }
+                            },
+                            items: [
+                                {
+                                    id: 8,
+                                    quantity: 5,
+                                    unit_price: 50.00,
+                                    product: {
+                                        id: 3,
+                                        name: 'Keyboard',
+                                        sku: 'KEY-001'
+                                    }
+                                }
+                            ],
+                            delivery: null
+                        }
+                    ]
+                }
+            },
+            {
+                title: 'Search orders in route 1',
+                description: 'Search for specific order by order number within route 1',
+                url: '/api/sales/orders/by-route?sales_route_id=1&search=ORD-123',
+                method: 'GET',
+                response: {
+                    success: true,
+                    message: 'Route-wise orders retrieved successfully',
+                    pagination: {
+                        total: 1,
+                        page: '1',
+                        limit: '10',
+                        totalPage: 1
+                    },
+                    data: [
+                        {
+                            id: 3,
+                            order_number: 'ORD-123456',
+                            customer_id: 2,
+                            total_amount: '180.00',
+                            status: 'confirmed',
+                            delivery_status: 'in_transit',
+                            customer: {
+                                id: 2,
+                                name: 'Bob Wilson',
+                                email: 'bob@example.com',
+                                sales_route_id: 1,
+                                salesRoute: {
+                                    id: 1,
+                                    route_name: 'North Route',
+                                    description: 'Northern area coverage'
+                                }
+                            },
+                            items: [
+                                {
+                                    id: 5,
+                                    quantity: 3,
+                                    unit_price: 60.00,
+                                    product: {
+                                        id: 2,
+                                        name: 'Monitor',
+                                        sku: 'MON-001'
+                                    }
+                                }
+                            ],
+                            delivery: {
+                                id: 3,
+                                delivery_number: 'DEL-789012',
+                                status: 'in_transit'
+                            }
+                        }
+                    ]
+                }
+            }
+        ]
     },
     // --- Invoices ---
     {
@@ -251,7 +581,52 @@ router.routesMeta = [
                     ]
                 }
             ]
-        }
+        },
+        examples: [
+            {
+                title: 'Get all invoices',
+                description: 'Retrieve all invoices with pagination',
+                url: '/api/sales/orders/invoices',
+                method: 'GET',
+                response: {
+                    success: true,
+                    message: 'Invoices retrieved successfully',
+                    pagination: { total: 5, page: '1', limit: '10', totalPage: 1 },
+                    data: [
+                        {
+                            id: 1,
+                            invoice_number: 'INV-1733130000000',
+                            total_amount: '150.00',
+                            paid_amount: 50.00,
+                            remaining_balance: 100.00,
+                            status: 'sent',
+                            order: { id: 1, order_number: 'ORD-1733130000000' }
+                        }
+                    ]
+                }
+            },
+            {
+                title: 'Filter unpaid invoices',
+                description: 'Get only unpaid invoices',
+                url: '/api/sales/orders/invoices?status=sent',
+                method: 'GET',
+                response: {
+                    success: true,
+                    message: 'Invoices retrieved successfully',
+                    pagination: { total: 2, page: '1', limit: '10', totalPage: 1 },
+                    data: [
+                        {
+                            id: 2,
+                            invoice_number: 'INV-1733140000000',
+                            total_amount: '200.00',
+                            paid_amount: 0,
+                            remaining_balance: 200.00,
+                            status: 'sent'
+                        }
+                    ]
+                }
+            }
+        ]
     },
     {
         path: '/orders/invoices/unpaid',
@@ -297,7 +672,30 @@ router.routesMeta = [
                     status: 'sent'
                 }
             ]
-        }
+        },
+        examples: [
+            {
+                title: 'Get all unpaid invoices',
+                description: 'Retrieve list of all invoices with status not paid or cancelled',
+                url: '/api/sales/orders/invoices/unpaid',
+                method: 'GET',
+                response: {
+                    success: true,
+                    message: 'Invoices retrieved successfully',
+                    pagination: { total: 5, page: '1', limit: '10', totalPage: 1 },
+                    data: [
+                        {
+                            id: 1,
+                            invoice_number: 'INV-1733130000000',
+                            total_amount: '150.00',
+                            paid_amount: 50.00,
+                            remaining_balance: 100.00,
+                            status: 'sent'
+                        }
+                    ]
+                }
+            }
+        ]
     },
     {
         path: '/orders/invoices/unpaid/customer/:customerId',
@@ -327,7 +725,28 @@ router.routesMeta = [
             success: true,
             message: 'Invoices retrieved successfully',
             data: []
-        }
+        },
+        examples: [
+            {
+                title: 'Get unpaid invoices for customer',
+                description: 'Retrieve unpaid invoices for a specific customer (ID 1)',
+                url: '/api/sales/orders/invoices/unpaid/customer/1',
+                method: 'GET',
+                response: {
+                    success: true,
+                    message: 'Invoices retrieved successfully',
+                    data: [
+                        {
+                            id: 1,
+                            invoice_number: 'INV-1733130000000',
+                            total_amount: '150.00',
+                            status: 'sent',
+                            order: { id: 1, order_number: 'ORD-1733130000000' }
+                        }
+                    ]
+                }
+            }
+        ]
     },
     {
         path: '/orders/invoices',
@@ -350,7 +769,20 @@ router.routesMeta = [
         sampleResponse: {
             status: true,
             message: 'Invoice created successfully'
-        }
+        },
+        examples: [
+            {
+                title: 'Create invoice for order',
+                description: 'Generate invoice from existing order',
+                url: '/api/sales/orders/invoices',
+                method: 'POST',
+                request: { order_id: 1, due_date: '2025-12-31' },
+                response: {
+                    status: true,
+                    message: 'Invoice created successfully'
+                }
+            }
+        ]
     },
     {
         path: '/orders/invoices/:id/status',
@@ -375,7 +807,20 @@ router.routesMeta = [
         sampleResponse: {
             status: true,
             message: 'Invoice status updated successfully'
-        }
+        },
+        examples: [
+            {
+                title: 'Mark invoice as paid',
+                description: 'Update invoice status to paid',
+                url: '/api/sales/orders/invoices/1/status',
+                method: 'PATCH',
+                request: { status: 'paid' },
+                response: {
+                    status: true,
+                    message: 'Invoice status updated successfully'
+                }
+            }
+        ]
     },
     {
         path: '/orders/invoices/customer/:customerId',
@@ -420,7 +865,29 @@ router.routesMeta = [
                     created_at: '2025-12-03T05:00:00.000Z'
                 }
             ]
-        }
+        },
+        examples: [
+            {
+                title: 'Get invoices by customer',
+                description: 'Retrieve all invoices for a specific customer',
+                url: '/api/sales/orders/invoices/customer/1',
+                method: 'GET',
+                response: {
+                    success: true,
+                    message: 'Customer invoices retrieved successfully',
+                    pagination: { total: 3, page: '1', limit: '10', totalPage: 1 },
+                    data: [
+                        {
+                            id: 1,
+                            invoice_number: 'INV-1733130000000',
+                            total_amount: '150.00',
+                            status: 'sent',
+                            order_id: 1
+                        }
+                    ]
+                }
+            }
+        ]
     },
     {
         path: '/orders/invoices/:id',
@@ -494,7 +961,29 @@ router.routesMeta = [
                     }
                 ]
             }
-        }
+        },
+        examples: [
+            {
+                title: 'Get invoice by ID',
+                description: 'Retrieve detailed invoice information',
+                url: '/api/sales/orders/invoices/1',
+                method: 'GET',
+                response: {
+                    status: true,
+                    message: 'Invoice retrieved successfully',
+                    data: {
+                        id: 1,
+                        invoice_number: 'INV-1733130000000',
+                        total_amount: '100.00',
+                        paid_amount: 30.00,
+                        remaining_balance: 70.00,
+                        status: 'sent',
+                        order: { id: 1, order_number: 'ORD-123' },
+                        payments: [{ id: 1, amount: '30.00', status: 'completed' }]
+                    }
+                }
+            }
+        ]
     },
 
     // --- Payments ---
@@ -563,7 +1052,50 @@ router.routesMeta = [
                     }
                 }
             ]
-        }
+        },
+        examples: [
+            {
+                title: 'Get all payments',
+                description: 'Retrieve all payment records',
+                url: '/api/sales/orders/payments',
+                method: 'GET',
+                response: {
+                    success: true,
+                    message: 'Payments retrieved successfully',
+                    pagination: { total: 25, page: '1', limit: '10', totalPage: 3 },
+                    data: [
+                        {
+                            id: 1,
+                            amount: '100.00',
+                            payment_method: 'credit_card',
+                            payment_date: '2025-12-08T10:00:00.000Z',
+                            order: { id: 1, order_number: 'ORD-123' },
+                            invoice: { id: 1, invoice_number: 'INV-123' }
+                        }
+                    ]
+                }
+            },
+            {
+                title: 'Filter payments by order',
+                description: 'Get payments for specific order',
+                url: '/api/sales/orders/payments?order_id=1',
+                method: 'GET',
+                response: {
+                    success: true,
+                    message: 'Payments retrieved successfully',
+                    pagination: { total: 2, page: '1', limit: '10', totalPage: 1 },
+                    data: [
+                        {
+                            id: 1,
+                            order_id: 1,
+                            amount: '100.00',
+                            payment_method: 'credit_card',
+                            payment_date: '2025-12-08T10:00:00.000Z'
+                        }
+                    ]
+                }
+            }
+        ]
     },
     {
         path: '/orders/payments',
@@ -595,7 +1127,24 @@ router.routesMeta = [
         sampleResponse: {
             status: true,
             message: 'Payment recorded successfully'
-        }
+        },
+        examples: [
+            {
+                title: 'Record payment',
+                description: 'Record payment for an invoice',
+                url: '/api/sales/orders/payments',
+                method: 'POST',
+                request: {
+                    order_id: 1,
+                    amount: 100.00,
+                    payment_method: 'credit_card'
+                },
+                response: {
+                    status: true,
+                    message: 'Payment recorded successfully'
+                }
+            }
+        ]
     },
     {
         path: '/orders/payments/:id',
@@ -637,7 +1186,27 @@ router.routesMeta = [
                     invoice_number: 'INV-1733130000000-123'
                 }
             }
-        }
+        },
+        examples: [
+            {
+                title: 'Get payment by ID',
+                description: 'Retrieve detailed payment information',
+                url: '/api/sales/orders/payments/1',
+                method: 'GET',
+                response: {
+                    status: true,
+                    message: 'Payment retrieved successfully',
+                    data: {
+                        id: 1,
+                        amount: '100.00',
+                        payment_method: 'credit_card',
+                        payment_date: '2025-12-08T10:00:00.000Z',
+                        order: { id: 1, order_number: 'ORD-123' },
+                        invoice: { id: 1, invoice_number: 'INV-123' }
+                    }
+                }
+            }
+        ]
     },
 
     {
@@ -716,7 +1285,24 @@ router.routesMeta = [
                 payments: [],
                 deliveries: []
             }
-        }
+        },
+        examples: [
+            {
+                title: 'Get order by ID',
+                description: 'Retrieve complete order details',
+                url: '/api/sales/orders/1',
+                method: 'GET',
+                response: {
+                    status: true,
+                    data: {
+                        id: 1,
+                        order_number: 'ORD-1733130000000',
+                        status: 'pending',
+                        total_amount: 150.00
+                    }
+                }
+            }
+        ]
     },
     {
         path: '/orders/:id/deliver',
@@ -747,7 +1333,20 @@ router.routesMeta = [
         sampleResponse: {
             status: true,
             message: 'Delivery recorded successfully'
-        }
+        },
+        examples: [
+            {
+                title: 'Mark order as delivered',
+                description: 'Record delivery for an order',
+                url: '/api/sales/orders/1/deliver',
+                method: 'POST',
+                request: { status: 'delivered', delivery_date: '2025-12-10' },
+                response: {
+                    status: true,
+                    message: 'Delivery recorded successfully'
+                }
+            }
+        ]
     },
 
     // --- Warehouses ---
@@ -773,7 +1372,21 @@ router.routesMeta = [
                     location: 'New York'
                 }
             ]
-        }
+        },
+        examples: [
+            {
+                title: 'Get all warehouses',
+                description: 'Retrieve list of all warehouses',
+                url: '/api/sales/warehouses',
+                method: 'GET',
+                response: {
+                    status: true,
+                    data: [
+                        { id: 1, name: 'Main Warehouse', location: 'New York' }
+                    ]
+                }
+            }
+        ]
     },
     {
         path: '/warehouses',
@@ -796,7 +1409,24 @@ router.routesMeta = [
         sampleResponse: {
             status: true,
             message: 'Warehouse created successfully'
-        }
+        },
+        examples: [
+            {
+                title: 'Create new warehouse',
+                description: 'Register a new warehouse location',
+                url: '/api/sales/warehouses',
+                method: 'POST',
+                request: {
+                    name: 'West Coast Hub',
+                    location: 'Los Angeles',
+                    capacity: 10000
+                },
+                response: {
+                    status: true,
+                    message: 'Warehouse created successfully'
+                }
+            }
+        ]
     },
 
     // --- Sales Routes ---
@@ -816,7 +1446,26 @@ router.routesMeta = [
         sampleResponse: {
             status: true,
             data: []
-        }
+        },
+        examples: [
+            {
+                title: 'Get all sales routes',
+                description: 'Retrieve all configured sales routes',
+                url: '/api/sales/routes',
+                method: 'GET',
+                response: {
+                    status: true,
+                    data: [
+                        {
+                            id: 1,
+                            route_name: 'Downtown Route',
+                            center_lat: 40.7128,
+                            center_lng: -74.0060
+                        }
+                    ]
+                }
+            }
+        ]
     },
     {
         path: '/sales-route',
@@ -852,7 +1501,200 @@ router.routesMeta = [
                 zoom_level: 12,
                 country: 'USA'
             }
-        }
+        },
+        examples: [
+            {
+                title: 'Create sales route',
+                description: 'Create a new delivery route definition',
+                url: '/api/sales/sales-route',
+                method: 'POST',
+                request: {
+                    routeName: 'Uptown Route',
+                    description: 'Northern city delivery area',
+                    zoomLevel: 12,
+                    centerLat: 40.8000,
+                    centerLng: -73.9500
+                },
+                response: {
+                    status: true,
+                    message: 'Sales route created successfully',
+                    data: { id: 2, route_name: 'Uptown Route' }
+                }
+            }
+        ]
+    },
+    {
+        path: '/sales-route/:id',
+        method: 'GET',
+        middlewares: [],
+        handler: (req, res) => salesController.getSalesRouteById(req, res),
+        description: 'Get sales route details by ID',
+        database: {
+            tables: ['sales_routes', 'customers', 'orders'],
+            mainTable: 'sales_routes',
+            fields: {
+                sales_routes: ['id', 'route_name', 'description', 'zoom_level', 'center_lat', 'center_lng']
+            }
+        },
+        sampleResponse: {
+            status: true,
+            message: 'Sales route retrieved successfully',
+            data: { id: 1, route_name: 'Downtown' }
+        },
+        examples: [
+            {
+                title: 'Get sales route details',
+                description: 'Retrieve details for a specific sales route',
+                url: '/api/sales/sales-route/1',
+                method: 'GET',
+                response: {
+                    status: true,
+                    message: 'Sales route retrieved successfully',
+                    data: {
+                        id: 1,
+                        route_name: 'Downtown Route',
+                        zoom_level: 12,
+                        center_lat: 40.7128,
+                        center_lng: -74.0060,
+                        customers: []
+                    }
+                }
+            }
+        ]
+    },
+    {
+        path: '/sales-route/:id',
+        method: 'PUT',
+        middlewares: [],
+        handler: (req, res) => salesController.updateSalesRoute(req, res),
+        description: 'Update sales route details',
+        database: {
+            tables: ['sales_routes'],
+            mainTable: 'sales_routes',
+            requiredFields: [],
+            optionalFields: ['route_name', 'description', 'zoom_level', 'center_lat', 'center_lng']
+        },
+        sampleRequest: {
+            routeName: 'Updated Downtown Route',
+            zoomLevel: 14
+        },
+        sampleResponse: {
+            status: true,
+            message: 'Sales route updated successfully',
+            data: { id: 1, route_name: 'Updated Downtown Route' }
+        },
+        examples: [
+            {
+                title: 'Update sales route',
+                description: 'Update the name and zoom level of a sales route',
+                url: '/api/sales/sales-route/1',
+                method: 'PUT',
+                request: { routeName: 'New Downtown Route', zoomLevel: 14 },
+                response: {
+                    status: true,
+                    message: 'Sales route updated successfully',
+                    data: { id: 1, route_name: 'New Downtown Route', zoom_level: 14 }
+                }
+            }
+        ]
+    },
+    {
+        path: '/sales-route/:id',
+        method: 'DELETE',
+        middlewares: [],
+        handler: (req, res) => salesController.deleteSalesRoute(req, res),
+        description: 'Delete a sales route',
+        database: {
+            tables: ['sales_routes'],
+            mainTable: 'sales_routes',
+            sideEffects: ['Deletes sales route record', 'Sets customer.sales_route_id to null (if constraints allow)']
+        },
+        sampleResponse: {
+            status: true,
+            message: 'Sales route deleted successfully'
+        },
+        examples: [
+            {
+                title: 'Delete sales route',
+                description: 'Remove a sales route from the system',
+                url: '/api/sales/sales-route/1',
+                method: 'DELETE',
+                response: {
+                    status: true,
+                    message: 'Sales route deleted successfully'
+                }
+            }
+        ]
+    },
+    {
+        path: '/sales-route/:id/assign',
+        method: 'PATCH',
+        middlewares: [],
+        handler: (req, res) => salesController.assignSalesRoute(req, res),
+        description: 'Assign a sales rep (staff) to a sales route',
+        database: {
+            tables: ['sales_routes', 'users'],
+            mainTable: 'sales_routes',
+            requiredFields: ['staff_id'],
+            relationships: ['sales_routes.assigned_sales_rep_id -> users.id (FK)']
+        },
+        sampleRequest: {
+            staff_id: 5
+        },
+        sampleResponse: {
+            status: true,
+            message: 'Sales route assigned successfully'
+        },
+        examples: [
+            {
+                title: 'Assign staff to route',
+                description: 'Assign a staff member to manage this sales route',
+                url: '/api/sales/sales-route/1/assign',
+                method: 'PATCH',
+                request: { staff_id: 5 },
+                response: {
+                    status: true,
+                    message: 'Sales route assigned successfully',
+                    data: { id: 1, assigned_sales_rep_id: 5 }
+                }
+            }
+        ]
+    },
+    {
+        path: '/sales-route/:id/assign',
+        method: 'GET',
+        middlewares: [],
+        handler: (req, res) => salesController.getSalesRouteAssignment(req, res),
+        description: 'Get current staff assignment for a sales route',
+        database: {
+            tables: ['sales_routes', 'users'],
+            mainTable: 'sales_routes',
+            fields: {
+                sales_routes: ['id', 'route_name', 'assigned_sales_rep_id']
+            }
+        },
+        sampleResponse: {
+            status: true,
+            message: 'Sales route assignment retrieved successfully',
+            data: { id: 1, assigned_sales_rep_id: 5 }
+        },
+        examples: [
+            {
+                title: 'Get route assignment',
+                description: 'Check which staff member is assigned to the route',
+                url: '/api/sales/sales-route/1/assign',
+                method: 'GET',
+                response: {
+                    status: true,
+                    message: 'Sales route assignment retrieved successfully',
+                    data: {
+                        id: 1,
+                        route_name: 'Downtown Route',
+                        assigned_sales_rep_id: 5
+                    }
+                }
+            }
+        ]
     },
 
     // --- Reports & Charts ---
@@ -901,11 +1743,36 @@ router.routesMeta = [
         examples: [
             {
                 title: 'Get sales summary for 2025',
-                url: '/api/reports/sales/summary?start_date=2025-01-01&end_date=2025-12-31'
+                url: '/api/reports/sales/summary?start_date=2025-01-01&end_date=2025-12-31',
+                response: {
+                    status: true,
+                    message: 'Sales summary retrieved successfully',
+                    data: {
+                        start_date: '2025-01-01',
+                        end_date: '2025-12-31',
+                        summary: {
+                            total_orders: 150,
+                            total_sales: 320000,
+                            average_order_value: 2133.33
+                        }
+                    }
+                }
             },
             {
                 title: 'Get sales summary for December 2025',
-                url: '/api/reports/sales/summary?start_date=2025-12-01&end_date=2025-12-31'
+                url: '/api/reports/sales/summary?start_date=2025-12-01&end_date=2025-12-31',
+                response: {
+                    status: true,
+                    message: 'Sales summary retrieved successfully',
+                    data: {
+                        start_date: '2025-12-01',
+                        end_date: '2025-12-31',
+                        summary: {
+                            total_orders: 15,
+                            total_sales: 32000
+                        }
+                    }
+                }
             }
         ]
     },

@@ -16,7 +16,7 @@ const createStaff = z.object({
     postal_code: z.string().max(20).optional(),
     status: z.enum(['active', 'inactive', 'terminated', 'on_leave']).default('active'),
     notes: z.string().optional(),
-    thumb_url: z.string().url('Invalid URL format').max(500).optional(),
+    thumb_url: z.union([z.string().url('Invalid URL format'), z.literal('')]).optional().nullable(),
     gallery_items: z.array(z.string().url('Invalid URL format')).optional()
 });
 
@@ -36,7 +36,7 @@ const updateStaff = z.object({
     postal_code: z.string().max(20).optional(),
     status: z.enum(['active', 'inactive', 'terminated', 'on_leave']).optional(),
     notes: z.string().optional(),
-    thumb_url: z.string().url('Invalid URL format').max(500).optional(),
+    thumb_url: z.union([z.string().url('Invalid URL format'), z.literal('')]).optional().nullable(),
     gallery_items: z.array(z.string().url('Invalid URL format')).optional()
 });
 

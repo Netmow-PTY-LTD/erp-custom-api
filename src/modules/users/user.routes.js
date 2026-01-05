@@ -40,7 +40,26 @@ router.routesMeta = [
         created_at: '2025-12-02T10:00:00.000Z'
       },
       code: 201
-    }
+    },
+    examples: [
+      {
+        title: 'Create User',
+        description: 'Register a new user',
+        url: '/api/users/add',
+        method: 'POST',
+        request: {
+          name: 'Alice Wonder',
+          email: 'alice@example.com',
+          password: 'password123',
+          role_id: 2
+        },
+        response: {
+          status: true,
+          message: 'created',
+          data: { id: 16, name: 'Alice Wonder', email: 'alice@example.com' }
+        }
+      }
+    ]
   },
   {
     path: '/update/:id',
@@ -71,7 +90,21 @@ router.routesMeta = [
         role_id: 3,
         updated_at: '2025-12-02T10:05:00.000Z'
       }
-    }
+    },
+    examples: [
+      {
+        title: 'Update User',
+        description: 'Update user details',
+        url: '/api/users/update/16',
+        method: 'PUT',
+        request: { name: 'Alice W.', role_id: 3 },
+        response: {
+          status: true,
+          message: 'updated',
+          data: { id: 16, name: 'Alice W.', role_id: 3 }
+        }
+      }
+    ]
   },
   {
     path: '/',
@@ -116,7 +149,20 @@ router.routesMeta = [
           created_at: '2025-12-03T05:00:00.000Z'
         }
       ]
-    }
+    },
+    examples: [
+      {
+        title: 'List Users',
+        description: 'Get all users',
+        url: '/api/users?page=1&limit=10',
+        method: 'GET',
+        response: {
+          success: true,
+          message: 'Users retrieved successfully',
+          data: [{ id: 1, name: 'Admin User' }]
+        }
+      }
+    ]
   },
   {
     path: '/get/:id',
@@ -148,7 +194,20 @@ router.routesMeta = [
         },
         created_at: '2025-12-01T00:00:00.000Z'
       }
-    }
+    },
+    examples: [
+      {
+        title: 'Get User',
+        description: 'Get user by ID',
+        url: '/api/users/get/1',
+        method: 'GET',
+        response: {
+          status: true,
+          message: 'user',
+          data: { id: 1, name: 'Admin User' }
+        }
+      }
+    ]
   },
   {
     path: '/delete/:id',
@@ -165,7 +224,20 @@ router.routesMeta = [
       status: true,
       message: 'deleted',
       data: null
-    }
+    },
+    examples: [
+      {
+        title: 'Delete User',
+        description: 'Remove a user',
+        url: '/api/users/delete/16',
+        method: 'DELETE',
+        response: {
+          status: true,
+          message: 'deleted',
+          data: null
+        }
+      }
+    ]
   },
 ];
 

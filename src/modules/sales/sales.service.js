@@ -28,6 +28,31 @@ class SalesService {
         };
     }
 
+    async getOrdersBySalesRoute(filters = {}, page = 1, limit = 10) {
+        const offset = (page - 1) * limit;
+        const result = await OrderRepository.findAllBySalesRoute(filters, limit, offset);
+
+        // Transform deliveries array to single delivery object
+        const transformedRows = result.rows.map(order => {
+            const orderData = order.toJSON();
+            // Convert deliveries array to single delivery object (latest one)
+            orderData.delivery = orderData.deliveries && orderData.deliveries.length > 0
+                ? orderData.deliveries[0]
+                : null;
+
+            // Add delivery_status field
+            orderData.delivery_status = orderData.delivery ? orderData.delivery.status : null;
+
+            delete orderData.deliveries;
+            return orderData;
+        });
+
+        return {
+            data: transformedRows,
+            total: result.count
+        };
+    }
+
     async getOrderById(id) {
         const order = await OrderRepository.findById(id);
         if (!order) {
@@ -482,10 +507,26 @@ class SalesService {
 
     // Deliveries
     async createDelivery(orderId, data, userId) {
-        // ... (existing implementation)
+        // Fetch order to get shipping address if not provided
+        const order = await OrderRepository.findById(orderId);
+        if (!order) {
+            throw new Error('Order not found');
+        }
+
+        const delivery_number = `DEL-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
+
+        // Use provided delivery address or fallback to order shipping/billing address
+        const delivery_address = data.delivery_address || order.shipping_address || order.billing_address;
+
+        if (!delivery_address) {
+            throw new Error('Delivery address is required and could not be found in the order.');
+        }
+
         const deliveryData = {
             order_id: orderId,
             ...data,
+            delivery_number,
+            delivery_address,
             created_by: userId
         };
         const delivery = await DeliveryRepository.create(deliveryData);
@@ -529,6 +570,72 @@ class SalesService {
 
         return await SalesRouteRepository.create(routeData);
     }
+
+    async getSalesRouteById(id) {
+        const route = await SalesRouteRepository.findById(id);
+        if (!route) {
+            throw new Error('Sales route not found');
+        }
+        return route;
+    }
+
+    async updateSalesRoute(id, data, userId) {
+        // Map camelCase to snake_case if present
+        const routeData = {
+            ...data,
+            updated_at: new Date()
+        };
+
+        if (data.routeName) routeData.route_name = data.routeName;
+        if (data.zoomLevel) routeData.zoom_level = data.zoomLevel;
+        if (data.postalCode) routeData.postal_code = data.postalCode;
+        if (data.centerLat) routeData.center_lat = data.centerLat;
+        if (data.centerLng) routeData.center_lng = data.centerLng;
+        if (data.coverageRadius) routeData.coverage_radius = data.coverageRadius;
+
+        const updatedRoute = await SalesRouteRepository.update(id, routeData);
+        if (!updatedRoute) {
+            throw new Error('Sales route not found');
+        }
+        return updatedRoute;
+    }
+
+    async deleteSalesRoute(id) {
+        const result = await SalesRouteRepository.delete(id);
+        if (!result) {
+            throw new Error('Sales route not found');
+        }
+        return true;
+    }
+
+    async assignSalesRoute(id, staffId, userId) {
+        const route = await SalesRouteRepository.update(id, {
+            assigned_sales_rep_id: staffId,
+            updated_at: new Date()
+        });
+        if (!route) {
+            throw new Error('Sales route not found');
+        }
+        return route;
+    }
+
+    async getSalesRouteAssignment(id) {
+        // Reuse getById but we might want to ensure we fetch staff details if not already
+        // findById in repo already fetches complex data, maybe too much?
+        // But for assignment we specifically care about 'assigned_sales_rep_id'
+        const route = await SalesRouteRepository.findById(id);
+        if (!route) {
+            throw new Error('Sales route not found');
+        }
+        return {
+            id: route.id,
+            route_name: route.route_name,
+            assigned_sales_rep_id: route.assigned_sales_rep_id,
+            // If User/Staff included, return it here.
+            // Assuming the repo findById might not include rep details, we return the ID at least.
+        };
+    }
+
 
     // Reports & Charts
     async getReportsCharts(start_date, end_date) {
