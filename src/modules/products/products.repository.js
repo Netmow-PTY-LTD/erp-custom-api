@@ -13,6 +13,10 @@ class ProductRepository {
             where.is_active = filters.is_active;
         }
 
+        if (filters.product_type) {
+            where.product_type = filters.product_type;
+        }
+
         if (filters.search) {
             where[Op.or] = [
                 { name: { [Op.like]: `%${filters.search}%` } },

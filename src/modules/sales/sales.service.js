@@ -46,7 +46,7 @@ class SalesService {
                                 customer: customer.name || customer.company,
                                 amount: parseFloat(order.total_amount),
                                 status: order.status, // e.g., 'pending', 'delivered'
-                                date: order.order_date ? order.order_date.split('T')[0] : null // Format date YYYY-MM-DD
+                                date: order.order_date ? new Date(order.order_date).toISOString().split('T')[0] : null // Format date YYYY-MM-DD
                             });
                         });
                     }

@@ -344,11 +344,17 @@ router.get('/', (req, res) => {
             </div>
             ` : ''}
             
-            ${route.examples && route.examples.length > 0 ? `
+            ${(route.examples && route.examples.length > 0) || route.sampleResponse ? `
             <div style="background: #e7f3ff; border-left: 4px solid #2196F3; padding: 15px; margin: 15px 0; border-radius: 4px;">
               <h4 style="margin: 0 0 15px 0; color: #1565C0; font-size: 14px;">✅ Sample Request URLs & Responses</h4>
               
-              ${route.examples.map((example, idx) => `
+              ${(route.examples || [{
+            title: 'Default Response',
+            description: 'Standard successful response for this endpoint',
+            method: route.methods[0],
+            url: route.path,
+            response: route.sampleResponse
+          }]).map((example, idx) => `
                 <details style="margin-bottom: 15px; background: white; padding: 12px; border-radius: 4px; border: 1px solid #90CAF9;" ${idx === 0 ? 'open' : ''}>
                   <summary style="cursor: pointer; font-weight: 600; color: #1565C0; font-size: 13px;">
                     ${example.title || `Example ${idx + 1}`}

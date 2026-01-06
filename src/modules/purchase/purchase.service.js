@@ -341,10 +341,44 @@ class PurchaseService {
     }
 
     async getPurchasePaymentById(id) {
-        const payment = await PurchasePaymentRepository.findById(id);
-        if (!payment) {
+        const result = await PurchasePaymentRepository.findById(id);
+        if (!result) {
             throw new Error('Purchase payment not found');
         }
+
+        const payment = result.toJSON();
+
+        // Calculate fields for Purchase Order
+        if (payment.purchase_order) {
+            const poTotal = parseFloat(payment.purchase_order.total_amount || 0);
+            const poDiscount = parseFloat(payment.purchase_order.discount_amount || 0);
+            const poTax = parseFloat(payment.purchase_order.tax_amount || 0);
+
+            payment.purchase_order.net_amount = poTotal - poDiscount;
+            payment.purchase_order.total_payable_amount = poTotal - poDiscount + poTax;
+        }
+
+        // Calculate fields for Invoice
+        if (payment.invoice) {
+            // If invoice is linked to a PO, usually the amounts are consistent. 
+            // We'll trust the PO's structure if available, or just pass what we have if the invoice has its own fields.
+            // Based on other methods, we often derive invoice payable from PO details if linked.
+
+            if (payment.purchase_order) {
+                // Sync with PO calculations as seen in getPurchaseInvoiceById
+                const poTotal = parseFloat(payment.purchase_order.total_amount || 0);
+                const poDiscount = parseFloat(payment.purchase_order.discount_amount || 0);
+                const poTax = parseFloat(payment.purchase_order.tax_amount || 0);
+
+                payment.invoice.net_amount = poTotal - poDiscount;
+                payment.invoice.total_payable_amount = poTotal - poDiscount + poTax;
+            } else {
+                // Fallback if no PO (unlikely for purchase payment), just use total_amount
+                payment.invoice.net_amount = parseFloat(payment.invoice.total_amount || 0);
+                payment.invoice.total_payable_amount = parseFloat(payment.invoice.total_amount || 0);
+            }
+        }
+
         return payment;
     }
 

@@ -19,6 +19,10 @@ PurchaseInvoice.belongsTo(User, { foreignKey: 'created_by', as: 'creator' });
 PurchasePayment.belongsTo(User, { foreignKey: 'created_by', as: 'creator' });
 PurchaseReceipt.belongsTo(User, { foreignKey: 'created_by', as: 'creator' });
 
+// Set up User associations for created_by fields (Production)
+const { ProductionRun } = require('../../modules/production/production.models');
+ProductionRun.belongsTo(User, { foreignKey: 'created_by', as: 'creator' });
+
 // Set up Customer to SalesRoute association
 Customer.belongsTo(SalesRoute, { foreignKey: 'sales_route_id', as: 'salesRoute' });
 SalesRoute.hasMany(Customer, { foreignKey: 'sales_route_id', as: 'customers' });
