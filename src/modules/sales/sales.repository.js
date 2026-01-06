@@ -475,6 +475,63 @@ class SalesRouteRepository {
         });
     }
 
+    async findAllWithOrders(filters = {}, limit = 10, offset = 0) {
+        const routeWhere = {};
+        if (filters.sales_route_id) routeWhere.id = filters.sales_route_id;
+
+        // Search routes
+        if (filters.search) {
+            routeWhere[Op.or] = [
+                { route_name: { [Op.like]: `%${filters.search}%` } }
+            ];
+        }
+
+        // Order filters
+        const orderWhere = {};
+        if (filters.status) orderWhere.status = filters.status;
+
+        // Date filter
+        if (filters.date) {
+            // specific date match
+            orderWhere.order_date = sequelize.where(
+                sequelize.fn('DATE', sequelize.col('customers.orders.order_date')),
+                filters.date
+            );
+        }
+
+        const { Customer } = require('../customers/customers.model');
+
+        return await SalesRoute.findAndCountAll({
+            where: routeWhere,
+            limit,
+            offset,
+            include: [
+                {
+                    model: Customer,
+                    as: 'customers',
+                    required: false,
+                    include: [
+                        {
+                            model: Order,
+                            as: 'orders',
+                            where: Object.keys(orderWhere).length > 0 ? orderWhere : undefined,
+                            required: false, // Include customers even if no orders unless we strictly want only routes/custs with orders? 
+                            // If we filter orders, we might want to see routes but with empty orders list if none match.
+                            // However, 'where' inside include usually forces inner join if required is true. false -> LEFT JOIN.
+                            include: [
+                                // We need delivery status too? User JSON just says "status".
+                                // But let's include items count or something if needed?
+                                // User JSON: id, customer (name), amount, status, date.
+                            ]
+                        }
+                    ]
+                }
+            ],
+            distinct: true,
+            order: [['id', 'ASC']]
+        });
+    }
+
     async findById(id) {
         const { Customer } = require('../customers/customers.model');
 

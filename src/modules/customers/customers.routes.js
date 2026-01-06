@@ -55,7 +55,21 @@ router.routesMeta = [
                     created_at: '2025-12-02T10:00:00.000Z'
                 }
             ]
-        }
+        },
+        examples: [
+            {
+                title: 'List Customers',
+                description: 'Get paginated list of customers with optional filtering',
+                url: '/api/customers?page=1&limit=10&customer_type=business',
+                method: 'GET',
+                response: {
+                    success: true,
+                    message: 'Customers retrieved successfully',
+                    pagination: { total: 5, page: '1', limit: '10', totalPage: 1 },
+                    data: [{ id: 1, name: 'John Doe', customer_type: 'business', is_active: true }]
+                }
+            }
+        ]
     },
     {
         path: '/',
@@ -97,7 +111,35 @@ router.routesMeta = [
                 email: 'jane.smith@example.com',
                 created_at: '2025-12-02T10:00:00.000Z'
             }
-        }
+        },
+        examples: [
+            {
+                title: 'Create Customer',
+                description: 'Add a new customer to the database',
+                url: '/api/customers',
+                method: 'POST',
+                request: {
+                    name: 'Jane Smith',
+                    email: 'jane.smith@example.com',
+                    phone: '+1987654321',
+                    company: 'Tech Solutions Inc',
+                    address: '456 Business Ave',
+                    city: 'San Francisco',
+                    state: 'CA',
+                    country: 'USA',
+                    postal_code: '94102',
+                    tax_id: 'TAX789012',
+                    credit_limit: 15000.00,
+                    customer_type: 'business',
+                    is_active: true
+                },
+                response: {
+                    status: true,
+                    message: 'Customer created successfully',
+                    data: { id: 2, name: 'Jane Smith', email: 'jane.smith@example.com' }
+                }
+            }
+        ]
     },
     {
         path: '/maps',
@@ -145,7 +187,22 @@ router.routesMeta = [
                     }
                 ]
             }
-        }
+        },
+        examples: [
+            {
+                title: 'Get Customer Locations',
+                description: 'Get list of customers with geolocation data',
+                url: '/api/customers/maps',
+                method: 'GET',
+                response: {
+                    status: true,
+                    data: {
+                        total: 25,
+                        locations: [{ id: 1, name: 'John Doe', coordinates: { lat: 40.7128, lng: -74.0060 } }]
+                    }
+                }
+            }
+        ]
     },
     {
         path: '/stats',
@@ -170,7 +227,20 @@ router.routesMeta = [
                     color: "bg-green-600"
                 }
             ]
-        }
+        },
+        examples: [
+            {
+                title: 'Get Customer Stats',
+                description: 'Get statistical overview of customer data',
+                url: '/api/customers/stats',
+                method: 'GET',
+                response: {
+                    status: true,
+                    message: 'Customer stats retrieved successfully',
+                    data: [{ label: "Active Customers", value: 123 }]
+                }
+            }
+        ]
     },
     {
         path: '/:id',
@@ -209,7 +279,19 @@ router.routesMeta = [
                 created_at: '2025-12-02T10:00:00.000Z',
                 updated_at: '2025-12-02T10:00:00.000Z'
             }
-        }
+        },
+        examples: [
+            {
+                title: 'Get Customer',
+                description: 'Get customer details by ID',
+                url: '/api/customers/1',
+                method: 'GET',
+                response: {
+                    status: true,
+                    data: { id: 1, name: 'John Doe', email: 'john.doe@example.com' }
+                }
+            }
+        ]
     },
     {
         path: '/:id',
@@ -238,7 +320,21 @@ router.routesMeta = [
                 name: 'John Doe Jr.',
                 updated_at: '2025-12-02T10:00:00.000Z'
             }
-        }
+        },
+        examples: [
+            {
+                title: 'Update Customer',
+                description: 'Update existing customer details',
+                url: '/api/customers/1',
+                method: 'PUT',
+                request: { name: 'John Doe Jr.', credit_limit: 12000.00 },
+                response: {
+                    status: true,
+                    message: 'Customer updated successfully',
+                    data: { id: 1, name: 'John Doe Jr.' }
+                }
+            }
+        ]
     },
     {
         path: '/:id',
@@ -254,7 +350,19 @@ router.routesMeta = [
         sampleResponse: {
             status: true,
             message: 'Customer deleted successfully'
-        }
+        },
+        examples: [
+            {
+                title: 'Delete Customer',
+                description: 'Remove a customer',
+                url: '/api/customers/1',
+                method: 'DELETE',
+                response: {
+                    status: true,
+                    message: 'Customer deleted successfully'
+                }
+            }
+        ]
     }
 ];
 

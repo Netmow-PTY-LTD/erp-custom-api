@@ -44,7 +44,24 @@ router.routesMeta = [
                 total_payroll: 15000.00,
                 net_profit: 15000.00
             }
-        }
+        },
+        examples: [
+            {
+                title: 'Get Financial Overview',
+                description: 'Retrieve financial overview including total income, expenses, payroll, and net profit.',
+                url: '/api/accounting/overview',
+                method: 'GET',
+                response: {
+                    status: true,
+                    data: {
+                        total_income: 50000.00,
+                        total_expense: 20000.00,
+                        total_payroll: 15000.00,
+                        net_profit: 15000.00
+                    }
+                }
+            }
+        ]
     },
 
     // --- Incomes ---
@@ -82,7 +99,21 @@ router.routesMeta = [
                     income_date: '2025-01-15'
                 }
             ]
-        }
+        },
+        examples: [
+            {
+                title: 'List Incomes',
+                description: 'Get paginated list of income records',
+                url: '/api/accounting/incomes?page=1&limit=10',
+                method: 'GET',
+                response: {
+                    success: true,
+                    message: 'Income records retrieved successfully',
+                    pagination: { total: 50, page: '1', limit: '10', totalPage: 5 },
+                    data: [{ id: 1, title: 'Service Revenue', amount: 1000.00, income_date: '2025-01-15' }]
+                }
+            }
+        ]
     },
     {
         path: '/incomes',
@@ -108,7 +139,26 @@ router.routesMeta = [
         sampleResponse: {
             status: true,
             message: 'Income record created successfully'
-        }
+        },
+        examples: [
+            {
+                title: 'Create Income',
+                description: 'Add a new income record',
+                url: '/api/accounting/incomes',
+                method: 'POST',
+                request: {
+                    title: 'Consulting Fee',
+                    amount: 500.00,
+                    income_date: '2025-01-20',
+                    credit_head_id: 1,
+                    description: 'Consulting services for Client A'
+                },
+                response: {
+                    status: true,
+                    message: 'Income record created successfully'
+                }
+            }
+        ]
     },
 
     // --- Expenses ---
@@ -146,7 +196,21 @@ router.routesMeta = [
                     expense_date: '2025-01-01'
                 }
             ]
-        }
+        },
+        examples: [
+            {
+                title: 'List Expenses',
+                description: 'Get paginated list of expense records',
+                url: '/api/accounting/expenses?page=1&limit=10',
+                method: 'GET',
+                response: {
+                    success: true,
+                    message: 'Expense records retrieved successfully',
+                    pagination: { total: 50, page: '1', limit: '10', totalPage: 5 },
+                    data: [{ id: 1, title: 'Office Rent', amount: 2000.00, expense_date: '2025-01-01' }]
+                }
+            }
+        ]
     },
     {
         path: '/expenses',
@@ -172,7 +236,26 @@ router.routesMeta = [
         sampleResponse: {
             status: true,
             message: 'Expense record created successfully'
-        }
+        },
+        examples: [
+            {
+                title: 'Create Expense',
+                description: 'Add a new expense record',
+                url: '/api/accounting/expenses',
+                method: 'POST',
+                request: {
+                    title: 'Internet Bill',
+                    amount: 100.00,
+                    expense_date: '2025-01-05',
+                    debit_head_id: 1,
+                    description: 'Monthly internet subscription'
+                },
+                response: {
+                    status: true,
+                    message: 'Expense record created successfully'
+                }
+            }
+        ]
     },
 
     // --- Payroll ---
@@ -213,7 +296,21 @@ router.routesMeta = [
                     status: 'paid'
                 }
             ]
-        }
+        },
+        examples: [
+            {
+                title: 'List Payroll Records',
+                description: 'Get paginated list of accounting payroll records',
+                url: '/api/accounting/payroll?page=1&limit=10',
+                method: 'GET',
+                response: {
+                    success: true,
+                    message: 'Payroll records retrieved successfully',
+                    pagination: { total: 50, page: '1', limit: '10', totalPage: 5 },
+                    data: [{ id: 1, staff_id: 1, salary_month: '2025-01', net_salary: 4500.00, status: 'paid' }]
+                }
+            }
+        ]
     },
     {
         path: '/payroll',
@@ -239,7 +336,26 @@ router.routesMeta = [
         sampleResponse: {
             status: true,
             message: 'Payroll record created successfully'
-        }
+        },
+        examples: [
+            {
+                title: 'Create Payroll Record',
+                description: 'Record a staff payroll payment',
+                url: '/api/accounting/payroll',
+                method: 'POST',
+                request: {
+                    staff_id: 1,
+                    salary_month: '2025-01',
+                    basic_salary: 5000.00,
+                    deductions: 500.00,
+                    status: 'processed'
+                },
+                response: {
+                    status: true,
+                    message: 'Payroll record created successfully'
+                }
+            }
+        ]
     },
 
     // --- Credit Heads ---
@@ -267,7 +383,21 @@ router.routesMeta = [
             message: 'Credit heads retrieved successfully',
             pagination: { total: 10, page: '1', limit: '10', totalPage: 1 },
             data: [{ id: 1, name: 'Sales Revenue', code: 'CR001', is_active: true }]
-        }
+        },
+        examples: [
+            {
+                title: 'List Credit Heads',
+                description: 'Get all credit heads',
+                url: '/api/accounting/credit-head',
+                method: 'GET',
+                response: {
+                    success: true,
+                    message: 'Credit heads retrieved successfully',
+                    pagination: { total: 10, page: '1', limit: '10', totalPage: 1 },
+                    data: [{ id: 1, name: 'Sales Revenue', code: 'CR001', is_active: true }]
+                }
+            }
+        ]
     },
     {
         path: '/credit-head/:id',
@@ -285,7 +415,19 @@ router.routesMeta = [
         sampleResponse: {
             status: true,
             data: { id: 1, name: 'Sales Revenue', code: 'CR001', description: 'Revenue from sales', is_active: true }
-        }
+        },
+        examples: [
+            {
+                title: 'Get Credit Head',
+                description: 'Get credit head details by ID',
+                url: '/api/accounting/credit-head/1',
+                method: 'GET',
+                response: {
+                    status: true,
+                    data: { id: 1, name: 'Sales Revenue', code: 'CR001', is_active: true }
+                }
+            }
+        ]
     },
     {
         path: '/credit-head',
@@ -309,7 +451,20 @@ router.routesMeta = [
         sampleResponse: {
             status: true,
             message: 'Credit head created successfully'
-        }
+        },
+        examples: [
+            {
+                title: 'Create Credit Head',
+                description: 'Add a new credit head',
+                url: '/api/accounting/credit-head',
+                method: 'POST',
+                request: { name: 'Other Income', code: 'CR005', description: 'Misc income', is_active: true },
+                response: {
+                    status: true,
+                    message: 'Credit head created successfully'
+                }
+            }
+        ]
     },
     {
         path: '/credit-head/:id',
@@ -330,7 +485,20 @@ router.routesMeta = [
         sampleResponse: {
             status: true,
             message: 'Credit head updated successfully'
-        }
+        },
+        examples: [
+            {
+                title: 'Update Credit Head',
+                description: 'Update existing credit head',
+                url: '/api/accounting/credit-head/1',
+                method: 'PUT',
+                request: { name: 'Updated Sales Revenue', is_active: true },
+                response: {
+                    status: true,
+                    message: 'Credit head updated successfully'
+                }
+            }
+        ]
     },
     {
         path: '/credit-head/:id',
@@ -346,7 +514,19 @@ router.routesMeta = [
         sampleResponse: {
             status: true,
             message: 'Credit head deleted successfully'
-        }
+        },
+        examples: [
+            {
+                title: 'Delete Credit Head',
+                description: 'Remove a credit head',
+                url: '/api/accounting/credit-head/5',
+                method: 'DELETE',
+                response: {
+                    status: true,
+                    message: 'Credit head deleted successfully'
+                }
+            }
+        ]
     },
 
     // --- Debit Heads ---
@@ -374,7 +554,21 @@ router.routesMeta = [
             message: 'Debit heads retrieved successfully',
             pagination: { total: 10, page: '1', limit: '10', totalPage: 1 },
             data: [{ id: 1, name: 'Office Expenses', code: 'DB001', is_active: true }]
-        }
+        },
+        examples: [
+            {
+                title: 'List Debit Heads',
+                description: 'Get all debit heads',
+                url: '/api/accounting/debit-head',
+                method: 'GET',
+                response: {
+                    success: true,
+                    message: 'Debit heads retrieved successfully',
+                    pagination: { total: 10, page: '1', limit: '10', totalPage: 1 },
+                    data: [{ id: 1, name: 'Office Expenses', code: 'DB001', is_active: true }]
+                }
+            }
+        ]
     },
     {
         path: '/debit-head/:id',
@@ -392,7 +586,19 @@ router.routesMeta = [
         sampleResponse: {
             status: true,
             data: { id: 1, name: 'Office Expenses', code: 'DB001', description: 'General office expenses', is_active: true }
-        }
+        },
+        examples: [
+            {
+                title: 'Get Debit Head',
+                description: 'Get debit head details by ID',
+                url: '/api/accounting/debit-head/1',
+                method: 'GET',
+                response: {
+                    status: true,
+                    data: { id: 1, name: 'Office Expenses', code: 'DB001', is_active: true }
+                }
+            }
+        ]
     },
     {
         path: '/debit-head',
@@ -416,7 +622,20 @@ router.routesMeta = [
         sampleResponse: {
             status: true,
             message: 'Debit head created successfully'
-        }
+        },
+        examples: [
+            {
+                title: 'Create Debit Head',
+                description: 'Add a new debit head',
+                url: '/api/accounting/debit-head',
+                method: 'POST',
+                request: { name: 'Travel Expenses', code: 'DB005', description: 'Business travel', is_active: true },
+                response: {
+                    status: true,
+                    message: 'Debit head created successfully'
+                }
+            }
+        ]
     },
     {
         path: '/debit-head/:id',
@@ -437,7 +656,20 @@ router.routesMeta = [
         sampleResponse: {
             status: true,
             message: 'Debit head updated successfully'
-        }
+        },
+        examples: [
+            {
+                title: 'Update Debit Head',
+                description: 'Update existing debit head',
+                url: '/api/accounting/debit-head/1',
+                method: 'PUT',
+                request: { name: 'Updated Office Expenses', is_active: true },
+                response: {
+                    status: true,
+                    message: 'Debit head updated successfully'
+                }
+            }
+        ]
     },
     {
         path: '/debit-head/:id',
@@ -453,7 +685,19 @@ router.routesMeta = [
         sampleResponse: {
             status: true,
             message: 'Debit head deleted successfully'
-        }
+        },
+        examples: [
+            {
+                title: 'Delete Debit Head',
+                description: 'Remove a debit head',
+                url: '/api/accounting/debit-head/5',
+                method: 'DELETE',
+                response: {
+                    status: true,
+                    message: 'Debit head deleted successfully'
+                }
+            }
+        ]
     },
 
     // --- Charts ---
@@ -487,7 +731,23 @@ router.routesMeta = [
                     expense: 1500
                 }
             ]
-        }
+        },
+        examples: [
+            {
+                title: 'Get Financial Charts',
+                description: 'Retrieve daily income and expense data for charts',
+                url: '/api/accounting/charts',
+                method: 'GET',
+                response: {
+                    status: true,
+                    message: 'Accounting chart data retrieved successfully',
+                    data: [
+                        { date: '2025-12-01', income: 4600, expense: 1700 },
+                        { date: '2025-12-02', income: 3200, expense: 1500 }
+                    ]
+                }
+            }
+        ]
     }
 ];
 

@@ -85,7 +85,21 @@ router.routesMeta = [
                     ]
                 }
             ]
-        }
+        },
+        examples: [
+            {
+                title: 'List Products',
+                description: 'Retrieve a paginated list of products with optional filters',
+                url: '/api/products?page=1&limit=10&category_id=1',
+                method: 'GET',
+                response: {
+                    success: true,
+                    message: 'Products retrieved successfully',
+                    pagination: { total: 50, page: '1', limit: '10', totalPage: 5 },
+                    data: [{ id: 1, name: 'Wireless Mouse', sku: 'MOU-001', price: 29.99, stock_quantity: 100 }]
+                }
+            }
+        ]
     },
     {
         path: '/',
@@ -141,7 +155,33 @@ router.routesMeta = [
                 price: 29.99,
                 created_at: '2025-12-02T10:00:00.000Z'
             }
-        }
+        },
+        examples: [
+            {
+                title: 'Create Product',
+                description: 'Add a new product to the catalog',
+                url: '/api/products',
+                method: 'POST',
+                request: {
+                    name: 'Gaming Keyboard',
+                    sku: 'KEY-002',
+                    description: 'Mechanical RGB keyboard',
+                    category_id: 1,
+                    unit_id: 1,
+                    price: 89.99,
+                    cost: 50.00,
+                    stock_quantity: 50,
+                    initial_stock: 50,
+                    min_stock_level: 10,
+                    image_url: 'http://example.com/keyboard.jpg'
+                },
+                response: {
+                    status: true,
+                    message: 'Product created successfully',
+                    data: { id: 2, name: 'Gaming Keyboard', sku: 'KEY-002', price: 89.99 }
+                }
+            }
+        ]
     },
     {
         path: '/stats',
@@ -166,7 +206,20 @@ router.routesMeta = [
                     color: "bg-blue-600"
                 }
             ]
-        }
+        },
+        examples: [
+            {
+                title: 'Get Product Stats',
+                description: 'Retrieve statistical overview of products',
+                url: '/api/products/stats',
+                method: 'GET',
+                response: {
+                    status: true,
+                    message: 'Product stats retrieved successfully',
+                    data: [{ label: "Total Products", value: 150, color: "bg-blue-600" }]
+                }
+            }
+        ]
     },
     {
         path: '/stock',
@@ -199,7 +252,23 @@ router.routesMeta = [
                     }
                 ]
             }
-        }
+        },
+        examples: [
+            {
+                title: 'Get Stock Details',
+                description: 'Get comprehensive stock details including low stock alerts',
+                url: '/api/products/stock',
+                method: 'GET',
+                response: {
+                    status: true,
+                    data: {
+                        total_products: 150,
+                        low_stock_count: 5,
+                        low_stock_products: [{ id: 10, name: "USB Cable", stock_quantity: 5, min_stock_level: 20 }]
+                    }
+                }
+            }
+        ]
     },
     {
         path: '/categories',
@@ -245,7 +314,20 @@ router.routesMeta = [
                     is_active: true
                 }
             ]
-        }
+        },
+        examples: [
+            {
+                title: 'List Categories',
+                description: 'Get all product categories',
+                url: '/api/products/categories',
+                method: 'GET',
+                response: {
+                    success: true,
+                    message: 'Categories retrieved successfully',
+                    data: [{ id: 1, name: 'Electronics', parent_id: null }]
+                }
+            }
+        ]
     },
     {
         path: '/units',
@@ -293,7 +375,20 @@ router.routesMeta = [
                     is_active: true
                 }
             ]
-        }
+        },
+        examples: [
+            {
+                title: 'List Units',
+                description: 'Get all measurement units',
+                url: '/api/products/units',
+                method: 'GET',
+                response: {
+                    success: true,
+                    message: 'Units retrieved successfully',
+                    data: [{ id: 1, name: 'Piece', symbol: 'pcs' }]
+                }
+            }
+        ]
     },
     {
         path: '/:id',
@@ -350,7 +445,20 @@ router.routesMeta = [
                     symbol: 'pcs'
                 }
             }
-        }
+        },
+        examples: [
+            {
+                title: 'Get Product',
+                description: 'Get detailed information for a single product',
+                url: '/api/products/1',
+                method: 'GET',
+                response: {
+                    status: true,
+                    message: 'Product retrieved successfully',
+                    data: { id: 1, name: 'Wireless Mouse', sku: 'MOU-001' }
+                }
+            }
+        ]
     },
     {
         path: '/:id',
@@ -379,7 +487,21 @@ router.routesMeta = [
                 price: 34.99,
                 updated_at: '2025-12-02T10:00:00.000Z'
             }
-        }
+        },
+        examples: [
+            {
+                title: 'Update Product',
+                description: 'Update product details',
+                url: '/api/products/2',
+                method: 'PUT',
+                request: { name: 'Wireless Mouse Pro', price: 34.99 },
+                response: {
+                    status: true,
+                    message: 'Product updated successfully',
+                    data: { id: 2, name: 'Wireless Mouse Pro', price: 34.99 }
+                }
+            }
+        ]
     },
     {
         path: '/:id/stock',
@@ -414,7 +536,21 @@ router.routesMeta = [
                 thumb_url: 'http://example.com/thumb.jpg',
                 updated_at: '2025-12-08T10:00:00.000Z'
             }
-        }
+        },
+        examples: [
+            {
+                title: 'Update Stock',
+                description: 'Add, subtract or set stock quantity',
+                url: '/api/products/1/stock',
+                method: 'PUT',
+                request: { operation: 'add', quantity: 50, notes: 'New shipment' },
+                response: {
+                    status: true,
+                    message: 'Stock updated successfully',
+                    data: { id: 1, stock_quantity: 150 }
+                }
+            }
+        ]
     },
     {
         path: '/:id/stock/movements',
@@ -474,7 +610,20 @@ router.routesMeta = [
                     created_at: '2025-12-08T09:00:00.000Z'
                 }
             ]
-        }
+        },
+        examples: [
+            {
+                title: 'Get Stock Movements',
+                description: 'Retrieve stock history for a product',
+                url: '/api/products/1/stock/movements',
+                method: 'GET',
+                response: {
+                    success: true,
+                    message: 'Stock movements retrieved successfully',
+                    data: [{ id: 1, movement_type: 'sale', quantity: -2 }]
+                }
+            }
+        ]
     },
     {
         path: '/:id',
@@ -490,7 +639,19 @@ router.routesMeta = [
         sampleResponse: {
             status: true,
             message: 'Product deleted successfully'
-        }
+        },
+        examples: [
+            {
+                title: 'Delete Product',
+                description: 'Delete a product from inventory',
+                url: '/api/products/5',
+                method: 'DELETE',
+                response: {
+                    status: true,
+                    message: 'Product deleted successfully'
+                }
+            }
+        ]
     },
 
     // Product Image Gallery routes
@@ -528,7 +689,21 @@ router.routesMeta = [
                 name: 'Furniture',
                 created_at: '2025-12-02T10:00:00.000Z'
             }
-        }
+        },
+        examples: [
+            {
+                title: 'Create Category',
+                description: 'Add a new product category',
+                url: '/api/products/categories',
+                method: 'POST',
+                request: { name: 'Furniture', description: 'Office furniture' },
+                response: {
+                    status: true,
+                    message: 'Category created successfully',
+                    data: { id: 3, name: 'Furniture' }
+                }
+            }
+        ]
     },
     {
         path: '/categories/:id',
@@ -553,7 +728,19 @@ router.routesMeta = [
                 parent_id: null,
                 is_active: true
             }
-        }
+        },
+        examples: [
+            {
+                title: 'Get Category',
+                description: 'Get category details by ID',
+                url: '/api/products/categories/1',
+                method: 'GET',
+                response: {
+                    status: true,
+                    data: { id: 1, name: 'Electronics' }
+                }
+            }
+        ]
     },
     {
         path: '/categories/:id',
@@ -581,7 +768,20 @@ router.routesMeta = [
                 name: 'Electronics & Gadgets',
                 updated_at: '2025-12-02T10:00:00.000Z'
             }
-        }
+        },
+        examples: [
+            {
+                title: 'Update Category',
+                description: 'Update existing category',
+                url: '/api/products/categories/1',
+                method: 'PUT',
+                request: { name: 'Electronics & Gadgets' },
+                response: {
+                    status: true,
+                    message: 'Category updated successfully'
+                }
+            }
+        ]
     },
     {
         path: '/categories/:id',
@@ -597,7 +797,19 @@ router.routesMeta = [
         sampleResponse: {
             status: true,
             message: 'Category deleted successfully'
-        }
+        },
+        examples: [
+            {
+                title: 'Delete Category',
+                description: 'Remove a category',
+                url: '/api/products/categories/3',
+                method: 'DELETE',
+                response: {
+                    status: true,
+                    message: 'Category deleted successfully'
+                }
+            }
+        ]
     },
     // Unit CRUD routes
     {
@@ -627,7 +839,21 @@ router.routesMeta = [
                 symbol: 'dz',
                 created_at: '2025-12-02T10:00:00.000Z'
             }
-        }
+        },
+        examples: [
+            {
+                title: 'Create Unit',
+                description: 'Add a new measurement unit',
+                url: '/api/products/units',
+                method: 'POST',
+                request: { name: 'Dozen', symbol: 'dz' },
+                response: {
+                    status: true,
+                    message: 'Unit created successfully',
+                    data: { id: 6, name: 'Dozen', symbol: 'dz' }
+                }
+            }
+        ]
     },
     {
         path: '/units/:id',
@@ -650,7 +876,19 @@ router.routesMeta = [
                 symbol: 'pcs',
                 is_active: true
             }
-        }
+        },
+        examples: [
+            {
+                title: 'Get Unit',
+                description: 'Get unit details by ID',
+                url: '/api/products/units/1',
+                method: 'GET',
+                response: {
+                    status: true,
+                    data: { id: 1, name: 'Piece', symbol: 'pcs' }
+                }
+            }
+        ]
     },
     {
         path: '/units/:id',
@@ -678,7 +916,21 @@ router.routesMeta = [
                 name: 'Pieces',
                 updated_at: '2025-12-02T10:00:00.000Z'
             }
-        }
+        },
+        examples: [
+            {
+                title: 'Update Unit',
+                description: 'Update existing unit',
+                url: '/api/products/units/1',
+                method: 'PUT',
+                request: { name: 'Pieces' },
+                response: {
+                    status: true,
+                    message: 'Unit updated successfully',
+                    data: { id: 1, name: 'Pieces' }
+                }
+            }
+        ]
     },
     {
         path: '/units/:id',
@@ -694,7 +946,19 @@ router.routesMeta = [
         sampleResponse: {
             status: true,
             message: 'Unit deleted successfully'
-        }
+        },
+        examples: [
+            {
+                title: 'Delete Unit',
+                description: 'Remove a unit',
+                url: '/api/products/units/6',
+                method: 'DELETE',
+                response: {
+                    status: true,
+                    message: 'Unit deleted successfully'
+                }
+            }
+        ]
     }
 ];
 

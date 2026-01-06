@@ -14,7 +14,7 @@ router.routesMeta = [
     path: '/add',
     method: 'POST',
     middlewares: [verifyToken, validate(createSchema)],
-    handler: handlerWithFields(controller.create, createSchema),
+    handler: handlerWithFields((req, res) => controller.createUser(req, res), createSchema),
     description: 'Create a new user account',
     database: {
       tables: ['users', 'roles'],
@@ -65,7 +65,7 @@ router.routesMeta = [
     path: '/update/:id',
     method: 'PUT',
     middlewares: [verifyToken, validate(updateSchema)],
-    handler: handlerWithFields(controller.update, updateSchema),
+    handler: handlerWithFields((req, res) => controller.updateUser(req, res), updateSchema),
     description: 'Update an existing user by ID',
     database: {
       tables: ['users', 'roles'],
@@ -110,7 +110,7 @@ router.routesMeta = [
     path: '/',
     method: 'GET',
     middlewares: [verifyToken],
-    handler: controller.getAllUsers,
+    handler: (req, res) => controller.getAllUsers(req, res),
     description: 'Get all users with pagination',
     database: {
       tables: ['users', 'roles'],
@@ -168,7 +168,7 @@ router.routesMeta = [
     path: '/get/:id',
     method: 'GET',
     middlewares: [verifyToken],
-    handler: controller.get,
+    handler: (req, res) => controller.getUserById(req, res),
     description: 'Get a specific user by ID with role information',
     database: {
       tables: ['users', 'roles'],
@@ -213,7 +213,7 @@ router.routesMeta = [
     path: '/delete/:id',
     method: 'DELETE',
     middlewares: [verifyToken],
-    handler: controller.remove,
+    handler: (req, res) => controller.deleteUser(req, res),
     description: 'Delete a user by ID (soft delete)',
     database: {
       tables: ['users'],
@@ -241,11 +241,9 @@ router.routesMeta = [
   },
 ];
 
-// Apply routes
-router.post('/add', verifyToken, validate(createSchema), handlerWithFields(controller.createUser, createSchema));
-router.put('/update/:id', verifyToken, validate(updateSchema), handlerWithFields(controller.updateUser, updateSchema));
-router.delete('/delete/:id', verifyToken, controller.deleteUser);
-router.get('/get/:id', verifyToken, controller.getUserById);
-router.get('/', verifyToken, controller.getAllUsers);
+// Register routes from metadata
+router.routesMeta.forEach(r => {
+  router[r.method.toLowerCase()](r.path, ...r.middlewares, r.handler);
+});
 
 module.exports = router;

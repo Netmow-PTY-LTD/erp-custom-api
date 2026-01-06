@@ -76,7 +76,8 @@ class SalesController {
             const filters = {
                 sales_route_id: req.query.sales_route_id || req.params.routeId,
                 status: req.query.status,
-                search: req.query.search
+                search: req.query.search,
+                date: req.query.date
             };
 
             const result = await SalesService.getOrdersBySalesRoute(filters, page, limit);

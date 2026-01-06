@@ -56,7 +56,21 @@ router.routesMeta = [
                     status: 'present'
                 }
             ]
-        }
+        },
+        examples: [
+            {
+                title: 'List Attendance',
+                description: 'Get list of attendance records with optional filtering',
+                url: '/api/attendance?date=2025-12-02&status=present',
+                method: 'GET',
+                response: {
+                    success: true,
+                    message: 'Attendance records retrieved successfully',
+                    pagination: { total: 10, page: '1', limit: '10', totalPage: 1 },
+                    data: [{ id: 1, staff_id: 5, date: '2025-12-02', check_in: '09:00:00', check_out: '18:00:00', status: 'present' }]
+                }
+            }
+        ]
     },
 
     {
@@ -90,7 +104,26 @@ router.routesMeta = [
                 total_hours: 3.00,
                 status: 'present'
             }
-        }
+        },
+        examples: [
+            {
+                title: 'Record Attendance',
+                description: 'Log check-in and check-out times for a staff member',
+                url: '/api/attendance/staff/5',
+                method: 'POST',
+                request: {
+                    date: '2025-12-02',
+                    start_at: '09:00:00',
+                    end_at: '18:00:00',
+                    total_hour: 9
+                },
+                response: {
+                    status: true,
+                    message: 'Attendance recorded successfully',
+                    data: { id: 10, staff_id: 5, date: '2025-12-02', check_in: '09:00:00', check_out: '18:00:00', status: 'present' }
+                }
+            }
+        ]
     },
 
     {
@@ -120,7 +153,21 @@ router.routesMeta = [
                 status: 'on_leave',
                 notes: 'Sick leave'
             }
-        }
+        },
+        examples: [
+            {
+                title: 'Record Full Day Leave',
+                description: 'Mark a staff member as on leave for a specific date',
+                url: '/api/attendance/staff/5/leave/full-day',
+                method: 'POST',
+                request: { date: '2025-12-05', reason: 'Annual Leave' },
+                response: {
+                    status: true,
+                    message: 'Full day leave recorded successfully',
+                    data: { id: 11, staff_id: 5, date: '2025-12-05', status: 'on_leave', notes: 'Annual Leave' }
+                }
+            }
+        ]
     },
     {
         path: '/staff/:id/leave/short',
@@ -153,7 +200,26 @@ router.routesMeta = [
                 status: 'half_day',
                 notes: 'Doctor appointment'
             }
-        }
+        },
+        examples: [
+            {
+                title: 'Record Short Leave',
+                description: 'Log a short leave duration for a staff member',
+                url: '/api/attendance/staff/5/leave/short',
+                method: 'POST',
+                request: {
+                    date: '2025-12-02',
+                    start_time: '14:00:00',
+                    end_time: '16:00:00',
+                    reason: 'Personal errand'
+                },
+                response: {
+                    status: true,
+                    message: 'Short leave recorded successfully',
+                    data: { id: 12, staff_id: 5, date: '2025-12-02', check_in: '14:00:00', check_out: '16:00:00', status: 'half_day', notes: 'Personal errand' }
+                }
+            }
+        ]
     },
 
     {
@@ -191,7 +257,21 @@ router.routesMeta = [
                     status: 'present'
                 }
             ]
-        }
+        },
+        examples: [
+            {
+                title: 'Get Staff Attendance',
+                description: 'Retrieve attendance history for a specific staff member',
+                url: '/api/attendance/staff/5',
+                method: 'GET',
+                response: {
+                    status: true,
+                    message: 'Attendance records retrieved successfully',
+                    pagination: { total: 20, page: '1', limit: '10', totalPage: 2 },
+                    data: [{ id: 1, staff_id: 5, date: '2025-12-01', status: 'present' }]
+                }
+            }
+        ]
     },
     {
         path: '/:id',
@@ -213,7 +293,20 @@ router.routesMeta = [
         sampleResponse: {
             status: true,
             message: 'Attendance updated successfully'
-        }
+        },
+        examples: [
+            {
+                title: 'Update Attendance',
+                description: 'Modify an existing attendance record',
+                url: '/api/attendance/10',
+                method: 'PUT',
+                request: { status: 'late', notes: 'Arrived late due to traffic' },
+                response: {
+                    status: true,
+                    message: 'Attendance updated successfully'
+                }
+            }
+        ]
     },
     {
         path: '/:id',
@@ -228,7 +321,19 @@ router.routesMeta = [
         sampleResponse: {
             status: true,
             message: 'Attendance deleted successfully'
-        }
+        },
+        examples: [
+            {
+                title: 'Delete Attendance',
+                description: 'Remove an attendance record',
+                url: '/api/attendance/12',
+                method: 'DELETE',
+                response: {
+                    status: true,
+                    message: 'Attendance deleted successfully'
+                }
+            }
+        ]
     }
 ];
 

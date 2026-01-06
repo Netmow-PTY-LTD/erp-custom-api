@@ -62,7 +62,20 @@ router.routesMeta = [
                     }
                 }
             ]
-        }
+        },
+        examples: [
+            {
+                title: 'List Payroll',
+                description: 'Get paginated list of payroll records',
+                url: '/api/payroll?page=1&limit=10&status=pending',
+                method: 'GET',
+                response: {
+                    success: true,
+                    message: 'Payroll records retrieved successfully',
+                    data: [{ id: 1, staff_id: 5, month: 'December', year: 2025, net_salary: '5500.00' }]
+                }
+            }
+        ]
     },
     {
         path: '/',
@@ -100,7 +113,29 @@ router.routesMeta = [
                 id: 1,
                 net_salary: 5500.00
             }
-        }
+        },
+        examples: [
+            {
+                title: 'Create Payroll',
+                description: 'Process a new payroll record',
+                url: '/api/payroll',
+                method: 'POST',
+                request: {
+                    staff_id: 5,
+                    month: 'December',
+                    year: 2025,
+                    basic_salary: 5000.00,
+                    allowances: { transport: 200 },
+                    deductions: { tax: 100 },
+                    status: 'pending'
+                },
+                response: {
+                    status: true,
+                    message: 'Payroll record created successfully',
+                    data: { id: 1, net_salary: 5100.00 }
+                }
+            }
+        ]
     },
     {
         path: '/:id',
@@ -124,7 +159,19 @@ router.routesMeta = [
                 allowances: {},
                 deductions: {}
             }
-        }
+        },
+        examples: [
+            {
+                title: 'Get Payroll',
+                description: 'Get payroll details by ID',
+                url: '/api/payroll/1',
+                method: 'GET',
+                response: {
+                    status: true,
+                    data: { id: 1, staff_id: 5, net_salary: 5500.00 }
+                }
+            }
+        ]
     },
     {
         path: '/:id',
@@ -148,7 +195,20 @@ router.routesMeta = [
         sampleResponse: {
             status: true,
             message: 'Payroll record updated successfully'
-        }
+        },
+        examples: [
+            {
+                title: 'Update Payroll',
+                description: 'Update status or payment details',
+                url: '/api/payroll/1',
+                method: 'PUT',
+                request: { status: 'paid', payment_date: '2025-12-31' },
+                response: {
+                    status: true,
+                    message: 'Payroll record updated successfully'
+                }
+            }
+        ]
     },
     {
         path: '/:id',
@@ -163,7 +223,19 @@ router.routesMeta = [
         sampleResponse: {
             status: true,
             message: 'Payroll record deleted successfully'
-        }
+        },
+        examples: [
+            {
+                title: 'Delete Payroll',
+                description: 'Remove a payroll record',
+                url: '/api/payroll/1',
+                method: 'DELETE',
+                response: {
+                    status: true,
+                    message: 'Payroll record deleted successfully'
+                }
+            }
+        ]
     }
 ];
 

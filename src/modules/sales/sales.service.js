@@ -30,21 +30,38 @@ class SalesService {
 
     async getOrdersBySalesRoute(filters = {}, page = 1, limit = 10) {
         const offset = (page - 1) * limit;
-        const result = await OrderRepository.findAllBySalesRoute(filters, limit, offset);
+        const result = await SalesRouteRepository.findAllWithOrders(filters, limit, offset);
 
-        // Transform deliveries array to single delivery object
-        const transformedRows = result.rows.map(order => {
-            const orderData = order.toJSON();
-            // Convert deliveries array to single delivery object (latest one)
-            orderData.delivery = orderData.deliveries && orderData.deliveries.length > 0
-                ? orderData.deliveries[0]
-                : null;
+        // Transform: SalesRoute -> Customers -> Orders  ===>  SalesRoute -> Orders
+        const transformedRows = result.rows.map(route => {
+            const routeData = route.toJSON();
 
-            // Add delivery_status field
-            orderData.delivery_status = orderData.delivery ? orderData.delivery.status : null;
+            const allOrders = [];
+            if (routeData.customers) {
+                routeData.customers.forEach(customer => {
+                    if (customer.orders) {
+                        customer.orders.forEach(order => {
+                            allOrders.push({
+                                id: order.id,
+                                customer: customer.name || customer.company,
+                                amount: parseFloat(order.total_amount),
+                                status: order.status, // e.g., 'pending', 'delivered'
+                                date: order.order_date ? order.order_date.split('T')[0] : null // Format date YYYY-MM-DD
+                            });
+                        });
+                    }
+                });
+            }
 
-            delete orderData.deliveries;
-            return orderData;
+            // Sort orders by date/id descending
+            allOrders.sort((a, b) => b.id - a.id);
+
+            return {
+                id: routeData.id,
+                name: routeData.route_name,
+                region: routeData.description || 'Dhaka', // Defaulting region based on description or placeholder as per sample
+                orders: allOrders
+            };
         });
 
         return {

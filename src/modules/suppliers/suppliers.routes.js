@@ -55,7 +55,21 @@ router.routesMeta = [
                     created_at: '2025-12-03T05:00:00.000Z'
                 }
             ]
-        }
+        },
+        examples: [
+            {
+                title: 'List Suppliers',
+                description: 'Retrieve a paginated list of suppliers.',
+                url: '/api/suppliers?page=1&limit=10&is_active=true',
+                method: 'GET',
+                response: {
+                    success: true,
+                    message: 'Suppliers retrieved successfully',
+                    pagination: { total: 5, page: '1', limit: '10', totalPage: 1 },
+                    data: [{ id: 1, name: 'Tech Supplies Inc', code: 'SUP-001' }]
+                }
+            }
+        ]
     },
     {
         path: '/',
@@ -91,7 +105,27 @@ router.routesMeta = [
                 email: 'bob@officesupplies.com',
                 created_at: '2025-12-02T10:00:00.000Z'
             }
-        }
+        },
+        examples: [
+            {
+                title: 'Create Supplier',
+                description: 'Add a new supplier to the system.',
+                url: '/api/suppliers',
+                method: 'POST',
+                request: {
+                    name: 'Office Supplies Co',
+                    code: 'SUP-002',
+                    contact_person: 'Bob Smith',
+                    email: 'bob@officesupplies.com',
+                    payment_terms: 'Net 30'
+                },
+                response: {
+                    status: true,
+                    message: 'Supplier created successfully',
+                    data: { id: 2, name: 'Office Supplies Co' }
+                }
+            }
+        ]
     },
     {
         path: '/:id',
@@ -123,7 +157,19 @@ router.routesMeta = [
                 created_at: '2025-12-02T10:00:00.000Z',
                 updated_at: '2025-12-02T10:00:00.000Z'
             }
-        }
+        },
+        examples: [
+            {
+                title: 'Get Supplier',
+                description: 'Retrieve detailed information about a specific supplier.',
+                url: '/api/suppliers/1',
+                method: 'GET',
+                response: {
+                    status: true,
+                    data: { id: 1, name: 'Global Electronics Ltd', contact_person: 'Alice Johnson' }
+                }
+            }
+        ]
     },
     {
         path: '/:id',
@@ -151,7 +197,21 @@ router.routesMeta = [
                 name: 'Global Electronics Inc',
                 updated_at: '2025-12-02T10:00:00.000Z'
             }
-        }
+        },
+        examples: [
+            {
+                title: 'Update Supplier',
+                description: 'Update the details of an existing supplier.',
+                url: '/api/suppliers/1',
+                method: 'PUT',
+                request: { name: 'Global Electronics Inc', contact_person: 'Alice Smith' },
+                response: {
+                    status: true,
+                    message: 'Supplier updated successfully',
+                    data: { id: 1, name: 'Global Electronics Inc' }
+                }
+            }
+        ]
     },
     {
         path: '/:id',
@@ -167,7 +227,19 @@ router.routesMeta = [
         sampleResponse: {
             status: true,
             message: 'Supplier deleted successfully'
-        }
+        },
+        examples: [
+            {
+                title: 'Delete Supplier',
+                description: 'Remove a supplier from the system.',
+                url: '/api/suppliers/1',
+                method: 'DELETE',
+                response: {
+                    status: true,
+                    message: 'Supplier deleted successfully'
+                }
+            }
+        ]
     }
 ];
 

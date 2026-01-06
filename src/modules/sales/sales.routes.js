@@ -255,252 +255,80 @@ router.routesMeta = [
         method: 'GET',
         middlewares: [],
         handler: (req, res) => salesController.getOrdersBySalesRoute(req, res),
-        description: 'Get all orders filtered by sales route with pagination. Returns orders with customer, sales route, items, and delivery information.',
+        description: 'Get sales orders grouped by route, supporting pagination and filters.',
         database: {
-            tables: ['orders', 'customers', 'sales_routes', 'order_items', 'products', 'deliveries'],
-            mainTable: 'orders',
-            fields: {
-                orders: ['id', 'order_number', 'customer_id', 'order_date', 'status', 'total_amount', 'tax_amount', 'discount_amount', 'shipping_address', 'billing_address', 'payment_status', 'notes', 'due_date', 'created_at'],
-                customers: ['id', 'name', 'email', 'phone', 'company', 'address', 'city', 'sales_route_id'],
-                sales_routes: ['id', 'route_name', 'description'],
-                order_items: ['id', 'order_id', 'product_id', 'quantity', 'unit_price', 'discount', 'line_total'],
-                products: ['id', 'name', 'sku', 'price', 'image_url'],
-                deliveries: ['id', 'delivery_number', 'delivery_date', 'status', 'notes'],
-                calculated: ['delivery_status']
-            },
+            tables: ['orders', 'customers', 'sales_routes'],
+            mainTable: 'sales_routes',
             relationships: [
-                'orders.customer_id -> customers.id (FK)',
-                'customers.sales_route_id -> sales_routes.id (FK)',
-                'order_items.order_id -> orders.id (FK)',
-                'order_items.product_id -> products.id (FK)',
-                'orders.id -> deliveries.order_id (HasMany - Latest delivery only)'
+                'sales_routes.id -> customers.sales_route_id',
+                'customers.id -> orders.customer_id'
             ]
         },
         queryParams: {
             page: 'Page number (default: 1)',
             limit: 'Items per page (default: 10)',
-            sales_route_id: 'Filter by sales route ID (Required)',
-            status: 'Filter by order status',
-            search: 'Search by order number'
+            sales_route_id: 'Filter by specific sales route ID (Optional)',
+            status: 'Filter orders by status',
+            date: 'Filter orders by date (YYYY-MM-DD)',
+            search: 'Search route name'
         },
         sampleResponse: {
             success: true,
             message: 'Route-wise orders retrieved successfully',
             pagination: {
-                total: 15,
+                total: 5,
                 page: '1',
                 limit: '10',
-                totalPage: 2
+                totalPage: 1
             },
             data: [
                 {
                     id: 1,
-                    order_number: 'ORD-1733130000000',
-                    customer_id: 1,
-                    total_amount: '150.00',
-                    status: 'pending',
-                    delivery_status: 'delivered',
-                    notes: 'Please deliver between 9 AM and 5 PM',
-                    due_date: '2025-12-15',
-                    created_at: '2025-12-03T05:00:00.000Z',
-                    customer: {
-                        id: 1,
-                        name: 'John Doe',
-                        email: 'john@example.com',
-                        phone: '+1234567890',
-                        company: 'ABC Corp',
-                        address: '123 Main St',
-                        city: 'New York',
-                        sales_route_id: 1,
-                        salesRoute: {
-                            id: 1,
-                            route_name: 'North Route',
-                            description: 'Northern area coverage'
-                        }
-                    },
-                    items: [
+                    name: 'Dhaka North Route',
+                    region: 'Dhaka',
+                    orders: [
                         {
-                            id: 1,
-                            order_id: 1,
-                            product_id: 1,
-                            quantity: 2,
-                            unit_price: 50.00,
-                            discount: 5.00,
-                            line_total: 95.00,
-                            product: {
-                                id: 1,
-                                name: 'Wireless Mouse',
-                                sku: 'MOU-001',
-                                price: 29.99,
-                                image_url: 'http://example.com/thumb.jpg'
-                            }
+                            id: 1001,
+                            customer: 'Customer 1',
+                            amount: 8500,
+                            status: 'Delivered',
+                            date: '2024-03-20'
                         }
-                    ],
-                    delivery: {
-                        id: 1,
-                        delivery_number: 'DEL-123456',
-                        delivery_date: '2025-12-09',
-                        status: 'delivered',
-                        notes: 'Left at reception'
-                    }
+                    ]
                 }
             ]
         },
         examples: [
             {
-                title: 'Get all orders for sales route 1',
-                description: 'Retrieve all orders from customers assigned to sales route 1',
-                url: '/api/sales/orders/by-route?sales_route_id=1',
+                title: 'Get orders grouped by route',
+                description: 'Retrieve all routes with their corresponding orders',
+                url: '/api/sales/orders/by-route',
                 method: 'GET',
                 response: {
                     success: true,
-                    message: 'Route-wise orders retrieved successfully',
-                    pagination: {
-                        total: 15,
-                        page: '1',
-                        limit: '10',
-                        totalPage: 2
-                    },
+                    pagination: { total: 4, page: '1', limit: '10', totalPage: 1 },
                     data: [
                         {
                             id: 1,
-                            order_number: 'ORD-1733130000000',
-                            customer_id: 1,
-                            total_amount: '150.00',
-                            status: 'pending',
-                            delivery_status: 'delivered',
-                            customer: {
-                                id: 1,
-                                name: 'John Doe',
-                                email: 'john@example.com',
-                                sales_route_id: 1,
-                                salesRoute: {
-                                    id: 1,
-                                    route_name: 'North Route',
-                                    description: 'Northern area coverage'
-                                }
-                            },
-                            items: [
-                                {
-                                    id: 1,
-                                    quantity: 2,
-                                    unit_price: 50.00,
-                                    product: {
-                                        id: 1,
-                                        name: 'Wireless Mouse',
-                                        sku: 'MOU-001'
-                                    }
-                                }
-                            ],
-                            delivery: {
-                                id: 1,
-                                delivery_number: 'DEL-123456',
-                                status: 'delivered'
-                            }
+                            name: 'Dhaka North Route',
+                            region: 'Dhaka',
+                            orders: [{ id: 1001, customer: 'Customer 1', amount: 8500, status: 'Delivered', date: '2024-03-20' }]
                         }
                     ]
                 }
             },
             {
-                title: 'Get pending orders for route 2 with pagination',
-                description: 'Get pending orders from route 2, page 1, 20 items per page',
-                url: '/api/sales/orders/by-route?sales_route_id=2&status=pending&page=1&limit=20',
+                title: 'Filter by route and order status',
+                description: 'Get specific route orders filtered by status',
+                url: '/api/sales/orders/by-route?sales_route_id=1&status=Pending',
                 method: 'GET',
                 response: {
                     success: true,
-                    message: 'Route-wise orders retrieved successfully',
-                    pagination: {
-                        total: 45,
-                        page: '1',
-                        limit: '20',
-                        totalPage: 3
-                    },
                     data: [
                         {
-                            id: 5,
-                            order_number: 'ORD-1733140000000',
-                            customer_id: 5,
-                            total_amount: '250.00',
-                            status: 'pending',
-                            delivery_status: null,
-                            customer: {
-                                id: 5,
-                                name: 'Jane Smith',
-                                email: 'jane@example.com',
-                                sales_route_id: 2,
-                                salesRoute: {
-                                    id: 2,
-                                    route_name: 'South Route',
-                                    description: 'Southern area coverage'
-                                }
-                            },
-                            items: [
-                                {
-                                    id: 8,
-                                    quantity: 5,
-                                    unit_price: 50.00,
-                                    product: {
-                                        id: 3,
-                                        name: 'Keyboard',
-                                        sku: 'KEY-001'
-                                    }
-                                }
-                            ],
-                            delivery: null
-                        }
-                    ]
-                }
-            },
-            {
-                title: 'Search orders in route 1',
-                description: 'Search for specific order by order number within route 1',
-                url: '/api/sales/orders/by-route?sales_route_id=1&search=ORD-123',
-                method: 'GET',
-                response: {
-                    success: true,
-                    message: 'Route-wise orders retrieved successfully',
-                    pagination: {
-                        total: 1,
-                        page: '1',
-                        limit: '10',
-                        totalPage: 1
-                    },
-                    data: [
-                        {
-                            id: 3,
-                            order_number: 'ORD-123456',
-                            customer_id: 2,
-                            total_amount: '180.00',
-                            status: 'confirmed',
-                            delivery_status: 'in_transit',
-                            customer: {
-                                id: 2,
-                                name: 'Bob Wilson',
-                                email: 'bob@example.com',
-                                sales_route_id: 1,
-                                salesRoute: {
-                                    id: 1,
-                                    route_name: 'North Route',
-                                    description: 'Northern area coverage'
-                                }
-                            },
-                            items: [
-                                {
-                                    id: 5,
-                                    quantity: 3,
-                                    unit_price: 60.00,
-                                    product: {
-                                        id: 2,
-                                        name: 'Monitor',
-                                        sku: 'MON-001'
-                                    }
-                                }
-                            ],
-                            delivery: {
-                                id: 3,
-                                delivery_number: 'DEL-789012',
-                                status: 'in_transit'
-                            }
+                            id: 1,
+                            name: 'Dhaka North Route',
+                            orders: [{ id: 1002, status: 'Pending' }]
                         }
                     ]
                 }

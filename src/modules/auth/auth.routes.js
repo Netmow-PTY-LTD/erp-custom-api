@@ -126,7 +126,29 @@ router.routesMeta = [
           }
         ]
       }
-    }
+    },
+    examples: [
+      {
+        title: 'User Login',
+        description: 'Authenticate a user with email and password to receive an access token.',
+        url: '/api/auth/login',
+        method: 'POST',
+        request: {
+          email: 'admin@example.com',
+          password: 'SecurePassword123!'
+        },
+        response: {
+          status: true,
+          message: 'Login successful',
+          data: {
+            user: { id: 1, name: 'Admin User', email: 'admin@example.com', role_id: 1 },
+            token: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...',
+            menus: [],
+            dashboards: []
+          }
+        }
+      }
+    ]
   },
   {
     path: '/register',
@@ -163,7 +185,32 @@ router.routesMeta = [
         expiresIn: 3600
       },
       code: 201
-    }
+    },
+    examples: [
+      {
+        title: 'User Registration',
+        description: 'Register a new user account.',
+        url: '/api/auth/register',
+        method: 'POST',
+        request: {
+          name: 'John Doe',
+          email: 'john.doe@example.com',
+          password: 'SecurePassword123!',
+          role_id: 2
+        },
+        response: {
+          status: true,
+          message: 'Registration successful',
+          data: {
+            user: { id: 25, name: 'John Doe', email: 'john.doe@example.com' },
+            token: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...',
+            refreshToken: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...',
+            expiresIn: 3600
+          },
+          code: 201
+        }
+      }
+    ]
   },
   {
     path: '/me',
@@ -239,7 +286,24 @@ router.routesMeta = [
           }
         ]
       }
-    }
+    },
+    examples: [
+      {
+        title: 'Get Current User',
+        description: 'Retrieve details of the currently authenticated user.',
+        url: '/api/auth/me',
+        method: 'GET',
+        response: {
+          status: true,
+          message: 'User retrieved successfully',
+          data: {
+            user: { id: 1, name: 'Admin User', email: 'admin@example.com' },
+            menus: [],
+            dashboards: []
+          }
+        }
+      }
+    ]
   },
   {
     path: '/refresh',
@@ -258,7 +322,27 @@ router.routesMeta = [
         refreshToken: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...',
         expiresIn: 3600
       }
-    }
+    },
+    examples: [
+      {
+        title: 'Refresh Token',
+        description: 'Obtain a new access token using a valid refresh token.',
+        url: '/api/auth/refresh',
+        method: 'POST',
+        request: {
+          refreshToken: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...'
+        },
+        response: {
+          status: true,
+          message: 'Token refreshed successfully',
+          data: {
+            token: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...',
+            refreshToken: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...',
+            expiresIn: 3600
+          }
+        }
+      }
+    ]
   },
   {
     path: '/logout',
@@ -270,7 +354,20 @@ router.routesMeta = [
       status: true,
       message: 'Logout successful',
       data: null
-    }
+    },
+    examples: [
+      {
+        title: 'Logout',
+        description: 'Invalidate the current user session.',
+        url: '/api/auth/logout',
+        method: 'POST',
+        response: {
+          status: true,
+          message: 'Logout successful',
+          data: null
+        }
+      }
+    ]
   },
 ];
 
