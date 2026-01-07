@@ -1,4 +1,4 @@
-const { Warehouse, SalesRoute, Order, OrderItem, Invoice, Payment, Delivery } = require('./sales.models');
+const { Warehouse, SalesRoute, Order, OrderStaff, OrderItem, Invoice, Payment, Delivery } = require('./sales.models');
 const { Op } = require('sequelize');
 const { sequelize } = require('../../core/database/sequelize');
 
@@ -17,6 +17,8 @@ class OrderRepository {
                 { order_number: { [Op.like]: `%${filters.search}%` } }
             ];
         }
+
+        const { Staff } = require('../staffs/staffs.model');
 
         return await Order.findAndCountAll({
             where,
@@ -45,6 +47,12 @@ class OrderRepository {
                     limit: 1,
                     order: [['created_at', 'DESC']],
                     separate: true
+                },
+                {
+                    model: Staff,
+                    as: 'assignedStaff',
+                    attributes: ['id', 'first_name', 'last_name', 'email', 'position'],
+                    through: { attributes: ['assigned_at', 'role'] }
                 }
             ],
             order: [['created_at', 'DESC']],
@@ -53,6 +61,8 @@ class OrderRepository {
     }
 
     async findById(id) {
+        const { Staff } = require('../staffs/staffs.model');
+
         return await Order.findByPk(id, {
             include: [
                 {
@@ -73,7 +83,13 @@ class OrderRepository {
                 },
                 { model: Invoice, as: 'invoice' },
                 { model: Payment, as: 'payments' },
-                { model: Delivery, as: 'deliveries' }
+                { model: Delivery, as: 'deliveries' },
+                {
+                    model: Staff,
+                    as: 'assignedStaff',
+                    attributes: ['id', 'first_name', 'last_name', 'email', 'position'],
+                    through: { attributes: ['assigned_at', 'role'] }
+                }
             ]
         });
     }
@@ -149,6 +165,102 @@ class OrderRepository {
             deliveredOrders,
             totalValue: totalValueResult || 0
         };
+    }
+
+    async assignStaffToOrder(orderId, staffIds, assignedBy) {
+        const transaction = await sequelize.transaction();
+
+        try {
+            // Verify order exists
+            const order = await Order.findByPk(orderId);
+            if (!order) {
+                await transaction.rollback();
+                return null;
+            }
+
+            // Remove all existing staff assignments for this order
+            await OrderStaff.destroy({
+                where: { order_id: orderId },
+                transaction
+            });
+
+            // Add new staff assignments
+            if (staffIds && staffIds.length > 0) {
+                const { Staff } = require('../staffs/staffs.model');
+
+                // Verify all staff members exist
+                const existingStaff = await Staff.findAll({
+                    where: {
+                        id: {
+                            [Op.in]: staffIds
+                        }
+                    },
+                    attributes: ['id'],
+                    transaction
+                });
+
+                const existingIds = existingStaff.map(s => s.id);
+                const missingIds = staffIds.filter(id => !existingIds.includes(id));
+
+                if (missingIds.length > 0) {
+                    throw new Error(`Invalid Staff IDs: ${missingIds.join(', ')}`);
+                }
+
+                const assignments = staffIds.map(staffId => ({
+                    order_id: orderId,
+                    staff_id: staffId,
+                    assigned_by: assignedBy,
+                    assigned_at: new Date()
+                }));
+
+                await OrderStaff.bulkCreate(assignments, { transaction });
+            }
+
+            await transaction.commit();
+
+            // Fetch and return the updated order with assigned staff
+            return await this.findById(orderId);
+        } catch (error) {
+            if (!transaction.finished) {
+                await transaction.rollback();
+            }
+            throw error;
+        }
+    }
+
+    async getOrdersWithStaff(filters = {}, limit = 10, offset = 0) {
+        const where = {};
+        if (filters.status) where.status = filters.status;
+        if (filters.customer_id) where.customer_id = filters.customer_id;
+
+        if (filters.search) {
+            where[Op.or] = [
+                { order_number: { [Op.like]: `%${filters.search}%` } }
+            ];
+        }
+
+        const { Staff } = require('../staffs/staffs.model');
+
+        return await Order.findAndCountAll({
+            where,
+            limit,
+            offset,
+            include: [
+                {
+                    model: require('../customers/customers.model').Customer,
+                    as: 'customer',
+                    attributes: ['id', 'name', 'email', 'phone', 'company']
+                },
+                {
+                    model: Staff,
+                    as: 'assignedStaff',
+                    attributes: ['id', 'first_name', 'last_name', 'email', 'position'],
+                    through: { attributes: ['assigned_at', 'role'] }
+                }
+            ],
+            order: [['created_at', 'DESC']],
+            distinct: true
+        });
     }
 
     async findAllBySalesRoute(filters = {}, limit = 10, offset = 0) {

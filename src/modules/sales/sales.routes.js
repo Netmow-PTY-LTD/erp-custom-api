@@ -1455,6 +1455,160 @@ router.routesMeta = [
         ]
     },
     {
+        path: '/staff-routes',
+        method: 'GET',
+        middlewares: [],
+        handler: (req, res) => salesController.getStaffRoutes(req, res),
+        description: 'Get all staff members with their assigned sales routes and statistics',
+        database: {
+            tables: ['staffs', 'sales_routes', 'orders', 'sales_route_assignments'],
+            fields: {
+                staffs: ['id', 'first_name', 'last_name', 'email', 'phone', 'position', 'is_active'],
+                sales_routes: ['id', 'route_name', 'is_active'],
+                orders: ['status']
+            }
+        },
+        queryParams: {
+            page: 'Page number',
+            limit: 'Items per page',
+            search: 'Search by staff name or email'
+        },
+        sampleResponse: {
+            success: true,
+            message: 'Staff routes retrieved successfully',
+            data: [
+                {
+                    id: 1,
+                    name: 'Staff Member 1',
+                    role: 'Sales Representative',
+                    email: 'staff1@example.com',
+                    phone: '+8801700000001',
+                    active: true,
+                    routes: [
+                        { id: 1, name: 'Dhaka North - Sector 1', status: 'Active', orders: 22 }
+                    ],
+                    stats: { completedOrders: 420, rating: 4.5 }
+                }
+            ]
+        },
+        examples: [
+            {
+                title: 'List Stats Routes',
+                description: 'Get list of staff with their assigned routes',
+                url: '/api/sales/staff-routes',
+                method: 'GET',
+                response: {
+                    success: true,
+                    message: "Staff routes retrieved successfully",
+                    data: [{ id: 1, name: "John Doe", routes: [] }]
+                }
+            }
+        ]
+    },
+
+    // Order Management - Staff Assignment
+    {
+        path: '/orders/management',
+        method: 'GET',
+        middlewares: [],
+        handler: (req, res) => salesController.getOrdersWithStaff(req, res),
+        description: 'Get all orders with assigned staff for order management',
+        database: {
+            tables: ['orders', 'customers', 'staffs', 'order_staff'],
+            fields: {
+                orders: ['id', 'order_number', 'customer_id', 'order_date', 'status', 'total_amount'],
+                customers: ['id', 'name', 'company'],
+                staffs: ['id', 'first_name', 'last_name', 'email', 'position'],
+                order_staff: ['assigned_at', 'role']
+            }
+        },
+        queryParams: {
+            page: 'Page number',
+            limit: 'Items per page',
+            status: 'Filter by order status',
+            search: 'Search by order number'
+        },
+        sampleResponse: {
+            success: true,
+            message: 'Orders with staff retrieved successfully',
+            data: [
+                {
+                    id: 101,
+                    order_number: 'ORD-101',
+                    customer: 'Tech Solutions',
+                    order_date: '2023-10-25',
+                    status: 'Pending',
+                    total_amount: 1500.00,
+                    assigned_staff: []
+                },
+                {
+                    id: 102,
+                    order_number: 'ORD-102',
+                    customer: 'Global Traders',
+                    order_date: '2023-10-24',
+                    status: 'Shipped',
+                    total_amount: 8500.00,
+                    assigned_staff: [
+                        { id: 1, name: 'John Doe', email: 'john@example.com', position: 'Sales Rep' }
+                    ]
+                }
+            ]
+        },
+        examples: [
+            {
+                title: 'Get Orders for Management',
+                description: 'Retrieve orders with staff assignments',
+                url: '/api/sales/orders/management',
+                method: 'GET',
+                response: {
+                    success: true,
+                    message: 'Orders with staff retrieved successfully',
+                    data: [{ id: 101, order_number: 'ORD-101', assigned_staff: [] }]
+                }
+            }
+        ]
+    },
+    {
+        path: '/orders/:id/assign-staff',
+        method: 'POST',
+        middlewares: [],
+        handler: (req, res) => salesController.assignStaffToOrder(req, res),
+        description: 'Assign multiple staff members to an order',
+        database: {
+            tables: ['order_staff'],
+            requiredFields: ['staff_ids'],
+            sideEffects: ['Replaces all existing staff assignments for the order']
+        },
+        sampleRequest: {
+            staff_ids: [1, 2, 3]
+        },
+        sampleResponse: {
+            status: true,
+            message: 'Staff assigned to order successfully',
+            data: {
+                id: 101,
+                order_number: 'ORD-101',
+                assignedStaff: [
+                    { id: 1, first_name: 'John', last_name: 'Doe' },
+                    { id: 2, first_name: 'Jane', last_name: 'Smith' }
+                ]
+            }
+        },
+        examples: [
+            {
+                title: 'Assign Staff to Order',
+                description: 'Assign one or more staff members to handle an order',
+                url: '/api/sales/orders/101/assign-staff',
+                method: 'POST',
+                request: { staff_ids: [1, 2] },
+                response: {
+                    status: true,
+                    message: 'Staff assigned to order successfully'
+                }
+            }
+        ]
+    },
+    {
         path: '/sales-route/:id/assign',
         method: 'PATCH',
         middlewares: [],

@@ -546,8 +546,65 @@ const SalesRouteStaff = sequelize.define('SalesRouteStaff', {
 });
 
 
+// OrderStaff Junction Table (for many-to-many relationship)
+const OrderStaff = sequelize.define('OrderStaff', {
+    id: {
+        type: DataTypes.INTEGER,
+        primaryKey: true,
+        autoIncrement: true
+    },
+    order_id: {
+        type: DataTypes.INTEGER,
+        allowNull: false,
+        references: {
+            model: 'orders',
+            key: 'id'
+        }
+    },
+    staff_id: {
+        type: DataTypes.INTEGER,
+        allowNull: false,
+        references: {
+            model: 'staffs',
+            key: 'id'
+        }
+    },
+    assigned_at: {
+        type: DataTypes.DATE,
+        defaultValue: DataTypes.NOW
+    },
+    assigned_by: {
+        type: DataTypes.INTEGER,
+        allowNull: true
+    },
+    role: { // e.g., 'primary', 'support', 'driver'
+        type: DataTypes.STRING(50),
+        allowNull: true
+    },
+    created_at: {
+        type: DataTypes.DATE,
+        defaultValue: DataTypes.NOW
+    },
+    updated_at: {
+        type: DataTypes.DATE,
+        defaultValue: DataTypes.NOW
+    }
+}, {
+    tableName: 'order_staff',
+    timestamps: true,
+    createdAt: 'created_at',
+    updatedAt: 'updated_at',
+    indexes: [
+        {
+            unique: true,
+            fields: ['order_id', 'staff_id']
+        }
+    ]
+});
+
 // Associations
 Order.belongsTo(Customer, { foreignKey: 'customer_id', as: 'customer' });
+const { Staff } = require('../staffs/staffs.model');
 
 Order.hasMany(OrderItem, { foreignKey: 'order_id', as: 'items' });
 OrderItem.belongsTo(Order, { foreignKey: 'order_id' });
@@ -565,11 +622,16 @@ Payment.belongsTo(Invoice, { foreignKey: 'invoice_id', as: 'invoice' });
 Order.hasMany(Delivery, { foreignKey: 'order_id', as: 'deliveries' });
 Delivery.belongsTo(Order, { foreignKey: 'order_id' });
 
+// Order Staff Assignments
+Order.belongsToMany(Staff, { through: OrderStaff, as: 'assignedStaff', foreignKey: 'order_id' });
+Staff.belongsToMany(Order, { through: OrderStaff, as: 'assignedOrders', foreignKey: 'staff_id' });
+
 module.exports = {
     Warehouse,
     SalesRoute,
     SalesRouteStaff,
     Order,
+    OrderStaff,
     OrderItem,
     Invoice,
     Payment,

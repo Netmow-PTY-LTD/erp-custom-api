@@ -1,5 +1,5 @@
 const { ProductRepository, CategoryRepository, UnitRepository } = require('../products/products.repository');
-const { SupplierRepository } = require('../suppliers/suppliers.repository');
+const SupplierRepository = require('../suppliers/suppliers.repository');
 const PurchaseService = require('../purchase/purchase.service');
 const { success, error, successWithPagination } = require('../../core/utils/response');
 
@@ -94,7 +94,8 @@ class RawMaterialsController {
             const supplier = await SupplierRepository.create(req.body);
             return success(res, 'Supplier created successfully', supplier, 201);
         } catch (err) {
-            return error(res, err.message, 400);
+            const message = err.errors ? err.errors.map(e => e.message).join(', ') : err.message;
+            return error(res, message, 400);
         }
     }
     async getSupplierById(req, res) {
@@ -110,7 +111,8 @@ class RawMaterialsController {
             const supplier = await SupplierRepository.update(req.params.id, req.body);
             return success(res, 'Supplier updated successfully', supplier);
         } catch (err) {
-            return error(res, err.message, 400);
+            const message = err.errors ? err.errors.map(e => e.message).join(', ') : err.message;
+            return error(res, message, 400);
         }
     }
     async deleteSupplier(req, res) {

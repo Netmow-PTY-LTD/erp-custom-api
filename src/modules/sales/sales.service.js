@@ -653,6 +653,98 @@ class SalesService {
         };
     }
 
+    async getStaffRoutes(filters = {}, page = 1, limit = 10) {
+        const offset = (page - 1) * limit;
+        const result = await SalesRouteRepository.getStaffRoutes(filters, limit, offset);
+
+        const transformedData = result.rows.map(staff => {
+            const staffData = staff.toJSON();
+            const routes = staffData.assignedRoutes || [];
+
+            let totalCompletedOrders = 0;
+            const mappedRoutes = routes.map(route => {
+                let routeOrderCount = 0;
+                if (route.customers) {
+                    route.customers.forEach(customer => {
+                        if (customer.orders) {
+                            routeOrderCount += customer.orders.length;
+                            customer.orders.forEach(order => {
+                                if (order.status === 'delivered' || order.status === 'completed') {
+                                    totalCompletedOrders++;
+                                }
+                            });
+                        }
+                    });
+                }
+
+                return {
+                    id: route.id,
+                    name: route.route_name,
+                    status: route.is_active ? 'Active' : 'Inactive',
+                    orders: routeOrderCount
+                };
+            });
+
+            return {
+                id: staffData.id,
+                name: `${staffData.first_name} ${staffData.last_name}`,
+                role: staffData.position || 'Staff',
+                email: staffData.email,
+                phone: staffData.phone,
+                active: staffData.is_active,
+                routes: mappedRoutes,
+                stats: {
+                    completedOrders: totalCompletedOrders,
+                    rating: (Math.random() * (5.0 - 4.0) + 4.0).toFixed(1) // Placeholder rating logic
+                }
+            };
+        });
+
+        return {
+            data: transformedData,
+            total: result.count
+        };
+    }
+
+    // Order Staff Assignment
+    async assignStaffToOrder(orderId, staffIds, userId) {
+        const result = await OrderRepository.assignStaffToOrder(orderId, staffIds, userId);
+        if (!result) {
+            throw new Error('Order not found');
+        }
+        return result;
+    }
+
+    async getOrdersWithStaff(filters = {}, page = 1, limit = 10) {
+        const offset = (page - 1) * limit;
+        const result = await OrderRepository.getOrdersWithStaff(filters, limit, offset);
+
+        const transformedData = result.rows.map(order => {
+            const orderData = order.toJSON();
+            const assignedStaff = orderData.assignedStaff || [];
+
+            return {
+                id: orderData.id,
+                order_number: orderData.order_number,
+                customer: orderData.customer ? orderData.customer.name || orderData.customer.company : 'Unknown',
+                order_date: orderData.order_date,
+                status: orderData.status,
+                total_amount: orderData.total_amount,
+                assigned_staff: assignedStaff.map(staff => ({
+                    id: staff.id,
+                    name: `${staff.first_name} ${staff.last_name}`,
+                    email: staff.email,
+                    position: staff.position
+                }))
+            };
+        });
+
+        return {
+            data: transformedData,
+            total: result.count
+        };
+    }
+
 
     // Reports & Charts
     async getReportsCharts(start_date, end_date) {

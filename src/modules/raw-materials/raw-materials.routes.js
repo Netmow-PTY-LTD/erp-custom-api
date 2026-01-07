@@ -2,6 +2,8 @@ const express = require('express');
 const router = express.Router();
 const rawMaterialsController = require('./raw-materials.controller');
 const { verifyToken } = require('../../core/middleware/auth');
+const validate = require('../../core/middleware/validate');
+const { createSupplier, updateSupplier } = require('../suppliers/suppliers.validation');
 // const { moduleCheck } = require('../../core/middleware/moduleCheck');
 
 router.moduleName = 'Raw Materials';
@@ -197,7 +199,7 @@ router.routesMeta = [
     {
         path: '/supplier',
         method: 'POST',
-        middlewares: [],
+        middlewares: [validate(createSupplier)],
         handler: (req, res) => rawMaterialsController.createSupplier(req, res),
         description: 'Add a new supplier',
         database: { requiredFields: ['name', 'email'] },
@@ -222,7 +224,7 @@ router.routesMeta = [
     {
         path: '/supplier/:id',
         method: 'PUT',
-        middlewares: [],
+        middlewares: [validate(updateSupplier)],
         handler: (req, res) => rawMaterialsController.updateSupplier(req, res),
         description: 'Update supplier details',
         sampleRequest: { phone: '0987654321', status: 'active' },

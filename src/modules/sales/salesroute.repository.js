@@ -178,6 +178,46 @@ class SalesRouteRepository {
             ]
         });
     }
+
+    async getStaffRoutes(filters = {}, limit = 10, offset = 0) {
+        const where = {};
+        if (filters.search) {
+            where[Op.or] = [
+                { first_name: { [Op.like]: `%${filters.search}%` } },
+                { last_name: { [Op.like]: `%${filters.search}%` } },
+                { email: { [Op.like]: `%${filters.search}%` } }
+            ];
+        }
+
+        // We fetch Staff primarily, and include their routes
+        return await Staff.findAndCountAll({
+            where,
+            include: [
+                {
+                    model: SalesRoute,
+                    as: 'assignedRoutes', // Ensure this alias matches Staff model definition
+                    through: { attributes: [] }, // Hide junction table attributes
+                    include: [
+                        {
+                            model: Customer,
+                            as: 'customers',
+                            attributes: ['id'],
+                            include: [
+                                {
+                                    model: Order,
+                                    as: 'orders',
+                                    attributes: ['id', 'status', 'total_amount']
+                                }
+                            ]
+                        }
+                    ]
+                }
+            ],
+            limit,
+            offset,
+            distinct: true // Important for correct count with includes
+        });
+    }
 }
 
 module.exports = new SalesRouteRepository();

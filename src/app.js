@@ -25,7 +25,8 @@ const allowedOrigins = [
   'https://erpinleadsit.netlify.app',
   'https://erp.inleadsit.com',
   'http://erp.inleadsit.com',
-  'https://test.inleadsit.com'
+  'https://test.inleadsit.com',
+  'https://consultant.inleadsit.com'
 ];
 
 app.use(cors({
