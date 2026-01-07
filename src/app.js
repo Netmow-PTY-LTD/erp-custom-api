@@ -26,7 +26,8 @@ const allowedOrigins = [
   'https://erp.inleadsit.com',
   'http://erp.inleadsit.com',
   'https://test.inleadsit.com',
-  'https://consultant.inleadsit.com'
+  'https://consultant.inleadsit.com',
+  'https://apiconsultant.inleadsit.com'
 ];
 
 
