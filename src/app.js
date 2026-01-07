@@ -29,6 +29,7 @@ const allowedOrigins = [
   'https://consultant.inleadsit.com'
 ];
 
+
 app.use(cors({
   origin: function (origin, callback) {
     // allow requests with no origin (like curl, Postman)
