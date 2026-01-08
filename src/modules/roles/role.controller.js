@@ -23,7 +23,7 @@ exports.get = async (req, res, next) => {
 
 exports.create = async (req, res, next) => {
   try {
-    const row = await service.create(req.body);
+    const row = await service.create(req.body, req.user.id);
     return success(res, 'Role created successfully', row, 201);
   } catch (err) { next(err); }
 };

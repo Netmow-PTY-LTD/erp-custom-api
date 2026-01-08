@@ -16,6 +16,59 @@ router.use(moduleCheck('attendance'));
 // Define routes metadata
 router.routesMeta = [
     {
+        path: '/checkin-list',
+        method: 'GET',
+        middlewares: [],
+        handler: (req, res) => attendanceController.getCheckInList(req, res),
+        description: 'Get check-in list with filters for staff and date',
+        database: {
+            tables: ['attendance', 'staffs'],
+            mainTable: 'attendance',
+            fields: {
+                attendance: ['id', 'staff_id', 'date', 'check_in', 'check_out', 'status', 'created_at'],
+                staffs: ['id', 'first_name', 'last_name']
+            },
+            relationships: ['attendance.staff_id -> staffs.id (FK)']
+        },
+        queryParams: {
+            page: 'Page number (default: 1)',
+            limit: 'Items per page (default: 10)',
+            staff_id: 'Filter by staff ID',
+            date: 'Filter by date (YYYY-MM-DD)'
+        },
+        sampleResponse: {
+            success: true,
+            message: 'Check-in list retrieved successfully',
+            pagination: {
+                total: 5,
+                page: '1',
+                limit: '10',
+                totalPage: 1
+            },
+            data: [
+                {
+                    id: 1,
+                    staff_id: 2,
+                    date: '2025-01-08',
+                    check_in: '09:00:00',
+                    status: 'present'
+                }
+            ]
+        },
+        examples: [
+            {
+                title: 'Get Check-in List',
+                description: 'Get check-ins filtered by staff and date',
+                url: '/api/attendance/checkin-list?staff_id=2&date=2025-01-08',
+                method: 'GET',
+                response: {
+                    success: true,
+                    data: [{ id: 1, staff_id: 2, date: '2025-01-08', check_in: '09:00:00' }]
+                }
+            }
+        ]
+    },
+    {
         path: '/',
         method: 'GET',
         middlewares: [],

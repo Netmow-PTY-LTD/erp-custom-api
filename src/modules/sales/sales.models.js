@@ -34,6 +34,10 @@ const Warehouse = sequelize.define('Warehouse', {
         type: DataTypes.BOOLEAN,
         defaultValue: true
     },
+    created_by: {
+        type: DataTypes.INTEGER,
+        allowNull: true
+    },
     created_at: {
         type: DataTypes.DATE,
         defaultValue: DataTypes.NOW
@@ -111,6 +115,10 @@ const SalesRoute = sequelize.define('SalesRoute', {
     is_active: {
         type: DataTypes.BOOLEAN,
         defaultValue: true
+    },
+    created_by: {
+        type: DataTypes.INTEGER,
+        allowNull: true
     },
     created_at: {
         type: DataTypes.DATE,

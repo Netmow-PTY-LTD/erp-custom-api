@@ -11,6 +11,10 @@ const Customer = sequelize.define('Customer', {
         type: DataTypes.STRING(255),
         allowNull: false
     },
+    image_url: {
+        type: DataTypes.STRING(500),
+        allowNull: true
+    },
     email: {
         type: DataTypes.STRING(255),
         allowNull: true,
@@ -113,4 +117,48 @@ const Customer = sequelize.define('Customer', {
     updatedAt: 'updated_at'
 });
 
-module.exports = { Customer };
+const CustomerImage = sequelize.define('CustomerImage', {
+    id: {
+        type: DataTypes.INTEGER,
+        primaryKey: true,
+        autoIncrement: true
+    },
+    customer_id: {
+        type: DataTypes.INTEGER,
+        allowNull: false
+    },
+    image_url: {
+        type: DataTypes.STRING(500),
+        allowNull: false
+    },
+    is_primary: {
+        type: DataTypes.BOOLEAN,
+        defaultValue: false
+    },
+    sort_order: {
+        type: DataTypes.INTEGER,
+        defaultValue: 0
+    },
+    caption: {
+        type: DataTypes.STRING(255),
+        allowNull: true
+    },
+    created_at: {
+        type: DataTypes.DATE,
+        defaultValue: DataTypes.NOW
+    },
+    updated_at: {
+        type: DataTypes.DATE,
+        defaultValue: DataTypes.NOW
+    }
+}, {
+    tableName: 'customer_images',
+    timestamps: true,
+    createdAt: 'created_at',
+    updatedAt: 'updated_at'
+});
+
+Customer.hasMany(CustomerImage, { foreignKey: 'customer_id', as: 'images' });
+CustomerImage.belongsTo(Customer, { foreignKey: 'customer_id' });
+
+module.exports = { Customer, CustomerImage };

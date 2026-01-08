@@ -33,7 +33,7 @@ class UserController {
 
   async createUser(req, res) {
     try {
-      const user = await UserService.createUser(req.body);
+      const user = await UserService.createUser(req.body, req.user?.id);
       return success(res, 'User created successfully', user, 201);
     } catch (err) {
       return error(res, err.message, 400);

@@ -11,6 +11,96 @@ router.use(verifyToken);
 // router.use(moduleCheck('production')); // Enable when module permissions are set up
 
 router.routesMeta = [
+    // --- Production Batches (Alias for Runs) ---
+    {
+        path: '/batches',
+        method: 'GET',
+        middlewares: [],
+        handler: (req, res) => productionController.getRuns(req, res),
+        description: 'List production batches',
+        database: {
+            tables: ['production_runs', 'products', 'boms'],
+            mainTable: 'production_runs',
+            fields: {
+                production_runs: ['id', 'run_number', 'product_id', 'bom_id', 'status', 'quantity', 'start_date', 'end_date', 'notes', 'created_by'],
+                products: ['id', 'name', 'sku'],
+                boms: ['id', 'name']
+            },
+            relationships: [
+                'production_runs.product_id -> products.id (FK)',
+                'production_runs.bom_id -> boms.id (FK)'
+            ]
+        },
+        queryParams: {
+            page: 'Page number (default: 1)',
+            limit: 'Items per page (default: 10)',
+            status: 'Filter by status (scheduled, in_progress, completed)',
+            search: 'Search by run number'
+        },
+        sampleResponse: {
+            success: true,
+            message: 'Production batches retrieved successfully',
+            pagination: { total: 10, page: 1, limit: 10 },
+            data: [
+                {
+                    id: 1,
+                    run_number: 'BATCH-1738400000000',
+                    product_id: 15,
+                    bom_id: 2,
+                    quantity: 100,
+                    status: 'in_progress',
+                    start_date: '2026-02-01T00:00:00.000Z',
+                    product: { id: 15, name: 'Widget X' }
+                }
+            ]
+        }
+    },
+    {
+        path: '/batches',
+        method: 'POST',
+        middlewares: [], // Add validation middleware
+        handler: (req, res) => productionController.createRun(req, res),
+        description: 'Initiate a new production batch',
+        database: {
+            requiredFields: ['product_id', 'quantity'],
+            optionalFields: ['bom_id', 'start_date', 'notes']
+        },
+        sampleRequest: {
+            product_id: 15,
+            quantity: 50,
+            start_date: '2026-02-01',
+            notes: 'Urgent batch for client X'
+        },
+        sampleResponse: {
+            success: true,
+            message: 'Production batch created successfully',
+            data: { id: 2, run_number: 'BATCH-1738401000000', status: 'scheduled' }
+        }
+    },
+    {
+        path: '/batches/:id',
+        method: 'GET',
+        middlewares: [],
+        handler: (req, res) => productionController.getRunById(req, res),
+        description: 'Get production batch details',
+        database: { mainTable: 'production_runs' }
+    },
+    {
+        path: '/batches/:id',
+        method: 'PUT',
+        middlewares: [],
+        handler: (req, res) => productionController.updateRun(req, res),
+        description: 'Update batch status (Scheduled -> In Progress -> Completed)',
+        sampleRequest: { status: 'in_progress', notes: 'Started production line 1' }
+    },
+    {
+        path: '/batches/:id',
+        method: 'DELETE',
+        middlewares: [],
+        handler: (req, res) => productionController.deleteRun(req, res),
+        description: 'Cancel a production batch'
+    },
+
     // --- Production Runs ---
     {
         path: '/runs',

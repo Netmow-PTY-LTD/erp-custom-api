@@ -23,6 +23,26 @@ class AttendanceController {
         }
     }
 
+    async getCheckInList(req, res) {
+        try {
+            const page = parseInt(req.query.page) || 1;
+            const limit = parseInt(req.query.limit) || 10;
+            const filters = {
+                staff_id: req.query.staff_id,
+                date: req.query.date
+            };
+
+            const result = await AttendanceService.getCheckInList(filters, page, limit);
+            return successWithPagination(res, 'Check-in list retrieved successfully', result.data, {
+                total: result.total,
+                page,
+                limit
+            });
+        } catch (err) {
+            return error(res, err.message, 500);
+        }
+    }
+
     async getAttendanceById(req, res) {
         try {
             const attendance = await AttendanceService.getAttendanceById(req.params.id);

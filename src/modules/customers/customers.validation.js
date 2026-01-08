@@ -19,7 +19,10 @@ const createCustomer = z.object({
     sales_route_id: z.number().int().positive().optional(),
     salesRouteId: z.number().int().positive().optional(), // camelCase alias
     notes: z.string().optional(),
-    is_active: z.boolean().default(true)
+    is_active: z.boolean().default(true),
+    image_url: z.string().url().optional().or(z.literal('')),
+    thumb_url: z.string().url().optional().or(z.literal('')),
+    gallery_items: z.array(z.string().url()).optional()
 }).transform(data => {
     // Convert salesRouteId to sales_route_id if provided
     if (data.salesRouteId !== undefined && data.sales_route_id === undefined) {
@@ -48,7 +51,10 @@ const updateCustomer = z.object({
     sales_route_id: z.number().int().positive().optional().nullable(),
     salesRouteId: z.number().int().positive().optional().nullable(), // camelCase alias
     notes: z.string().optional(),
-    is_active: z.boolean().optional()
+    is_active: z.boolean().optional(),
+    image_url: z.string().url().optional().or(z.literal('')),
+    thumb_url: z.string().url().optional().or(z.literal('')),
+    gallery_items: z.array(z.string().url()).optional()
 }).transform(data => {
     // Convert salesRouteId to sales_route_id if provided
     if (data.salesRouteId !== undefined && data.sales_route_id === undefined) {

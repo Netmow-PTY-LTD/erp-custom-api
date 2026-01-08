@@ -10,6 +10,17 @@ class AttendanceService {
         };
     }
 
+    async getCheckInList(filters = {}, page = 1, limit = 10) {
+        const offset = (page - 1) * limit;
+        // Ensure we are getting check-ins, maybe filter by present status or non-null check_in?
+        // For now, listing attendance with existing filters is sufficient as per "checkin-list"
+        const result = await AttendanceRepository.findAll(filters, limit, offset);
+        return {
+            data: result.rows,
+            total: result.count
+        };
+    }
+
     async getAttendanceById(id) {
         const attendance = await AttendanceRepository.findById(id);
         if (!attendance) {

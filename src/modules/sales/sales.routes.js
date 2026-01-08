@@ -209,6 +209,106 @@ router.routesMeta = [
         ]
     },
     {
+        path: '/orders/dummy',
+        method: 'GET',
+        middlewares: [],
+        handler: (req, res) => salesController.getDummyOrders(req, res),
+        description: 'Get all dummy (pending) orders awaiting approval',
+        database: {
+            tables: ['orders'],
+            mainTable: 'orders',
+            fields: { orders: ['id', 'status'] }
+        },
+        queryParams: {
+            page: 'Page number',
+            limit: 'Items per page',
+            search: 'Search term',
+            customer_id: 'Filter by customer'
+        },
+        sampleResponse: {
+            success: true,
+            message: 'Dummy (Pending) orders retrieved successfully',
+            data: [{ id: 1, status: 'pending' }]
+        },
+        examples: [{
+            title: 'List Dummy Orders',
+            description: 'Get all orders that are pending approval',
+            url: '/api/sales/orders/dummy',
+            method: 'GET',
+            response: { success: true, data: [{ id: 1, status: 'pending' }] }
+        }]
+    },
+    {
+        path: '/orders/approved',
+        method: 'GET',
+        middlewares: [],
+        handler: (req, res) => salesController.getApprovedOrders(req, res),
+        description: 'Get all approved (confirmed) orders',
+        database: {
+            tables: ['orders'],
+            mainTable: 'orders',
+            fields: { orders: ['id', 'status'] }
+        },
+        queryParams: {
+            page: 'Page number',
+            limit: 'Items per page',
+            search: 'Search term',
+            customer_id: 'Filter by customer'
+        },
+        sampleResponse: {
+            success: true,
+            message: 'Approved (Confirmed) orders retrieved successfully',
+            data: [{ id: 1, status: 'confirmed' }]
+        },
+        examples: [{
+            title: 'List Approved Orders',
+            description: 'Get all confirm orders',
+            url: '/api/sales/orders/approved',
+            method: 'GET',
+            response: { success: true, data: [{ id: 1, status: 'confirmed' }] }
+        }]
+    },
+    {
+        path: '/orders/:id/approve',
+        method: 'PUT',
+        middlewares: [],
+        handler: (req, res) => salesController.approveOrder(req, res),
+        description: 'Approve a dummy (pending) order',
+        database: {
+            tables: ['orders'],
+            mainTable: 'orders',
+            sideEffects: ['Updates status to confirmed']
+        },
+        sampleResponse: { success: true, message: 'Order approved successfully' },
+        examples: [{
+            title: 'Approve Order',
+            description: 'Approve a pending order',
+            url: '/api/sales/orders/1/approve',
+            method: 'PUT',
+            response: { success: true, message: 'Order approved successfully' }
+        }]
+    },
+    {
+        path: '/orders/:id/cancel',
+        method: 'PUT',
+        middlewares: [],
+        handler: (req, res) => salesController.cancelOrder(req, res),
+        description: 'Cancel (Reject) an order and restore stock',
+        database: {
+            tables: ['orders', 'products', 'stock_movements'],
+            mainTable: 'orders',
+            sideEffects: ['Updates status to cancelled', 'Restores product stock', 'Creates stock movement record']
+        },
+        sampleResponse: { success: true, message: 'Order cancelled successfully' },
+        examples: [{
+            title: 'Cancel Order',
+            description: 'Cancel an order and return items to stock',
+            url: '/api/sales/orders/1/cancel',
+            method: 'PUT',
+            response: { success: true, message: 'Order cancelled successfully' }
+        }]
+    },
+    {
         path: '/orders/stats',
         method: 'GET',
         middlewares: [],

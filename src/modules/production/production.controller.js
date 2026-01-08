@@ -89,7 +89,7 @@ class ProductionController {
 
     async createBOM(req, res) {
         try {
-            const bom = await ProductionService.createBOM(req.body);
+            const bom = await ProductionService.createBOM(req.body, req.user.id);
             return success(res, 'BOM created successfully', bom, 201);
         } catch (err) {
             return error(res, err.message, 400);
@@ -137,7 +137,7 @@ class ProductionController {
         try {
             // Force type to finished_good
             const data = { ...req.body, product_type: 'finished_good' };
-            const product = await ProductionService.createFinishedGood(data);
+            const product = await ProductionService.createFinishedGood(data, req.user.id);
             return success(res, 'Finished good created successfully', product, 201);
         } catch (err) {
             return error(res, err.message, 400);

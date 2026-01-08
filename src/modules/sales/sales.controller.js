@@ -60,6 +60,67 @@ class SalesController {
         }
     }
 
+    async getDummyOrders(req, res) {
+        try {
+            const page = parseInt(req.query.page) || 1;
+            const limit = parseInt(req.query.limit) || 10;
+            // Dummy orders are basically pending orders waiting for approval
+            const filters = {
+                status: 'pending',
+                customer_id: req.query.customer_id,
+                search: req.query.search
+            };
+
+            const result = await SalesService.getAllOrders(filters, page, limit);
+            return successWithPagination(res, 'Dummy (Pending) orders retrieved successfully', result.data, {
+                total: result.total,
+                page,
+                limit
+            });
+        } catch (err) {
+            return error(res, err.message, 500);
+        }
+    }
+
+    async getApprovedOrders(req, res) {
+        try {
+            const page = parseInt(req.query.page) || 1;
+            const limit = parseInt(req.query.limit) || 10;
+            const filters = {
+                status: 'confirmed',
+                customer_id: req.query.customer_id,
+                search: req.query.search
+            };
+
+            const result = await SalesService.getAllOrders(filters, page, limit);
+            return successWithPagination(res, 'Approved (Confirmed) orders retrieved successfully', result.data, {
+                total: result.total,
+                page,
+                limit
+            });
+        } catch (err) {
+            return error(res, err.message, 500);
+        }
+    }
+
+    async approveOrder(req, res) {
+        try {
+            const order = await SalesService.reviewOrder(req.params.id, 'approve', req.user.id);
+            return success(res, 'Order approved successfully', order);
+        } catch (err) {
+            return error(res, err.message, 400);
+        }
+    }
+
+    async cancelOrder(req, res) {
+        try {
+            const order = await SalesService.reviewOrder(req.params.id, 'cancel', req.user.id);
+            return success(res, 'Order cancelled successfully', order);
+        } catch (err) {
+            return error(res, err.message, 400);
+        }
+    }
+
     async getOrderStats(req, res) {
         try {
             const stats = await SalesService.getOrderStats();

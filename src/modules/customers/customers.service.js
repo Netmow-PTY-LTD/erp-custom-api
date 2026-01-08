@@ -1,12 +1,42 @@
 const CustomerRepository = require('./customers.repository');
 
 class CustomerService {
+    // Helper method to transform customer data same as product
+    _transformCustomer(customer) {
+        const customerData = customer.toJSON ? customer.toJSON() : customer;
+
+        const transformed = {
+            ...customerData,
+            thumb_url: customerData.image_url || null,
+            // Ensure numeric fields are numbers
+            credit_limit: customerData.credit_limit ? parseFloat(customerData.credit_limit) : 0,
+            outstanding_balance: customerData.outstanding_balance ? parseFloat(customerData.outstanding_balance) : 0,
+            latitude: customerData.latitude ? parseFloat(customerData.latitude) : null,
+            longitude: customerData.longitude ? parseFloat(customerData.longitude) : null
+        };
+
+        // Remove image_url from response
+        delete transformed.image_url;
+
+        // Transform images array to gallery_items (array of URLs)
+        if (customerData.images && Array.isArray(customerData.images)) {
+            transformed.gallery_items = customerData.images.map(img => img.image_url);
+            delete transformed.images;
+        }
+
+        return transformed;
+    }
+
     async getAllCustomers(filters = {}, page = 1, limit = 10) {
         try {
             const offset = (page - 1) * limit;
             const result = await CustomerRepository.findAll(filters, limit, offset);
+
+            // Transform each customer
+            const transformedData = result.rows.map(customer => this._transformCustomer(customer));
+
             return {
-                data: result.rows,
+                data: transformedData,
                 total: result.count
             };
         } catch (err) {
@@ -19,7 +49,7 @@ class CustomerService {
         if (!customer) {
             throw new Error('Customer not found');
         }
-        return customer;
+        return this._transformCustomer(customer);
     }
 
     async createCustomer(data, userId) {
@@ -31,7 +61,25 @@ class CustomerService {
             }
         }
 
-        return await CustomerRepository.create({ ...data, created_by: userId });
+        const { thumb_url, gallery_items, ...customerData } = data;
+
+        // Map thumb_url to image_url
+        if (thumb_url && !customerData.image_url) {
+            customerData.image_url = thumb_url;
+        }
+
+        // Map gallery_items (strings) to images (objects) for repository
+        let images = [];
+        if (gallery_items && Array.isArray(gallery_items) && gallery_items.length > 0) {
+            images = gallery_items.map((url, index) => ({
+                image_url: url,
+                sort_order: index,
+                is_primary: false
+            }));
+        }
+
+        const customer = await CustomerRepository.create({ ...customerData, images, created_by: userId });
+        return this._transformCustomer(customer);
     }
 
     async updateCustomer(id, data) {
@@ -43,11 +91,27 @@ class CustomerService {
             }
         }
 
-        const customer = await CustomerRepository.update(id, data);
+        const { thumb_url, gallery_items, ...customerData } = data;
+
+        // Map thumb_url to image_url
+        if (thumb_url && !customerData.image_url) {
+            customerData.image_url = thumb_url;
+        }
+
+        // Map gallery_items if provided
+        if (gallery_items && Array.isArray(gallery_items)) {
+            customerData.images = gallery_items.map((url, index) => ({
+                image_url: url,
+                sort_order: index,
+                is_primary: false
+            }));
+        }
+
+        const customer = await CustomerRepository.update(id, customerData);
         if (!customer) {
             throw new Error('Customer not found');
         }
-        return customer;
+        return this._transformCustomer(customer);
     }
 
     async deleteCustomer(id) {

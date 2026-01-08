@@ -1,4 +1,4 @@
-const { Customer } = require('./customers.model');
+const { Customer, CustomerImage } = require('./customers.model');
 const { Op } = require('sequelize');
 const { sequelize } = require('../../core/database/sequelize');
 
@@ -45,7 +45,15 @@ class CustomerRepository {
     }
 
     async findById(id) {
-        return await Customer.findByPk(id);
+        return await Customer.findByPk(id, {
+            include: [
+                {
+                    model: CustomerImage,
+                    as: 'images',
+                    attributes: ['id', 'image_url', 'is_primary', 'sort_order', 'caption']
+                }
+            ]
+        });
     }
 
     async findByEmail(email) {
@@ -53,13 +61,68 @@ class CustomerRepository {
     }
 
     async create(data) {
-        return await Customer.create(data);
+        const transaction = await sequelize.transaction();
+        try {
+            const { images, ...customerData } = data;
+            const customer = await Customer.create(customerData, { transaction });
+
+            if (images && images.length > 0) {
+                const imageRecords = images.map((img, index) => ({
+                    customer_id: customer.id,
+                    image_url: img.image_url,
+                    is_primary: img.is_primary || false,
+                    sort_order: img.sort_order || index,
+                    caption: img.caption
+                }));
+                await CustomerImage.bulkCreate(imageRecords, { transaction });
+            }
+
+            await transaction.commit();
+            return await this.findById(customer.id);
+        } catch (error) {
+            await transaction.rollback();
+            throw error;
+        }
     }
 
     async update(id, data) {
-        const customer = await Customer.findByPk(id);
-        if (!customer) return null;
-        return await customer.update(data);
+        const transaction = await sequelize.transaction();
+        try {
+            const customer = await Customer.findByPk(id);
+            if (!customer) {
+                await transaction.commit();
+                return null;
+            }
+
+            const { images, ...customerData } = data;
+            await customer.update(customerData, { transaction });
+
+            if (images !== undefined) {
+                // Delete existing images
+                await CustomerImage.destroy({
+                    where: { customer_id: id },
+                    transaction
+                });
+
+                // Create new images
+                if (images && images.length > 0) {
+                    const imageRecords = images.map((img, index) => ({
+                        customer_id: id,
+                        image_url: img.image_url,
+                        is_primary: img.is_primary || false,
+                        sort_order: img.sort_order || index,
+                        caption: img.caption
+                    }));
+                    await CustomerImage.bulkCreate(imageRecords, { transaction });
+                }
+            }
+
+            await transaction.commit();
+            return await this.findById(id);
+        } catch (error) {
+            await transaction.rollback();
+            throw error;
+        }
     }
 
     async delete(id) {

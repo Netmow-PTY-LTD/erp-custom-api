@@ -23,6 +23,46 @@ class CustomerController {
         }
     }
 
+    async getActiveCustomers(req, res) {
+        try {
+            const page = parseInt(req.query.page) || 1;
+            const limit = parseInt(req.query.limit) || 10;
+            const filters = {
+                ...req.query,
+                is_active: true
+            };
+
+            const result = await CustomerService.getAllCustomers(filters, page, limit);
+            return successWithPagination(res, 'Active customers retrieved successfully', result.data, {
+                total: result.total,
+                page,
+                limit
+            });
+        } catch (err) {
+            return error(res, err.message, 500);
+        }
+    }
+
+    async getInactiveCustomers(req, res) {
+        try {
+            const page = parseInt(req.query.page) || 1;
+            const limit = parseInt(req.query.limit) || 10;
+            const filters = {
+                ...req.query,
+                is_active: false
+            };
+
+            const result = await CustomerService.getAllCustomers(filters, page, limit);
+            return successWithPagination(res, 'Inactive customers retrieved successfully', result.data, {
+                total: result.total,
+                page,
+                limit
+            });
+        } catch (err) {
+            return error(res, err.message, 500);
+        }
+    }
+
     async getCustomerById(req, res) {
         try {
             const customer = await CustomerService.getCustomerById(req.params.id);

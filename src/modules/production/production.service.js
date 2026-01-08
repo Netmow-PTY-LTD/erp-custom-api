@@ -18,7 +18,7 @@ class ProductionService {
         return bom;
     }
 
-    async createBOM(data) {
+    async createBOM(data, userId) {
         // Validation: verify product exists and is finished good
         const product = await ProductRepository.findById(data.product_id);
         if (!product) throw new Error('Product not found');
@@ -27,7 +27,7 @@ class ProductionService {
             // Relaxing checking for now as we just introduced the field
         }
 
-        return await ProductionRepository.createBOM(data, data.items);
+        return await ProductionRepository.createBOM({ ...data, created_by: userId }, data.items);
     }
 
     async updateBOM(id, data) {
@@ -59,7 +59,12 @@ class ProductionService {
         const run_number = `RUN-${Date.now()}`;
 
         // Populate BOM id if not provided but product has one?
-        // For simple implementation, require manual BOM selection or default to latest active BOM for product
+        if (!data.bom_id) {
+            const defaultBOM = await ProductionRepository.findOneBOMByProductId(data.product_id); // Need to add this method in repo
+            if (defaultBOM) {
+                data = { ...data, bom_id: defaultBOM.id };
+            }
+        }
 
         const runData = {
             ...data,
@@ -91,9 +96,9 @@ class ProductionService {
         };
     }
 
-    async createFinishedGood(data) {
+    async createFinishedGood(data, userId) {
         data.product_type = 'finished_good';
-        return await ProductRepository.create(data);
+        return await ProductRepository.create({ ...data, created_by: userId });
     }
 
     async getFinishedGoodById(id) {

@@ -4,6 +4,10 @@ const { sequelize } = require('../../core/database/sequelize');
 
 class ProductionRepository {
     // --- BOMs ---
+    async findOneBOMByProductId(productId) {
+        return await BOM.findOne({ where: { product_id: productId } });
+    }
+
     async findAllBOMs(filters = {}, limit = 10, offset = 0) {
         const where = {};
         if (filters.product_id) where.product_id = filters.product_id;

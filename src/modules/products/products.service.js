@@ -322,8 +322,8 @@ class ProductService {
         return category;
     }
 
-    async createCategory(data) {
-        return await CategoryRepository.create(data);
+    async createCategory(data, userId) {
+        return await CategoryRepository.create({ ...data, created_by: userId });
     }
 
     async updateCategory(id, data) {
@@ -360,8 +360,8 @@ class ProductService {
         return unit;
     }
 
-    async createUnit(data) {
-        return await UnitRepository.create(data);
+    async createUnit(data, userId) {
+        return await UnitRepository.create({ ...data, created_by: userId });
     }
 
     async updateUnit(id, data) {

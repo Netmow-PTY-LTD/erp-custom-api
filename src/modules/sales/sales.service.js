@@ -176,6 +176,7 @@ class SalesService {
             discount_amount,
             tax_amount,
             sales_tax_percent: tax_percent,
+            status: 'pending', // Force status to pending (dummy order)
             created_by: userId
         };
 
@@ -232,6 +233,58 @@ class SalesService {
             throw new Error('Order not found');
         }
         return order;
+    }
+
+    async reviewOrder(id, action, userId) {
+        // action: 'approve' | 'reject' (or 'cancel')
+        const order = await OrderRepository.findById(id);
+        if (!order) {
+            throw new Error('Order not found');
+        }
+
+        if (action === 'approve') {
+            // Only pending orders can be approved
+            if (order.status !== 'pending') {
+                throw new Error('Only pending orders can be approved');
+            }
+            return await OrderRepository.update(id, { status: 'confirmed' });
+        } else if (action === 'reject' || action === 'cancel') {
+            // If order was not already cancelled, we might need to restore stock
+            // Current createOrder ALWAYS deducts stock. So any cancellation should restore it.
+            if (order.status === 'cancelled') {
+                throw new Error('Order is already cancelled');
+            }
+
+            // Restore stock
+            const { ProductRepository } = require('../products/products.repository');
+            const StockMovement = require('../products/stock-movement.model');
+
+            // Iterate items and restore
+            if (order.items && order.items.length > 0) {
+                for (const item of order.items) {
+                    const product = await ProductRepository.findById(item.product_id);
+                    if (product) {
+                        const newStock = product.stock_quantity + item.quantity;
+                        await ProductRepository.update(item.product_id, { stock_quantity: newStock });
+
+                        // Log movement
+                        await StockMovement.create({
+                            product_id: item.product_id,
+                            movement_type: 'adjustment', // or 'return'? Using adjustment for now or 'sale_return' if available
+                            quantity: item.quantity,
+                            reference_type: 'order',
+                            reference_id: order.id,
+                            notes: `Stock restored due to order ${action}`,
+                            created_by: userId
+                        });
+                    }
+                }
+            }
+
+            return await OrderRepository.update(id, { status: 'cancelled' });
+        } else {
+            throw new Error('Invalid action');
+        }
     }
 
     // Invoices
