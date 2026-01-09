@@ -95,11 +95,39 @@ exports.getCurrentUser = async (userId) => {
   const userData = user.toJSON();
   delete userData.password;
 
+  // Ensure fields are present in response
+  userData.phone = userData.phone || null;
+  userData.profile_image = userData.thumb_url || userData.profile_image || null;
+
   return {
     user: userData,
     menus: menuTree,
     dashboards: roleDashboards
   };
+};
+
+exports.updateProfile = async (userId, data) => {
+  // Prevent updating sensitive fields through this endpoint
+  delete data.password;
+  delete data.role_id;
+  delete data.email;
+
+  // Map profile_image to thumb_url
+  if (data.profile_image) {
+    data.thumb_url = data.profile_image;
+  }
+
+  const updatedUser = await repo.update(userId, data);
+  if (!updatedUser) throw { status: 404, message: 'User not found' };
+
+  const userData = updatedUser.toJSON();
+  delete userData.password;
+
+  // Ensure fields are present in response
+  userData.phone = userData.phone || null;
+  userData.profile_image = userData.thumb_url || userData.profile_image || null;
+
+  return userData;
 };
 
 exports.refreshToken = async (token) => {

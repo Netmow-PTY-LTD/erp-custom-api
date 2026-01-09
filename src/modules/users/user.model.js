@@ -29,6 +29,14 @@ const User = sequelize.define('User', {
     type: DataTypes.INTEGER,
     allowNull: true
   },
+  phone: {
+    type: DataTypes.STRING(50),
+    allowNull: true
+  },
+  thumb_url: {
+    type: DataTypes.STRING(500),
+    allowNull: true
+  },
   created_at: {
     type: DataTypes.DATE,
     defaultValue: DataTypes.NOW,

@@ -11,12 +11,18 @@ The system has been updated so that **Staff and Users are now the same entity**.
 - **`password`** (VARCHAR 255, nullable): Hashed password for authentication
 - **`role_id`** (INT, nullable): Foreign key to `roles` table for permissions
 
+### Added Fields to `users` Table (Legacy Support)
+
+- **`phone`** (VARCHAR 50, nullable): User phone number
+- **`thumb_url`** (VARCHAR 500, nullable): Profile image URL
+
 ### Migration
 
-Run the migration to add these fields:
+Run the migrations to add these fields:
 
 ```bash
 node run-add-auth-to-staffs.js
+node run-add-profile-to-users.js
 ```
 
 ## How It Works
@@ -201,6 +207,28 @@ If you have existing users in the `users` table:
 }
 ```
 
+## Profile Management
+
+Authenticated users can manage their profile:
+
+### Update Profile
+**PUT** `/api/auth/profile`
+
+```json
+{
+  "first_name": "John",
+  "phone": "+1234567890",
+  "profile_image": "https://example.com/me.jpg",
+  "address": "123 Main St"
+}
+```
+*Note: `profile_image` is mapped to the internal `thumb_url` field.*
+
+### Get Current User
+**GET** `/api/auth/me`
+
+Returns user details including `phone` and `profile_image`.
+
 ## API Endpoints Summary
 
 | Endpoint | Method | Description |
@@ -209,6 +237,7 @@ If you have existing users in the `users` table:
 | `/api/staffs/update/:id` | PUT | Update staff (including credentials) |
 | `/api/auth/login` | POST | Login for both users and staff |
 | `/api/auth/me` | GET | Get current logged-in staff/user |
+| `/api/auth/profile` | PUT | Update current user profile |
 
 ## Testing
 
@@ -218,6 +247,7 @@ After running the migration, test the system:
 2. Try logging in with their credentials
 3. Verify JWT token is returned
 4. Access protected routes with the token
+5. Update profile using `/api/auth/profile`
 
 ---
 

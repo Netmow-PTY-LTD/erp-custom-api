@@ -47,3 +47,10 @@ exports.logout = async (req, res, next) => {
     return success(res, 'Logged out successfully');
   } catch (err) { next(err); }
 };
+
+exports.updateProfile = async (req, res, next) => {
+  try {
+    const result = await service.updateProfile(req.user.id, req.body);
+    return success(res, 'Profile updated successfully', result);
+  } catch (err) { next(err); }
+};
