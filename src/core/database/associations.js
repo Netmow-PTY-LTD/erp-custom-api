@@ -45,4 +45,10 @@ Staff.belongsToMany(SalesRoute, {
     as: 'assignedRoutes'
 });
 
+// Set up StaffCheckIn associations
+const { StaffCheckIn } = require('../../modules/attendance/checkin.model');
+StaffCheckIn.belongsTo(Customer, { foreignKey: 'customer_id', as: 'customer' });
+Customer.hasMany(StaffCheckIn, { foreignKey: 'customer_id', as: 'checkins' }); // Added for reverse lookup
+StaffCheckIn.belongsTo(Staff, { foreignKey: 'staff_id', as: 'staff' });
+
 module.exports = {};

@@ -20,6 +20,16 @@ const Staff = sequelize.define('Staff', {
         allowNull: false,
         unique: true
     },
+    password: {
+        type: DataTypes.STRING(255),
+        allowNull: true,
+        comment: 'Hashed password for authentication. Null if staff member has no login access.'
+    },
+    role_id: {
+        type: DataTypes.INTEGER,
+        allowNull: true,
+        comment: 'Role ID for permissions. Null if staff member has no login access.'
+    },
     phone: {
         type: DataTypes.STRING(50),
         allowNull: true
@@ -98,10 +108,16 @@ const Staff = sequelize.define('Staff', {
 
 // Import Department model and define association
 const { Department } = require('../departments/departments.model');
+const { Role } = require('../roles/role.model');
 
 Staff.belongsTo(Department, {
     foreignKey: 'department_id',
     as: 'department'
+});
+
+Staff.belongsTo(Role, {
+    foreignKey: 'role_id',
+    as: 'role'
 });
 
 module.exports = { Staff };

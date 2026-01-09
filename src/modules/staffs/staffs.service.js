@@ -1,4 +1,5 @@
 const StaffRepository = require('./staffs.repository');
+const bcrypt = require('bcrypt');
 
 class StaffService {
     async getAllStaffs(filters = {}, page = 1, limit = 10) {
@@ -25,6 +26,12 @@ class StaffService {
                 throw new Error('Staff with this email already exists');
             }
         }
+
+        // Hash password if provided
+        if (data.password) {
+            data.password = await bcrypt.hash(data.password, 10);
+        }
+
         // Sanitize data: convert empty strings to null
         const cleanData = { ...data };
         ['hire_date', 'thumb_url', 'position', 'phone', 'address', 'city', 'state', 'country', 'postal_code', 'notes'].forEach(field => {
@@ -43,6 +50,12 @@ class StaffService {
                 throw new Error('Staff with this email already exists');
             }
         }
+
+        // Hash password if provided
+        if (data.password) {
+            data.password = await bcrypt.hash(data.password, 10);
+        }
+
         // Sanitize data: convert empty strings to null
         const cleanData = { ...data };
         ['hire_date', 'thumb_url', 'position', 'phone', 'address', 'city', 'state', 'country', 'postal_code', 'notes'].forEach(field => {

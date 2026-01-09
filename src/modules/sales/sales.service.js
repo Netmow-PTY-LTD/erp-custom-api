@@ -152,7 +152,8 @@ class SalesService {
                 return {
                     ...item,
                     tax_amount: item_tax_amount,
-                    sales_tax_percent: sales_tax_rate  // Store the tax percentage
+                    sales_tax_percent: sales_tax_rate,  // Store the tax percentage
+                    purchase_cost: product ? product.cost : 0 // Lock in the cost at time of sale
                 };
             }));
         }

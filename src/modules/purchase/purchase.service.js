@@ -454,9 +454,24 @@ class PurchaseService {
                         throw new Error(`Product with ID ${item.product_id} not found`);
                     }
 
+                    // Calculate Weighted Average Cost
+                    // New Avg Cost = ((Current Stock * Current Cost) + (Incoming Qty * Incoming Cost)) / (Current Stock + Incoming Qty)
+                    const currentStock = Number(product.stock_quantity) || 0;
+                    const currentCost = Number(product.cost) || 0;
+                    const incomingQty = Number(item.quantity) || 0;
+                    const incomingCost = Number(item.unit_cost) || 0;
+
+                    let newCost = currentCost;
+                    if (currentStock + incomingQty > 0) {
+                        newCost = ((currentStock * currentCost) + (incomingQty * incomingCost)) / (currentStock + incomingQty);
+                    }
+
                     // Add stock
-                    const newStock = product.stock_quantity + item.quantity;
-                    await ProductRepository.update(item.product_id, { stock_quantity: newStock });
+                    const newStock = currentStock + incomingQty;
+                    await ProductRepository.update(item.product_id, {
+                        stock_quantity: newStock,
+                        cost: newCost // Update Product Cost with new Weighted Average
+                    });
 
                     // Record stock movement
                     await StockMovement.create({
@@ -465,7 +480,7 @@ class PurchaseService {
                         quantity: item.quantity, // Positive for stock in
                         reference_type: 'purchase_order',
                         reference_id: order.id,
-                        notes: `Stock added from purchase order ${order.po_number}`,
+                        notes: `Stock added from purchase order ${order.po_number}. Cost updated to ${newCost.toFixed(2)}`,
                         created_by: userId
                     });
                 }

@@ -28,7 +28,9 @@ const allowedOrigins = [
   'https://test.inleadsit.com',
   'https://consultant.inleadsit.com',
   'https://apiconsultant.inleadsit.com',
-  'http://192.168.68.102:5000'
+  'http://192.168.68.102:5000',
+  'http://192.168.0.176:5000',
+  'https://carwash.inleadsit.com'
 ];
 
 

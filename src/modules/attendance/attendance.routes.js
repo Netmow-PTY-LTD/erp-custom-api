@@ -69,7 +69,7 @@ router.routesMeta = [
         ]
     },
     {
-        path: '/',
+        path: '/daily',
         method: 'GET',
         middlewares: [],
         handler: (req, res) => attendanceController.getAttendances(req, res),

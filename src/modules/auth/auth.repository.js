@@ -1,14 +1,40 @@
 const { User } = require('../users/user.model');
+const { Staff } = require('../staffs/staffs.model');
 const { Role, RoleSettings } = require('../roles/role.model');
 const { RoleMenu } = require('../roles/role_menu.model');
 const { RoleDashboard } = require('../roles/role_dashboard.model');
 
 exports.findByEmail = async (email) => {
-  return User.findOne({ where: { email } });
+  // First check User table
+  let user = await User.findOne({ where: { email } });
+  if (user) return user;
+
+  // Then check Staff table
+  return Staff.findOne({ where: { email } });
 };
 
 exports.findByEmailWithRole = async (email) => {
-  return User.findOne({
+  // First check User table
+  let user = await User.findOne({
+    where: { email },
+    include: [
+      {
+        model: Role,
+        as: 'role',
+        include: [
+          {
+            model: RoleSettings,
+            required: false
+          }
+        ]
+      }
+    ]
+  });
+
+  if (user) return user;
+
+  // Then check Staff table
+  return Staff.findOne({
     where: { email },
     include: [
       {
