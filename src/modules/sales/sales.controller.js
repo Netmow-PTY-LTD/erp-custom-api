@@ -387,11 +387,16 @@ class SalesController {
 
     async assignSalesRoute(req, res) {
         try {
-            const { staff_id } = req.body;
-            if (!staff_id) {
-                return error(res, 'staff_id is required', 400);
+            const { staff_id, staff_ids } = req.body;
+
+            // Prioritize staff_ids, fallback to staff_id
+            const idsToAssign = staff_ids || (staff_id ? [staff_id] : null);
+
+            if (!idsToAssign) {
+                return error(res, 'staff_ids (array) or staff_id is required', 400);
             }
-            const route = await SalesService.assignSalesRoute(req.params.id, staff_id, req.user.id);
+
+            const route = await SalesService.assignSalesRoute(req.params.id, idsToAssign, req.user.id);
             return success(res, 'Sales route assigned successfully', route);
         } catch (err) {
             return error(res, err.message, 400);

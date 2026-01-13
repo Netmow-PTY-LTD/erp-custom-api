@@ -8,6 +8,8 @@ class UserController {
       const limit = parseInt(req.query.limit) || 10;
       const filters = {
         role_id: req.query.role_id,
+        department_id: req.query.department_id,
+        status: req.query.status,
         search: req.query.search
       };
 

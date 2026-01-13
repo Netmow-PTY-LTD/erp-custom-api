@@ -3,8 +3,8 @@ const { success, successWithPagination } = require('../../core/utils/response');
 
 exports.list = async (req, res, next) => {
   try {
-    const page = parseInt(req.query.page) || 1;
-    const limit = parseInt(req.query.limit) || 10;
+    const page = parseInt(req.query.page) || parseInt(req.body.page) || 1;
+    const limit = parseInt(req.query.limit) || parseInt(req.body.limit) || 10;
     const { rows, total } = await service.list(page, limit);
     return successWithPagination(res, 'Roles retrieved successfully', rows, {
       total,

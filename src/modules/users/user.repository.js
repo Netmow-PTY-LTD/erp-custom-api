@@ -1,5 +1,6 @@
 const { User } = require('./user.model');
 const { Role } = require('../roles/role.model');
+const { Department } = require('../departments/departments.model');
 const { Op } = require('sequelize');
 
 class UserRepository {
@@ -10,9 +11,19 @@ class UserRepository {
       where.role_id = filters.role_id;
     }
 
+    if (filters.department_id) {
+      where.department_id = filters.department_id;
+    }
+
+    if (filters.status) {
+      where.status = filters.status;
+    }
+
     if (filters.search) {
       where[Op.or] = [
         { name: { [Op.like]: `%${filters.search}%` } },
+        { first_name: { [Op.like]: `%${filters.search}%` } },
+        { last_name: { [Op.like]: `%${filters.search}%` } },
         { email: { [Op.like]: `%${filters.search}%` } }
       ];
     }
@@ -26,6 +37,11 @@ class UserRepository {
           model: Role,
           as: 'role',
           attributes: ['id', 'name']
+        },
+        {
+          model: Department, // Ensure Department is imported at the top
+          as: 'department',
+          attributes: ['id', 'name']
         }
       ],
       attributes: { exclude: ['password'] },
@@ -35,11 +51,18 @@ class UserRepository {
 
   async findById(id) {
     return await User.findByPk(id, {
-      include: [{
-        model: Role,
-        as: 'role',
-        attributes: ['id', 'name']
-      }]
+      include: [
+        {
+          model: Role,
+          as: 'role',
+          attributes: ['id', 'name']
+        },
+        {
+          model: Department,
+          as: 'department',
+          attributes: ['id', 'name']
+        }
+      ]
     });
   }
 

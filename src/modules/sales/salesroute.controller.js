@@ -60,10 +60,10 @@ class SalesRouteController {
 
     async assignStaff(req, res) {
         try {
-            const { staff } = req.body;
+            const { staff_ids } = req.body;
             const route = await SalesRouteService.assignStaff(
                 req.params.id,
-                staff,
+                staff_ids,
                 req.user.id
             );
             return success(res, 'Staff assigned to sales route successfully', route);

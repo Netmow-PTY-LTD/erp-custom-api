@@ -27,9 +27,14 @@ class StaffService {
             }
         }
 
-        // Hash password if provided
+        // Hash password if provided, or generate default
         if (data.password) {
             data.password = await bcrypt.hash(data.password, 10);
+        } else {
+            // Generate a random password if not provided, to satisfy User model constraint
+            const randomPass = Math.random().toString(36).slice(-8);
+            data.password = await bcrypt.hash(randomPass, 10);
+            // Optional: You might want to email this password to the user, but for now we just satisfy the DB constraint.
         }
 
         // Sanitize data: convert empty strings to null

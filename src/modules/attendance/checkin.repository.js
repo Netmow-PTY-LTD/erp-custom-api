@@ -1,5 +1,5 @@
 const { StaffCheckIn } = require('./checkin.model');
-const { Staff } = require('../../modules/staffs/staffs.model');
+const { User: Staff } = require('../../modules/users/user.model');
 const { Customer } = require('../../modules/customers/customers.model');
 const { SalesRoute } = require('../../modules/sales/sales.models');
 

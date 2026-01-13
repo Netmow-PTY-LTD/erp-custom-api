@@ -68,17 +68,29 @@ router.routesMeta = [
     handler: handlerWithFields((req, res) => controller.updateUser(req, res), updateSchema),
     description: 'Update an existing user by ID',
     database: {
-      tables: ['users', 'roles'],
+      tables: ['users', 'roles', 'departments'],
       mainTable: 'users',
-      updatableFields: ['name', 'email', 'role_id'],
+      updatableFields: [
+        'name', 'first_name', 'last_name', 'email', 'password', 'role_id',
+        'phone', 'position', 'department_id', 'hire_date', 'salary',
+        'address', 'city', 'state', 'country', 'postal_code',
+        'status', 'notes', 'thumb_url', 'gallery_items'
+      ],
       readOnlyFields: ['id', 'created_at'],
       autoUpdatedFields: ['updated_at'],
-      relationships: ['users.role_id -> roles.id (FK)']
+      relationships: [
+        'users.role_id -> roles.id (FK)',
+        'users.department_id -> departments.id (FK)'
+      ]
     },
     sampleRequest: {
       name: 'John Smith',
       email: 'john.smith@example.com',
-      role_id: 3
+      password: 'newSecurePassword123',
+      status: 'active',
+      role_id: 3,
+      position: 'Senior Manager',
+      salary: 85000
     },
     sampleResponse: {
       status: true,
@@ -88,13 +100,15 @@ router.routesMeta = [
         name: 'John Smith',
         email: 'john.smith@example.com',
         role_id: 3,
+        status: 'active',
+        position: 'Senior Manager',
         updated_at: '2025-12-02T10:05:00.000Z'
       }
     },
     examples: [
       {
-        title: 'Update User',
-        description: 'Update user details',
+        title: 'Update User Basic Info',
+        description: 'Update user name and role',
         url: '/api/users/update/16',
         method: 'PUT',
         request: { name: 'Alice W.', role_id: 3 },
@@ -102,6 +116,26 @@ router.routesMeta = [
           status: true,
           message: 'updated',
           data: { id: 16, name: 'Alice W.', role_id: 3 }
+        }
+      },
+      {
+        title: 'Update User Password and Status',
+        description: 'Update user password and change status',
+        url: '/api/users/update/16',
+        method: 'PUT',
+        request: {
+          password: 'newPassword456',
+          status: 'inactive'
+        },
+        response: {
+          status: true,
+          message: 'updated',
+          data: {
+            id: 16,
+            name: 'Alice W.',
+            status: 'inactive',
+            updated_at: '2025-12-02T10:10:00.000Z'
+          }
         }
       }
     ]
@@ -116,7 +150,7 @@ router.routesMeta = [
       tables: ['users', 'roles'],
       mainTable: 'users',
       fields: {
-        users: ['id', 'name', 'email', 'role_id', 'created_at', 'updated_at'],
+        users: ['id', 'name', 'first_name', 'last_name', 'email', 'role_id', 'department_id', 'status', 'created_at', 'updated_at'],
         roles: ['id', 'name', 'description']
       },
       relationships: ['users.role_id -> roles.id (FK)']
@@ -125,7 +159,9 @@ router.routesMeta = [
       page: 'Page number (default: 1)',
       limit: 'Items per page (default: 10)',
       role_id: 'Filter by role ID',
-      search: 'Search by name or email'
+      department_id: 'Filter by department ID',
+      status: 'Filter by status (active/inactive)',
+      search: 'Search by name, first_name, last_name, or email'
     },
     sampleResponse: {
       success: true,

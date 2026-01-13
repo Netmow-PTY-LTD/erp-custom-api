@@ -1,4 +1,4 @@
-const { Warehouse, SalesRoute, Order, OrderStaff, OrderItem, Invoice, Payment, Delivery } = require('./sales.models');
+const { Warehouse, SalesRoute, SalesRouteStaff, Order, OrderStaff, OrderItem, Invoice, Payment, Delivery } = require('./sales.models');
 const { Op } = require('sequelize');
 const { sequelize } = require('../../core/database/sequelize');
 
@@ -646,6 +646,7 @@ class SalesRouteRepository {
 
     async findById(id) {
         const { Customer } = require('../customers/customers.model');
+        const { Staff } = require('../staffs/staffs.model');
 
         return await SalesRoute.findByPk(id, {
             include: [
@@ -660,13 +661,89 @@ class SalesRouteRepository {
                             as: 'orders',
                             attributes: ['id', 'order_number', 'order_date', 'total_amount', 'status'],
                             limit: 1,
-                            order: [['order_date', 'DESC']], // This sorts the included orders
-                            required: false // Changed to false to allow customers without orders (or keep true if strict)
+                            order: [['order_date', 'DESC']],
+                            required: false
                         }
                     ]
+                },
+                {
+                    model: Staff,
+                    as: 'assignedStaffMembers',
+                    attributes: ['id', 'first_name', 'last_name', 'email', 'position'],
+                    through: {
+                        attributes: ['assigned_at', 'assigned_by']
+                    }
                 }
             ]
         });
+    }
+
+    async assignStaff(routeId, staffIds, assignedBy) {
+        const transaction = await sequelize.transaction();
+
+        try {
+            // Verify route exists
+            const route = await SalesRoute.findByPk(routeId);
+            if (!route) {
+                await transaction.rollback();
+                return null;
+            }
+
+            // Remove all existing staff assignments for this route
+            await SalesRouteStaff.destroy({
+                where: { sales_route_id: routeId },
+                transaction
+            });
+
+            // Add new staff assignments
+            if (staffIds && staffIds.length > 0) {
+                const { Staff } = require('../staffs/staffs.model');
+
+                // Verify ONLY staff members exist
+                // strict check: ensure all staffIds are valid numbers
+                const validStaffIds = staffIds.map(id => parseInt(id)).filter(id => !isNaN(id) && id > 0);
+
+                if (validStaffIds.length !== staffIds.length) {
+                    throw new Error('Staff IDs must be positive numbers');
+                }
+
+                const existingStaff = await Staff.findAll({
+                    where: {
+                        id: {
+                            [Op.in]: validStaffIds
+                        }
+                    },
+                    attributes: ['id'],
+                    transaction
+                });
+
+                const existingIds = existingStaff.map(s => s.id);
+                const missingIds = validStaffIds.filter(id => !existingIds.includes(id));
+
+                if (missingIds.length > 0) {
+                    throw new Error(`Invalid Staff IDs: ${missingIds.join(', ')}`);
+                }
+
+                const assignments = validStaffIds.map(staffId => ({
+                    sales_route_id: routeId,
+                    staff_id: staffId,
+                    assigned_by: assignedBy,
+                    assigned_at: new Date()
+                }));
+
+                await SalesRouteStaff.bulkCreate(assignments, { transaction });
+            }
+
+            await transaction.commit();
+
+            // Return updated route
+            return await this.findById(routeId);
+        } catch (error) {
+            if (!transaction.finished) {
+                await transaction.rollback();
+            }
+            throw error;
+        }
     }
     async update(id, data) {
         const route = await SalesRoute.findByPk(id);

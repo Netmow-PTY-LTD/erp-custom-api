@@ -679,11 +679,18 @@ class SalesService {
         return true;
     }
 
-    async assignSalesRoute(id, staffId, userId) {
-        const route = await SalesRouteRepository.update(id, {
-            assigned_sales_rep_id: staffId,
-            updated_at: new Date()
-        });
+    async assignSalesRoute(id, staffIds, userId) {
+        // Ensure staffIds is an array
+        if (!Array.isArray(staffIds)) {
+            // Check if it's a single value (legacy support)
+            if (staffIds) {
+                staffIds = [staffIds];
+            } else {
+                throw new Error('staff_ids array is required');
+            }
+        }
+
+        const route = await SalesRouteRepository.assignStaff(id, staffIds, userId);
         if (!route) {
             throw new Error('Sales route not found');
         }

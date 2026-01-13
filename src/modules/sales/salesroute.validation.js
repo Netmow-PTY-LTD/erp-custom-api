@@ -19,7 +19,7 @@ const updateRoute = z.object({
 });
 
 const assignStaff = z.object({
-    staff: z.array(z.number().int().positive()).min(1, 'At least one staff member must be assigned')
+    staff_ids: z.array(z.number().int().positive()).min(1, 'At least one staff member must be assigned')
 });
 
 module.exports = {

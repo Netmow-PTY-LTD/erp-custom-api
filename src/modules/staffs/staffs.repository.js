@@ -1,4 +1,4 @@
-const { Staff } = require('./staffs.model');
+const { User: Staff } = require('../users/user.model');
 const { Department } = require('../departments/departments.model');
 const { Op } = require('sequelize');
 
@@ -18,6 +18,7 @@ class StaffRepository {
             where[Op.or] = [
                 { first_name: { [Op.like]: `%${filters.search}%` } },
                 { last_name: { [Op.like]: `%${filters.search}%` } },
+                { name: { [Op.like]: `%${filters.search}%` } },
                 { email: { [Op.like]: `%${filters.search}%` } },
                 { position: { [Op.like]: `%${filters.search}%` } }
             ];

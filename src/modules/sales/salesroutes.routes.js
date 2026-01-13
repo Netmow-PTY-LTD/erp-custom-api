@@ -113,7 +113,7 @@ router.routesMeta = [
         handler: salesRouteController.assignStaff,
         description: 'Assign staff members to a sales route',
         sampleRequest: {
-            staff: [1, 2, 3]
+            staff_ids: [1, 2, 3]
         },
         sampleResponse: {
             status: true,
