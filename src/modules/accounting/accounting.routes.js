@@ -5,7 +5,7 @@ const { verifyToken } = require('../../core/middleware/auth');
 const { moduleCheck } = require('../../core/middleware/moduleCheck');
 const { handlerWithFields } = require('../../core/utils/zodTypeView');
 const validate = require('../../core/middleware/validate');
-const { createIncome, createExpense, createPayroll, createCreditHead, updateCreditHead, createDebitHead, updateDebitHead } = require('./accounting.validation');
+const { createAccount, updateAccount } = require('./accounting.validation');
 
 // Module name for routes-tree grouping
 router.moduleName = 'Accounting';
@@ -15,736 +15,409 @@ router.use(moduleCheck('accounting'));
 
 // Define routes metadata
 router.routesMeta = [
-    // --- Overview ---
+    // --- Transactions (Entry Point) ---
+    {
+        path: '/transactions',
+        method: 'POST',
+        middlewares: [],
+        handler: (req, res) => accountingController.createTransaction(req, res),
+        description: 'Create a new accounting transaction (Single Entry -> Auto Journal)',
+        database: {
+            tables: ['transactions', 'journals', 'journal_lines'],
+            mainTable: 'transactions',
+            fields: {
+                transactions: ['id', 'type', 'amount', 'payment_mode', 'date', 'description'],
+                journals: ['id', 'reference_id', 'narration'],
+                journal_lines: ['account_id', 'debit', 'credit']
+            },
+            relationships: ['transactions.id -> journals.reference_id (One-to-One)', 'journals.id -> journal_lines.journal_id (One-to-Many)']
+        },
+        examples: [
+            {
+                title: 'Create Cash Sale',
+                description: 'Record a cash sale transaction which automatically creates journal entries',
+                url: '/api/accounting/transactions',
+                method: 'POST',
+                request: {
+                    type: 'SALES',
+                    amount: 10000,
+                    payment_mode: 'CASH',
+                    date: '2026-01-14',
+                    description: 'Sales Invoice #123'
+                },
+                response: {
+                    status: true,
+                    message: 'Transaction posted and journalized successfully',
+                    data: {
+                        transaction: { id: 1, type: 'SALES', amount: 10000 },
+                        journal: { id: 5, narration: 'Sales Invoice #123' }
+                    }
+                }
+            }
+        ]
+    },
+    {
+        path: '/transactions',
+        method: 'GET',
+        middlewares: [],
+        handler: (req, res) => accountingController.getTransactions(req, res),
+        description: 'Get list of Transactions with pagination',
+        database: {
+            tables: ['transactions'],
+            fields: {
+                transactions: ['id', 'type', 'amount', 'date', 'description', 'payment_mode']
+            }
+        },
+        queryParams: {
+            page: 'Page number (default 1)',
+            limit: 'Items per page (default 20)',
+            from: 'Start Date',
+            to: 'End Date',
+            type: 'Transaction Type Filter'
+        },
+        examples: [
+            {
+                title: 'List Transactions',
+                description: 'Get paginated list of past transactions',
+                url: '/api/accounting/transactions?page=1&limit=10',
+                method: 'GET',
+                response: {
+                    status: true,
+                    message: 'Transactions retrieved successfully',
+                    processed: {
+                        currentPage: 1,
+                        totalPages: 5,
+                        totalItems: 50,
+                        itemsPerPage: 10
+                    },
+                    data: [
+                        { id: 10, type: 'SALES', amount: 500 }
+                    ]
+                }
+            }
+        ]
+    },
+
+    // --- Reports ---
+    {
+        path: '/reports/journal',
+        method: 'GET',
+        middlewares: [],
+        handler: (req, res) => accountingController.getJournalReport(req, res),
+        description: 'Get Journal Report with filtering',
+        database: {
+            tables: ['journals', 'journal_lines', 'accounts'],
+            mainTable: 'journals',
+            fields: {
+                journals: ['date', 'narration'],
+                journal_lines: ['debit', 'credit'],
+                accounts: ['code', 'name']
+            },
+            relationships: ['journals.id -> journal_lines.journal_id', 'journal_lines.account_id -> accounts.id']
+        },
+        queryParams: {
+            from: 'Start Date (YYYY-MM-DD)',
+            to: 'End Date (YYYY-MM-DD)'
+        },
+        examples: [
+            {
+                title: 'Get Journal Report',
+                description: 'Retrieve journal entries within a date range',
+                url: '/api/accounting/reports/journal?from=2026-01-01&to=2026-01-31',
+                method: 'GET',
+                response: {
+                    status: true,
+                    message: 'Journal report retrieved successfully',
+                    data: [
+                        {
+                            id: 1,
+                            date: '2026-01-14',
+                            entries: [
+                                { account: { code: '1000', name: 'Cash' }, debit: 10000, credit: 0 },
+                                { account: { code: '4000', name: 'Sales' }, debit: 0, credit: 10000 }
+                            ]
+                        }
+                    ]
+                }
+            }
+        ]
+    },
+    {
+        path: '/reports/ledger/:id',
+        method: 'GET',
+        middlewares: [],
+        handler: (req, res) => accountingController.getLedgerReport(req, res),
+        description: 'Get Ledger Report for a specific Account',
+        database: {
+            tables: ['accounts', 'journal_lines', 'journals'],
+            mainTable: 'journal_lines',
+            fields: {
+                journal_lines: ['debit', 'credit'],
+                journals: ['date', 'narration']
+            }
+        },
+        queryParams: {
+            from: 'Start Date',
+            to: 'End Date'
+        },
+        examples: [
+            {
+                title: 'Get Cash Ledger',
+                description: 'View running balance history for Cash Account (ID: 1)',
+                url: '/api/accounting/reports/ledger/1?from=2026-01-01&to=2026-01-31',
+                method: 'GET',
+                response: {
+                    status: true,
+                    message: 'Ledger report retrieved successfully',
+                    data: {
+                        account: '1',
+                        opening_balance: 0,
+                        closing_balance: 10000,
+                        transactions: [
+                            { date: '2026-01-14', debit: 10000, credit: 0, balance: 10000, narration: 'Sales' }
+                        ]
+                    }
+                }
+            }
+        ]
+    },
+    {
+        path: '/reports/trial-balance',
+        method: 'GET',
+        middlewares: [],
+        handler: (req, res) => accountingController.getTrialBalance(req, res),
+        description: 'Get Trial Balance Summary',
+        database: {
+            tables: ['accounts', 'journal_lines'],
+            mainTable: 'accounts',
+            fields: {
+                accounts: ['code', 'name', 'type'],
+                journal_lines: ['debit', 'credit']
+            },
+            sideEffects: ['Aggregates all debits and credits per account']
+        },
+        queryParams: {
+            date: 'As of Date (YYYY-MM-DD)'
+        },
+        examples: [
+            {
+                title: 'Get Trial Balance',
+                description: 'Check if total Debits equal total Credits',
+                url: '/api/accounting/reports/trial-balance?date=2026-01-31',
+                method: 'GET',
+                response: {
+                    status: true,
+                    message: 'Trial Balance retrieved successfully',
+                    data: {
+                        trial_balance: [
+                            { code: '1000', account: 'Cash', debit: 15000, credit: 0 },
+                            { code: '4000', account: 'Sales', debit: 0, credit: 15000 }
+                        ],
+                        total_debit: 15000,
+                        total_credit: 15000,
+                        status: 'BALANCED'
+                    }
+                }
+            }
+        ]
+    },
+    {
+        path: '/reports/profit-and-loss',
+        method: 'GET',
+        middlewares: [],
+        handler: (req, res) => accountingController.getProfitAndLoss(req, res),
+        description: 'Get Profit and Loss Statement',
+        database: {
+            tables: ['accounts', 'journal_lines'],
+            mainTable: 'accounts',
+            fields: {
+                accounts: ['code', 'name', 'type'],
+                journal_lines: ['debit', 'credit']
+            },
+            sideEffects: ['Aggregates Income and Expense accounts']
+        },
+        queryParams: {
+            from: 'Start Date (YYYY-MM-DD)',
+            to: 'End Date (YYYY-MM-DD)'
+        },
+        examples: [
+            {
+                title: 'Get P&L',
+                description: 'View Income vs Expense statement',
+                url: '/api/accounting/reports/profit-and-loss?from=2026-01-01&to=2026-01-31',
+                method: 'GET',
+                response: {
+                    status: true,
+                    message: 'Profit and Loss report retrieved successfully',
+                    data: {
+                        income: [{ code: '4000', name: 'Sales', amount: 50000 }],
+                        expense: [{ code: '5000', name: 'Purchase', amount: 20000 }],
+                        total_income: 50000,
+                        total_expense: 20000,
+                        net_profit: 30000
+                    }
+                }
+            }
+        ]
+    },
     {
         path: '/overview',
         method: 'GET',
         middlewares: [],
         handler: (req, res) => accountingController.getOverview(req, res),
-        description: 'Get financial overview',
+        description: 'Get Financial Overview (Income vs Expense)',
         database: {
-            tables: ['incomes', 'expenses', 'payroll'],
-            mainTable: 'incomes',
-            fields: {
-                incomes: ['amount', 'income_date'],
-                expenses: ['amount', 'expense_date'],
-                payroll: ['net_salary', 'payment_date']
-            },
-            sideEffects: ['Aggregates data from multiple tables to calculate totals']
-        },
-        queryParams: {
-            start_date: 'Filter by start date (YYYY-MM-DD)',
-            end_date: 'Filter by end date (YYYY-MM-DD)'
-        },
-        sampleResponse: {
-            status: true,
-            data: {
-                total_income: 50000.00,
-                total_expense: 20000.00,
-                total_payroll: 15000.00,
-                net_profit: 15000.00
-            }
+            tables: ['accounts', 'journal_lines'],
+            sideEffects: ['Sums Income and Expense account balances']
         },
         examples: [
             {
-                title: 'Get Financial Overview',
-                description: 'Retrieve financial overview including total income, expenses, payroll, and net profit.',
+                title: 'Get Financial Dashboard',
+                description: 'Quick stats for dashboard',
                 url: '/api/accounting/overview',
                 method: 'GET',
                 response: {
                     status: true,
+                    message: 'Financial overview retrieved successfully',
                     data: {
-                        total_income: 50000.00,
-                        total_expense: 20000.00,
-                        total_payroll: 15000.00,
-                        net_profit: 15000.00
+                        total_income: 50000,
+                        total_expense: 20000,
+                        net_profit: 30000
                     }
                 }
             }
         ]
     },
 
-    // --- Incomes ---
+    // --- Master Data ---
     {
-        path: '/incomes',
+        path: '/accounts',
         method: 'GET',
         middlewares: [],
-        handler: (req, res) => accountingController.getIncomes(req, res),
-        description: 'List all income records',
+        handler: (req, res) => accountingController.getAccounts(req, res),
+        description: 'Get Chart of Accounts',
         database: {
-            tables: ['incomes'],
-            mainTable: 'incomes',
+            tables: ['accounts'],
+            mainTable: 'accounts',
             fields: {
-                incomes: ['id', 'title', 'amount', 'income_date', 'category', 'description', 'created_at', 'updated_at']
+                accounts: ['id', 'code', 'name', 'type', 'parent_id']
             }
-        },
-        queryParams: {
-            page: 'Page number (default: 1)',
-            limit: 'Items per page (default: 10)'
-        },
-        sampleResponse: {
-            success: true,
-            message: 'Income records retrieved successfully',
-            pagination: {
-                total: 50,
-                page: '1',
-                limit: '10',
-                totalPage: 5
-            },
-            data: [
-                {
-                    id: 1,
-                    title: 'Service Revenue',
-                    amount: 1000.00,
-                    income_date: '2025-01-15'
-                }
-            ]
         },
         examples: [
             {
-                title: 'List Incomes',
-                description: 'Get paginated list of income records',
-                url: '/api/accounting/incomes?page=1&limit=10',
-                method: 'GET',
-                response: {
-                    success: true,
-                    message: 'Income records retrieved successfully',
-                    pagination: { total: 50, page: '1', limit: '10', totalPage: 5 },
-                    data: [{ id: 1, title: 'Service Revenue', amount: 1000.00, income_date: '2025-01-15' }]
-                }
-            }
-        ]
-    },
-    {
-        path: '/incomes',
-        method: 'POST',
-        middlewares: [validate(createIncome)],
-        handler: handlerWithFields((req, res) => accountingController.createIncome(req, res), createIncome),
-        description: 'Add a new income record',
-        database: {
-            tables: ['incomes', 'credit_heads'],
-            mainTable: 'incomes',
-            requiredFields: ['title', 'amount', 'income_date'],
-            optionalFields: ['category', 'credit_head_id', 'description'],
-            autoGeneratedFields: ['id', 'created_at', 'updated_at'],
-            relationships: ['incomes.credit_head_id -> credit_heads.id (FK)']
-        },
-        sampleRequest: {
-            title: 'Consulting Fee',
-            amount: 500.00,
-            income_date: '2025-01-20',
-            category: 'Services',
-            credit_head_id: 1
-        },
-        sampleResponse: {
-            status: true,
-            message: 'Income record created successfully'
-        },
-        examples: [
-            {
-                title: 'Create Income',
-                description: 'Add a new income record',
-                url: '/api/accounting/incomes',
-                method: 'POST',
-                request: {
-                    title: 'Consulting Fee',
-                    amount: 500.00,
-                    income_date: '2025-01-20',
-                    credit_head_id: 1,
-                    description: 'Consulting services for Client A'
-                },
-                response: {
-                    status: true,
-                    message: 'Income record created successfully'
-                }
-            }
-        ]
-    },
-
-    // --- Expenses ---
-    {
-        path: '/expenses',
-        method: 'GET',
-        middlewares: [],
-        handler: (req, res) => accountingController.getExpenses(req, res),
-        description: 'List all expense records',
-        database: {
-            tables: ['expenses'],
-            mainTable: 'expenses',
-            fields: {
-                expenses: ['id', 'title', 'amount', 'expense_date', 'category', 'description', 'created_at', 'updated_at']
-            }
-        },
-        queryParams: {
-            page: 'Page number (default: 1)',
-            limit: 'Items per page (default: 10)'
-        },
-        sampleResponse: {
-            success: true,
-            message: 'Expense records retrieved successfully',
-            pagination: {
-                total: 50,
-                page: '1',
-                limit: '10',
-                totalPage: 5
-            },
-            data: [
-                {
-                    id: 1,
-                    title: 'Office Rent',
-                    amount: 2000.00,
-                    expense_date: '2025-01-01'
-                }
-            ]
-        },
-        examples: [
-            {
-                title: 'List Expenses',
-                description: 'Get paginated list of expense records',
-                url: '/api/accounting/expenses?page=1&limit=10',
-                method: 'GET',
-                response: {
-                    success: true,
-                    message: 'Expense records retrieved successfully',
-                    pagination: { total: 50, page: '1', limit: '10', totalPage: 5 },
-                    data: [{ id: 1, title: 'Office Rent', amount: 2000.00, expense_date: '2025-01-01' }]
-                }
-            }
-        ]
-    },
-    {
-        path: '/expenses',
-        method: 'POST',
-        middlewares: [validate(createExpense)],
-        handler: handlerWithFields((req, res) => accountingController.createExpense(req, res), createExpense),
-        description: 'Add a new expense record',
-        database: {
-            tables: ['expenses', 'debit_heads'],
-            mainTable: 'expenses',
-            requiredFields: ['title', 'amount', 'expense_date'],
-            optionalFields: ['category', 'debit_head_id', 'description'],
-            autoGeneratedFields: ['id', 'created_at', 'updated_at'],
-            relationships: ['expenses.debit_head_id -> debit_heads.id (FK)']
-        },
-        sampleRequest: {
-            title: 'Internet Bill',
-            amount: 100.00,
-            expense_date: '2025-01-05',
-            category: 'Utilities',
-            debit_head_id: 1
-        },
-        sampleResponse: {
-            status: true,
-            message: 'Expense record created successfully'
-        },
-        examples: [
-            {
-                title: 'Create Expense',
-                description: 'Add a new expense record',
-                url: '/api/accounting/expenses',
-                method: 'POST',
-                request: {
-                    title: 'Internet Bill',
-                    amount: 100.00,
-                    expense_date: '2025-01-05',
-                    debit_head_id: 1,
-                    description: 'Monthly internet subscription'
-                },
-                response: {
-                    status: true,
-                    message: 'Expense record created successfully'
-                }
-            }
-        ]
-    },
-
-    // --- Payroll ---
-    {
-        path: '/payroll',
-        method: 'GET',
-        middlewares: [],
-        handler: (req, res) => accountingController.getPayrolls(req, res),
-        description: 'List all payroll records',
-        database: {
-            tables: ['payroll', 'staffs'],
-            mainTable: 'payroll',
-            fields: {
-                payroll: ['id', 'staff_id', 'salary_month', 'basic_salary', 'deductions', 'net_salary', 'status', 'created_at', 'updated_at'],
-                staffs: ['id', 'first_name', 'last_name']
-            },
-            relationships: ['payroll.staff_id -> staffs.id (FK)']
-        },
-        queryParams: {
-            page: 'Page number (default: 1)',
-            limit: 'Items per page (default: 10)'
-        },
-        sampleResponse: {
-            success: true,
-            message: 'Payroll records retrieved successfully',
-            pagination: {
-                total: 50,
-                page: '1',
-                limit: '10',
-                totalPage: 5
-            },
-            data: [
-                {
-                    id: 1,
-                    staff_id: 1,
-                    salary_month: '2025-01',
-                    net_salary: 4500.00,
-                    status: 'paid'
-                }
-            ]
-        },
-        examples: [
-            {
-                title: 'List Payroll Records',
-                description: 'Get paginated list of accounting payroll records',
-                url: '/api/accounting/payroll?page=1&limit=10',
-                method: 'GET',
-                response: {
-                    success: true,
-                    message: 'Payroll records retrieved successfully',
-                    pagination: { total: 50, page: '1', limit: '10', totalPage: 5 },
-                    data: [{ id: 1, staff_id: 1, salary_month: '2025-01', net_salary: 4500.00, status: 'paid' }]
-                }
-            }
-        ]
-    },
-    {
-        path: '/payroll',
-        method: 'POST',
-        middlewares: [validate(createPayroll)],
-        handler: handlerWithFields((req, res) => accountingController.createPayroll(req, res), createPayroll),
-        description: 'Add a new payroll record',
-        database: {
-            tables: ['payroll'],
-            mainTable: 'payroll',
-            requiredFields: ['staff_id', 'salary_month', 'basic_salary'],
-            optionalFields: ['deductions', 'status'],
-            autoGeneratedFields: ['id', 'net_salary', 'created_at', 'updated_at'],
-            sideEffects: ['Calculates net_salary from basic_salary - deductions']
-        },
-        sampleRequest: {
-            staff_id: 1,
-            salary_month: '2025-01',
-            basic_salary: 5000.00,
-            deductions: 500.00,
-            status: 'processed'
-        },
-        sampleResponse: {
-            status: true,
-            message: 'Payroll record created successfully'
-        },
-        examples: [
-            {
-                title: 'Create Payroll Record',
-                description: 'Record a staff payroll payment',
-                url: '/api/accounting/payroll',
-                method: 'POST',
-                request: {
-                    staff_id: 1,
-                    salary_month: '2025-01',
-                    basic_salary: 5000.00,
-                    deductions: 500.00,
-                    status: 'processed'
-                },
-                response: {
-                    status: true,
-                    message: 'Payroll record created successfully'
-                }
-            }
-        ]
-    },
-
-    // --- Credit Heads ---
-    {
-        path: '/credit-head',
-        method: 'GET',
-        middlewares: [],
-        handler: (req, res) => accountingController.getAllCreditHeads(req, res),
-        description: 'Get all credit heads',
-        database: {
-            tables: ['credit_heads'],
-            mainTable: 'credit_heads',
-            fields: {
-                credit_heads: ['id', 'name', 'code', 'description', 'parent_id', 'is_active', 'created_at', 'updated_at']
-            }
-        },
-        queryParams: {
-            page: 'Page number (default: 1)',
-            limit: 'Items per page (default: 10)',
-            is_active: 'Filter by active status (true/false)',
-            search: 'Search by name or code'
-        },
-        sampleResponse: {
-            success: true,
-            message: 'Credit heads retrieved successfully',
-            pagination: { total: 10, page: '1', limit: '10', totalPage: 1 },
-            data: [{ id: 1, name: 'Sales Revenue', code: 'CR001', is_active: true }]
-        },
-        examples: [
-            {
-                title: 'List Credit Heads',
-                description: 'Get all credit heads',
-                url: '/api/accounting/credit-head',
-                method: 'GET',
-                response: {
-                    success: true,
-                    message: 'Credit heads retrieved successfully',
-                    pagination: { total: 10, page: '1', limit: '10', totalPage: 1 },
-                    data: [{ id: 1, name: 'Sales Revenue', code: 'CR001', is_active: true }]
-                }
-            }
-        ]
-    },
-    {
-        path: '/credit-head/:id',
-        method: 'GET',
-        middlewares: [],
-        handler: (req, res) => accountingController.getCreditHeadById(req, res),
-        description: 'Get credit head by ID',
-        database: {
-            tables: ['credit_heads'],
-            mainTable: 'credit_heads',
-            fields: {
-                credit_heads: ['id', 'name', 'code', 'description', 'parent_id', 'is_active', 'created_at', 'updated_at']
-            }
-        },
-        sampleResponse: {
-            status: true,
-            data: { id: 1, name: 'Sales Revenue', code: 'CR001', description: 'Revenue from sales', is_active: true }
-        },
-        examples: [
-            {
-                title: 'Get Credit Head',
-                description: 'Get credit head details by ID',
-                url: '/api/accounting/credit-head/1',
+                title: 'List Accounts',
+                description: 'Get all available accounts for dropdowns',
+                url: '/api/accounting/accounts',
                 method: 'GET',
                 response: {
                     status: true,
-                    data: { id: 1, name: 'Sales Revenue', code: 'CR001', is_active: true }
-                }
-            }
-        ]
-    },
-    {
-        path: '/credit-head',
-        method: 'POST',
-        middlewares: [validate(createCreditHead)],
-        handler: handlerWithFields((req, res) => accountingController.createCreditHead(req, res), createCreditHead),
-        description: 'Create a new credit head',
-        database: {
-            tables: ['credit_heads'],
-            mainTable: 'credit_heads',
-            requiredFields: ['name'],
-            optionalFields: ['code', 'description', 'parent_id', 'is_active'],
-            autoGeneratedFields: ['id', 'created_at', 'updated_at']
-        },
-        sampleRequest: {
-            name: 'Sales Revenue',
-            code: 'CR001',
-            description: 'Revenue from sales',
-            is_active: true
-        },
-        sampleResponse: {
-            status: true,
-            message: 'Credit head created successfully'
-        },
-        examples: [
-            {
-                title: 'Create Credit Head',
-                description: 'Add a new credit head',
-                url: '/api/accounting/credit-head',
-                method: 'POST',
-                request: { name: 'Other Income', code: 'CR005', description: 'Misc income', is_active: true },
-                response: {
-                    status: true,
-                    message: 'Credit head created successfully'
-                }
-            }
-        ]
-    },
-    {
-        path: '/credit-head/:id',
-        method: 'PUT',
-        middlewares: [validate(updateCreditHead)],
-        handler: handlerWithFields((req, res) => accountingController.updateCreditHead(req, res), updateCreditHead),
-        description: 'Update a credit head',
-        database: {
-            tables: ['credit_heads'],
-            mainTable: 'credit_heads',
-            updatableFields: ['name', 'code', 'description', 'parent_id', 'is_active'],
-            autoUpdatedFields: ['updated_at']
-        },
-        sampleRequest: {
-            name: 'Updated Sales Revenue',
-            is_active: false
-        },
-        sampleResponse: {
-            status: true,
-            message: 'Credit head updated successfully'
-        },
-        examples: [
-            {
-                title: 'Update Credit Head',
-                description: 'Update existing credit head',
-                url: '/api/accounting/credit-head/1',
-                method: 'PUT',
-                request: { name: 'Updated Sales Revenue', is_active: true },
-                response: {
-                    status: true,
-                    message: 'Credit head updated successfully'
-                }
-            }
-        ]
-    },
-    {
-        path: '/credit-head/:id',
-        method: 'DELETE',
-        middlewares: [],
-        handler: (req, res) => accountingController.deleteCreditHead(req, res),
-        description: 'Delete a credit head',
-        database: {
-            tables: ['credit_heads'],
-            mainTable: 'credit_heads',
-            sideEffects: ['Permanently deletes the credit head record']
-        },
-        sampleResponse: {
-            status: true,
-            message: 'Credit head deleted successfully'
-        },
-        examples: [
-            {
-                title: 'Delete Credit Head',
-                description: 'Remove a credit head',
-                url: '/api/accounting/credit-head/5',
-                method: 'DELETE',
-                response: {
-                    status: true,
-                    message: 'Credit head deleted successfully'
-                }
-            }
-        ]
-    },
-
-    // --- Debit Heads ---
-    {
-        path: '/debit-head',
-        method: 'GET',
-        middlewares: [],
-        handler: (req, res) => accountingController.getAllDebitHeads(req, res),
-        description: 'Get all debit heads',
-        database: {
-            tables: ['debit_heads'],
-            mainTable: 'debit_heads',
-            fields: {
-                debit_heads: ['id', 'name', 'code', 'description', 'parent_id', 'is_active', 'created_at', 'updated_at']
-            }
-        },
-        queryParams: {
-            page: 'Page number (default: 1)',
-            limit: 'Items per page (default: 10)',
-            is_active: 'Filter by active status (true/false)',
-            search: 'Search by name or code'
-        },
-        sampleResponse: {
-            success: true,
-            message: 'Debit heads retrieved successfully',
-            pagination: { total: 10, page: '1', limit: '10', totalPage: 1 },
-            data: [{ id: 1, name: 'Office Expenses', code: 'DB001', is_active: true }]
-        },
-        examples: [
-            {
-                title: 'List Debit Heads',
-                description: 'Get all debit heads',
-                url: '/api/accounting/debit-head',
-                method: 'GET',
-                response: {
-                    success: true,
-                    message: 'Debit heads retrieved successfully',
-                    pagination: { total: 10, page: '1', limit: '10', totalPage: 1 },
-                    data: [{ id: 1, name: 'Office Expenses', code: 'DB001', is_active: true }]
-                }
-            }
-        ]
-    },
-    {
-        path: '/debit-head/:id',
-        method: 'GET',
-        middlewares: [],
-        handler: (req, res) => accountingController.getDebitHeadById(req, res),
-        description: 'Get debit head by ID',
-        database: {
-            tables: ['debit_heads'],
-            mainTable: 'debit_heads',
-            fields: {
-                debit_heads: ['id', 'name', 'code', 'description', 'parent_id', 'is_active', 'created_at', 'updated_at']
-            }
-        },
-        sampleResponse: {
-            status: true,
-            data: { id: 1, name: 'Office Expenses', code: 'DB001', description: 'General office expenses', is_active: true }
-        },
-        examples: [
-            {
-                title: 'Get Debit Head',
-                description: 'Get debit head details by ID',
-                url: '/api/accounting/debit-head/1',
-                method: 'GET',
-                response: {
-                    status: true,
-                    data: { id: 1, name: 'Office Expenses', code: 'DB001', is_active: true }
-                }
-            }
-        ]
-    },
-    {
-        path: '/debit-head',
-        method: 'POST',
-        middlewares: [validate(createDebitHead)],
-        handler: handlerWithFields((req, res) => accountingController.createDebitHead(req, res), createDebitHead),
-        description: 'Create a new debit head',
-        database: {
-            tables: ['debit_heads'],
-            mainTable: 'debit_heads',
-            requiredFields: ['name'],
-            optionalFields: ['code', 'description', 'parent_id', 'is_active'],
-            autoGeneratedFields: ['id', 'created_at', 'updated_at']
-        },
-        sampleRequest: {
-            name: 'Office Expenses',
-            code: 'DB001',
-            description: 'General office expenses',
-            is_active: true
-        },
-        sampleResponse: {
-            status: true,
-            message: 'Debit head created successfully'
-        },
-        examples: [
-            {
-                title: 'Create Debit Head',
-                description: 'Add a new debit head',
-                url: '/api/accounting/debit-head',
-                method: 'POST',
-                request: { name: 'Travel Expenses', code: 'DB005', description: 'Business travel', is_active: true },
-                response: {
-                    status: true,
-                    message: 'Debit head created successfully'
-                }
-            }
-        ]
-    },
-    {
-        path: '/debit-head/:id',
-        method: 'PUT',
-        middlewares: [validate(updateDebitHead)],
-        handler: handlerWithFields((req, res) => accountingController.updateDebitHead(req, res), updateDebitHead),
-        description: 'Update a debit head',
-        database: {
-            tables: ['debit_heads'],
-            mainTable: 'debit_heads',
-            updatableFields: ['name', 'code', 'description', 'parent_id', 'is_active'],
-            autoUpdatedFields: ['updated_at']
-        },
-        sampleRequest: {
-            name: 'Updated Office Expenses',
-            is_active: false
-        },
-        sampleResponse: {
-            status: true,
-            message: 'Debit head updated successfully'
-        },
-        examples: [
-            {
-                title: 'Update Debit Head',
-                description: 'Update existing debit head',
-                url: '/api/accounting/debit-head/1',
-                method: 'PUT',
-                request: { name: 'Updated Office Expenses', is_active: true },
-                response: {
-                    status: true,
-                    message: 'Debit head updated successfully'
-                }
-            }
-        ]
-    },
-    {
-        path: '/debit-head/:id',
-        method: 'DELETE',
-        middlewares: [],
-        handler: (req, res) => accountingController.deleteDebitHead(req, res),
-        description: 'Delete a debit head',
-        database: {
-            tables: ['debit_heads'],
-            mainTable: 'debit_heads',
-            sideEffects: ['Permanently deletes the debit head record']
-        },
-        sampleResponse: {
-            status: true,
-            message: 'Debit head deleted successfully'
-        },
-        examples: [
-            {
-                title: 'Delete Debit Head',
-                description: 'Remove a debit head',
-                url: '/api/accounting/debit-head/5',
-                method: 'DELETE',
-                response: {
-                    status: true,
-                    message: 'Debit head deleted successfully'
-                }
-            }
-        ]
-    },
-
-    // --- Charts ---
-    {
-        path: '/charts',
-        method: 'GET',
-        middlewares: [],
-        handler: (req, res) => accountingController.getChartData(req, res),
-        description: 'Get accounting chart data for last 30 days',
-        database: {
-            tables: ['incomes', 'expenses'],
-            mainTable: 'incomes',
-            fields: {
-                incomes: ['income_date', 'amount'],
-                expenses: ['expense_date', 'amount']
-            },
-            sideEffects: ['Aggregates daily income and expense data for the last 30 days']
-        },
-        sampleResponse: {
-            status: true,
-            message: 'Accounting chart data retrieved successfully',
-            data: [
-                {
-                    date: '2025-12-01',
-                    income: 4609,
-                    expense: 1711
-                },
-                {
-                    date: '2025-12-02',
-                    income: 3200,
-                    expense: 1500
-                }
-            ]
-        },
-        examples: [
-            {
-                title: 'Get Financial Charts',
-                description: 'Retrieve daily income and expense data for charts',
-                url: '/api/accounting/charts',
-                method: 'GET',
-                response: {
-                    status: true,
-                    message: 'Accounting chart data retrieved successfully',
+                    message: 'Chart of Accounts retrieved successfully',
                     data: [
-                        { date: '2025-12-01', income: 4600, expense: 1700 },
-                        { date: '2025-12-02', income: 3200, expense: 1500 }
+                        { id: 1, code: '1000', name: 'Cash', type: 'ASSET' },
+                        { id: 2, code: '4000', name: 'Sales', type: 'INCOME' }
                     ]
+                }
+            }
+        ]
+    },
+    {
+        path: '/accounts',
+        method: 'POST',
+        middlewares: [validate(createAccount)],
+        handler: handlerWithFields((req, res) => accountingController.createAccount(req, res), createAccount),
+        description: 'Create a new Account (Sub-account or Root)',
+        database: {
+            tables: ['accounts'],
+            requiredFields: ['code', 'name', 'type'],
+            optionalFields: ['parent_id', 'description']
+        },
+        examples: [
+            {
+                title: 'Create Sub-Account',
+                description: 'Create "Office Rent" as a sub-account of "Office Expense" (ID 100)',
+                url: '/api/accounting/accounts',
+                method: 'POST',
+                request: {
+                    code: '5201',
+                    name: 'Rent Expense',
+                    type: 'EXPENSE',
+                    parent_id: 100
+                },
+                response: {
+                    status: true,
+                    message: 'Account created successfully'
+                }
+            }
+        ]
+    },
+    {
+        path: '/accounts/:id',
+        method: 'PUT',
+        middlewares: [validate(updateAccount)],
+        handler: handlerWithFields((req, res) => accountingController.updateAccount(req, res), updateAccount),
+        description: 'Update Account details',
+        database: {
+            tables: ['accounts'],
+            updatableFields: ['name', 'parent_id', 'type', 'description']
+        },
+        examples: [
+            {
+                title: 'Update Parent ID',
+                description: 'Move an account under a new parent',
+                url: '/api/accounting/accounts/5',
+                method: 'PUT',
+                request: {
+                    parent_id: 102
+                },
+                response: {
+                    status: true,
+                    message: 'Account updated successfully'
+                }
+            }
+        ]
+    },
+    {
+        path: '/accounts/:id',
+        method: 'DELETE',
+        middlewares: [],
+        handler: (req, res) => accountingController.deleteAccount(req, res),
+        description: 'Delete an Account',
+        database: {
+            tables: ['accounts'],
+            sideEffects: ['Deletes the account. Ensure no transactions exist first.']
+        },
+        examples: [
+            {
+                title: 'Delete Account',
+                description: 'Remove an unused account',
+                url: '/api/accounting/accounts/10',
+                method: 'DELETE',
+                response: {
+                    status: true,
+                    message: 'Account deleted successfully'
+                }
+            }
+        ]
+    },
+    {
+        path: '/accounts/seed',
+        method: 'POST',
+        middlewares: [],
+        handler: (req, res) => accountingController.seedAccounts(req, res),
+        description: 'Seed default Chart of Accounts',
+        database: {
+            tables: ['accounts'],
+            sideEffects: ['Inserts default accounts if missing']
+        },
+        examples: [
+            {
+                title: 'Seed Accounts',
+                description: 'Initialize the system with default accounts',
+                url: '/api/accounting/accounts/seed',
+                method: 'POST',
+                response: {
+                    status: true,
+                    message: 'Accounts seeded successfully'
                 }
             }
         ]

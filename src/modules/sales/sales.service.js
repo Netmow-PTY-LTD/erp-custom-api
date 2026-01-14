@@ -606,7 +606,7 @@ class SalesService {
         if (data.status === 'delivered') {
             await OrderRepository.update(orderId, { status: 'delivered' });
         } else if (data.status === 'in_transit') {
-            await OrderRepository.update(orderId, { status: 'shipped' });
+            await OrderRepository.update(orderId, { status: 'in_transit' });
         } else if (data.status === 'confirmed') {
             await OrderRepository.update(orderId, { status: 'confirmed' });
         }

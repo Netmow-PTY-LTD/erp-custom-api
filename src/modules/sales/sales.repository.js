@@ -9,7 +9,13 @@ class OrderRepository {
 
     async findAll(filters = {}, limit = 10, offset = 0) {
         const where = {};
-        if (filters.status) where.status = filters.status;
+        if (filters.status) {
+            if (filters.status === 'in_transit') {
+                where.status = { [Op.or]: ['in_transit', 'shipped'] };
+            } else {
+                where.status = filters.status;
+            }
+        }
         if (filters.customer_id) where.customer_id = filters.customer_id;
 
         if (filters.search) {
@@ -230,7 +236,13 @@ class OrderRepository {
 
     async getOrdersWithStaff(filters = {}, limit = 10, offset = 0) {
         const where = {};
-        if (filters.status) where.status = filters.status;
+        if (filters.status) {
+            if (filters.status === 'in_transit') {
+                where.status = { [Op.or]: ['in_transit', 'shipped'] };
+            } else {
+                where.status = filters.status;
+            }
+        }
         if (filters.customer_id) where.customer_id = filters.customer_id;
 
         if (filters.search) {
@@ -274,7 +286,11 @@ class OrderRepository {
 
         // Filter by order status
         if (filters.status) {
-            where.status = filters.status;
+            if (filters.status === 'in_transit') {
+                where.status = { [Op.or]: ['in_transit', 'shipped'] };
+            } else {
+                where.status = filters.status;
+            }
         }
 
         // Search by order number

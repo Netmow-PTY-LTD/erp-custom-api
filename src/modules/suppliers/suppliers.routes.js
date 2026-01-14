@@ -22,10 +22,11 @@ router.routesMeta = [
         handler: (req, res) => suppliersController.getAllSuppliers(req, res),
         description: 'Get all suppliers with pagination',
         database: {
-            tables: ['suppliers'],
+            tables: ['suppliers', 'purchase_orders', 'purchase_payments'],
             mainTable: 'suppliers',
             fields: {
-                suppliers: ['id', 'name', 'code', 'contact_person', 'email', 'phone', 'address', 'city', 'state', 'country', 'postal_code', 'latitude', 'longitude', 'tax_id', 'website', 'payment_terms', 'notes', 'is_active', 'created_at', 'updated_at']
+                suppliers: ['id', 'name', 'code', 'contact_person', 'email', 'phone', 'address', 'city', 'state', 'country', 'postal_code', 'latitude', 'longitude', 'tax_id', 'website', 'payment_terms', 'notes', 'is_active', 'created_at', 'updated_at'],
+                calculated: ['total_purchase_amount', 'total_paid_amount', 'total_due_amount']
             }
         },
         queryParams: {
@@ -52,6 +53,9 @@ router.routesMeta = [
                     email: 'john@techsupplies.com',
                     phone: '+1234567890',
                     is_active: true,
+                    total_purchase_amount: 50000.00,
+                    total_paid_amount: 45000.00,
+                    total_due_amount: 5000.00,
                     created_at: '2025-12-03T05:00:00.000Z'
                 }
             ]

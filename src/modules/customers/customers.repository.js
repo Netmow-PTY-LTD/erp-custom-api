@@ -38,8 +38,16 @@ class CustomerRepository {
                     ]
                 ]
             },
+            include: [
+                {
+                    model: CustomerImage,
+                    as: 'images',
+                    attributes: ['image_url']
+                }
+            ],
             limit,
             offset,
+            distinct: true, // Fix for correct pagination count with includes
             order: [['created_at', 'DESC']]
         });
     }

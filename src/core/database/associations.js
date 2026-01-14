@@ -51,4 +51,13 @@ StaffCheckIn.belongsTo(Customer, { foreignKey: 'customer_id', as: 'customer' });
 Customer.hasMany(StaffCheckIn, { foreignKey: 'customer_id', as: 'checkins' }); // Added for reverse lookup
 StaffCheckIn.belongsTo(Staff, { foreignKey: 'staff_id', as: 'staff' });
 
+// Set up Payroll associations
+const { PayrollRun, PayrollItem } = require('../../modules/payroll/payroll.models');
+
+PayrollRun.hasMany(PayrollItem, { foreignKey: 'run_id', as: 'items' });
+PayrollItem.belongsTo(PayrollRun, { foreignKey: 'run_id', as: 'run' });
+
+User.hasMany(PayrollItem, { foreignKey: 'staff_id', as: 'payrollItems' });
+PayrollItem.belongsTo(User, { foreignKey: 'staff_id', as: 'staff' });
+
 module.exports = {};

@@ -1,315 +1,155 @@
 const { DataTypes } = require('sequelize');
 const { sequelize } = require('../../core/database/sequelize');
 
-// Income Model
-const Income = sequelize.define('Income', {
+// 1. Chart of Accounts
+const Account = sequelize.define('Account', {
     id: {
         type: DataTypes.INTEGER,
         primaryKey: true,
         autoIncrement: true
-    },
-    title: {
-        type: DataTypes.STRING(255),
-        allowNull: false
-    },
-    amount: {
-        type: DataTypes.DECIMAL(10, 2),
-        allowNull: false,
-        get() {
-            const value = this.getDataValue('amount');
-            return value === null ? null : parseFloat(value);
-        }
-    },
-    income_date: {
-        type: DataTypes.DATEONLY,
-        allowNull: false
-    },
-    category: {
-        type: DataTypes.STRING(100),
-        allowNull: true
-    },
-    credit_head_id: {
-        type: DataTypes.INTEGER,
-        allowNull: true
-    },
-    description: {
-        type: DataTypes.TEXT,
-        allowNull: true
-    },
-    reference_number: {
-        type: DataTypes.STRING(100),
-        allowNull: true
-    },
-    payment_method: {
-        type: DataTypes.STRING(50),
-        allowNull: true
-    },
-    created_by: {
-        type: DataTypes.INTEGER,
-        allowNull: true
-    },
-    created_at: {
-        type: DataTypes.DATE,
-        defaultValue: DataTypes.NOW
-    },
-    updated_at: {
-        type: DataTypes.DATE,
-        defaultValue: DataTypes.NOW
-    }
-}, {
-    tableName: 'incomes',
-    timestamps: true,
-    createdAt: 'created_at',
-    updatedAt: 'updated_at'
-});
-
-// Expense Model
-const Expense = sequelize.define('Expense', {
-    id: {
-        type: DataTypes.INTEGER,
-        primaryKey: true,
-        autoIncrement: true
-    },
-    title: {
-        type: DataTypes.STRING(255),
-        allowNull: false
-    },
-    amount: {
-        type: DataTypes.DECIMAL(10, 2),
-        allowNull: false,
-        get() {
-            const value = this.getDataValue('amount');
-            return value === null ? null : parseFloat(value);
-        }
-    },
-    expense_date: {
-        type: DataTypes.DATEONLY,
-        allowNull: false
-    },
-    category: {
-        type: DataTypes.STRING(100),
-        allowNull: true
-    },
-    debit_head_id: {
-        type: DataTypes.INTEGER,
-        allowNull: true
-    },
-    description: {
-        type: DataTypes.TEXT,
-        allowNull: true
-    },
-    reference_number: {
-        type: DataTypes.STRING(100),
-        allowNull: true
-    },
-    payment_method: {
-        type: DataTypes.STRING(50),
-        allowNull: true
-    },
-    status: {
-        type: DataTypes.ENUM('pending', 'approved', 'paid', 'rejected'),
-        defaultValue: 'pending'
-    },
-    created_by: {
-        type: DataTypes.INTEGER,
-        allowNull: true
-    },
-    created_at: {
-        type: DataTypes.DATE,
-        defaultValue: DataTypes.NOW
-    },
-    updated_at: {
-        type: DataTypes.DATE,
-        defaultValue: DataTypes.NOW
-    }
-}, {
-    tableName: 'expenses',
-    timestamps: true,
-    createdAt: 'created_at',
-    updatedAt: 'updated_at'
-});
-
-// Payroll Model
-const Payroll = sequelize.define('Payroll', {
-    id: {
-        type: DataTypes.INTEGER,
-        primaryKey: true,
-        autoIncrement: true
-    },
-    staff_id: {
-        type: DataTypes.INTEGER,
-        allowNull: false
-    },
-    salary_month: {
-        type: DataTypes.STRING(7), // YYYY-MM
-        allowNull: false
-    },
-    basic_salary: {
-        type: DataTypes.DECIMAL(10, 2),
-        allowNull: false,
-        get() {
-            const value = this.getDataValue('basic_salary');
-            return value === null ? null : parseFloat(value);
-        }
-    },
-    allowances: {
-        type: DataTypes.DECIMAL(10, 2),
-        defaultValue: 0.00,
-        get() {
-            const value = this.getDataValue('allowances');
-            return value === null ? null : parseFloat(value);
-        }
-    },
-    deductions: {
-        type: DataTypes.DECIMAL(10, 2),
-        defaultValue: 0.00,
-        get() {
-            const value = this.getDataValue('deductions');
-            return value === null ? null : parseFloat(value);
-        }
-    },
-    net_salary: {
-        type: DataTypes.DECIMAL(10, 2),
-        allowNull: false,
-        get() {
-            const value = this.getDataValue('net_salary');
-            return value === null ? null : parseFloat(value);
-        }
-    },
-    payment_date: {
-        type: DataTypes.DATEONLY,
-        allowNull: true
-    },
-    status: {
-        type: DataTypes.ENUM('pending', 'processed', 'paid'),
-        defaultValue: 'pending'
-    },
-    notes: {
-        type: DataTypes.TEXT,
-        allowNull: true
-    },
-    created_by: {
-        type: DataTypes.INTEGER,
-        allowNull: true
-    },
-    created_at: {
-        type: DataTypes.DATE,
-        defaultValue: DataTypes.NOW
-    },
-    updated_at: {
-        type: DataTypes.DATE,
-        defaultValue: DataTypes.NOW
-    }
-}, {
-    tableName: 'payrolls',
-    timestamps: true,
-    createdAt: 'created_at',
-    updatedAt: 'updated_at'
-});
-
-// Credit Head Model
-const CreditHead = sequelize.define('CreditHead', {
-    id: {
-        type: DataTypes.INTEGER,
-        primaryKey: true,
-        autoIncrement: true
-    },
-    name: {
-        type: DataTypes.STRING(255),
-        allowNull: false,
-        unique: true
     },
     code: {
-        type: DataTypes.STRING(50),
-        allowNull: true,
-        unique: true
+        type: DataTypes.STRING(20),
+        unique: true,
+        allowNull: false
     },
-    description: {
-        type: DataTypes.TEXT,
-        allowNull: true
+    name: {
+        type: DataTypes.STRING(100),
+        allowNull: false
+    },
+    type: {
+        type: DataTypes.ENUM('ASSET', 'LIABILITY', 'EQUITY', 'INCOME', 'EXPENSE'),
+        allowNull: false
     },
     parent_id: {
         type: DataTypes.INTEGER,
         allowNull: true
-    },
-    is_active: {
-        type: DataTypes.BOOLEAN,
-        defaultValue: true
-    },
-    created_at: {
-        type: DataTypes.DATE,
-        defaultValue: DataTypes.NOW
-    },
-    updated_at: {
-        type: DataTypes.DATE,
-        defaultValue: DataTypes.NOW
     }
 }, {
-    tableName: 'credit_heads',
+    tableName: 'accounts',
     timestamps: true,
     createdAt: 'created_at',
-    updatedAt: 'updated_at'
+    updatedAt: 'updated_at' // sequelize default is updatedAt
 });
 
-// Debit Head Model
-const DebitHead = sequelize.define('DebitHead', {
+// 2. Transactions (Single Entry UI Staging)
+const Transaction = sequelize.define('Transaction', {
     id: {
         type: DataTypes.INTEGER,
         primaryKey: true,
         autoIncrement: true
     },
-    name: {
-        type: DataTypes.STRING(255),
-        allowNull: false,
-        unique: true
+    type: {
+        type: DataTypes.STRING(50), // SALES, PURCHASE, EXPENSE, etc.
+        allowNull: false
     },
-    code: {
-        type: DataTypes.STRING(50),
-        allowNull: true,
-        unique: true
+    amount: {
+        type: DataTypes.DECIMAL(12, 2),
+        allowNull: false
+    },
+    payment_mode: {
+        type: DataTypes.ENUM('CASH', 'BANK', 'DUE'),
+        allowNull: false
+    },
+    reference_id: {
+        type: DataTypes.INTEGER,
+        allowNull: true
     },
     description: {
         type: DataTypes.TEXT,
         allowNull: true
     },
-    parent_id: {
-        type: DataTypes.INTEGER,
-        allowNull: true
-    },
-    is_active: {
-        type: DataTypes.BOOLEAN,
-        defaultValue: true
-    },
-    created_at: {
-        type: DataTypes.DATE,
+    date: {
+        type: DataTypes.DATEONLY,
+        allowNull: false,
         defaultValue: DataTypes.NOW
     },
-    updated_at: {
-        type: DataTypes.DATE,
-        defaultValue: DataTypes.NOW
-    }
+    // Meta fields for specific logic
+    category: DataTypes.STRING, // For 'Daily Expense' type
+    person: DataTypes.STRING,   // For 'Professional Fees' type
+    supplier: DataTypes.STRING  // For 'Purchase'
 }, {
-    tableName: 'debit_heads',
+    tableName: 'transactions',
     timestamps: true,
     createdAt: 'created_at',
     updatedAt: 'updated_at'
 });
 
-// Define associations
-Income.belongsTo(CreditHead, {
-    foreignKey: 'credit_head_id',
-    as: 'creditHead'
+// 3. Journal Master (Double Entry Core)
+const Journal = sequelize.define('Journal', {
+    id: {
+        type: DataTypes.INTEGER,
+        primaryKey: true,
+        autoIncrement: true
+    },
+    date: {
+        type: DataTypes.DATEONLY,
+        allowNull: false
+    },
+    reference_type: {
+        type: DataTypes.STRING(50), // e.g., 'TRANSACTION'
+        allowNull: true
+    },
+    reference_id: {
+        type: DataTypes.INTEGER, // Link back to Transaction ID
+        allowNull: true
+    },
+    narration: {
+        type: DataTypes.TEXT,
+        allowNull: true
+    }
+}, {
+    tableName: 'journals',
+    timestamps: true,
+    createdAt: 'created_at',
+    updatedAt: 'updated_at'
 });
 
-Expense.belongsTo(DebitHead, {
-    foreignKey: 'debit_head_id',
-    as: 'debitHead'
+// 4. Journal Details
+const JournalLine = sequelize.define('JournalLine', {
+    id: {
+        type: DataTypes.INTEGER,
+        primaryKey: true,
+        autoIncrement: true
+    },
+    journal_id: {
+        type: DataTypes.INTEGER,
+        allowNull: false
+    },
+    account_id: {
+        type: DataTypes.INTEGER,
+        allowNull: false
+    },
+    debit: {
+        type: DataTypes.DECIMAL(12, 2),
+        defaultValue: 0
+    },
+    credit: {
+        type: DataTypes.DECIMAL(12, 2),
+        defaultValue: 0
+    }
+}, {
+    tableName: 'journal_lines',
+    timestamps: false
 });
+
+// Associations
+Account.hasMany(Account, { as: 'children', foreignKey: 'parent_id' });
+Account.belongsTo(Account, { as: 'parent', foreignKey: 'parent_id' });
+
+Journal.hasMany(JournalLine, { foreignKey: 'journal_id', as: 'entries' });
+JournalLine.belongsTo(Journal, { foreignKey: 'journal_id' });
+
+JournalLine.belongsTo(Account, { foreignKey: 'account_id', as: 'account' });
+Account.hasMany(JournalLine, { foreignKey: 'account_id' });
+
+// Link Transaction to Journal
+Transaction.hasOne(Journal, { foreignKey: 'reference_id', constraints: false, scope: { reference_type: 'TRANSACTION' } });
+Journal.belongsTo(Transaction, { foreignKey: 'reference_id', constraints: false });
 
 module.exports = {
-    Income,
-    Expense,
-    Payroll,
-    CreditHead,
-    DebitHead
+    Account,
+    Transaction,
+    Journal,
+    JournalLine
 };
