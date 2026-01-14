@@ -38,6 +38,13 @@ class CustomerRepository {
                     ]
                 ]
             },
+            include: [
+                {
+                    model: CustomerImage,
+                    as: 'images',
+                    attributes: ['image_url']
+                }
+            ],
             limit,
             offset,
             order: [['created_at', 'DESC']]

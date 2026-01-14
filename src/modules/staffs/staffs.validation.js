@@ -8,6 +8,7 @@ const createStaff = z.object({
     phone: z.string().max(50).optional(),
     position: z.string().max(100).optional(),
     department_id: z.number().int().positive().optional(),
+    role_id: z.number().int().positive().optional(),
     hire_date: z.string().optional(), // Should be YYYY-MM-DD
     salary: z.number().min(0).optional(),
     address: z.string().optional(),
@@ -29,6 +30,7 @@ const updateStaff = z.object({
     phone: z.string().max(50).optional(),
     position: z.string().max(100).optional(),
     department_id: z.number().int().positive().optional(),
+    role_id: z.number().int().positive().optional(),
     hire_date: z.string().optional(),
     salary: z.number().min(0).optional(),
     address: z.string().optional(),

@@ -129,84 +129,6 @@ const Expense = sequelize.define('Expense', {
     updatedAt: 'updated_at'
 });
 
-// Payroll Model
-const Payroll = sequelize.define('Payroll', {
-    id: {
-        type: DataTypes.INTEGER,
-        primaryKey: true,
-        autoIncrement: true
-    },
-    staff_id: {
-        type: DataTypes.INTEGER,
-        allowNull: false
-    },
-    salary_month: {
-        type: DataTypes.STRING(7), // YYYY-MM
-        allowNull: false
-    },
-    basic_salary: {
-        type: DataTypes.DECIMAL(10, 2),
-        allowNull: false,
-        get() {
-            const value = this.getDataValue('basic_salary');
-            return value === null ? null : parseFloat(value);
-        }
-    },
-    allowances: {
-        type: DataTypes.DECIMAL(10, 2),
-        defaultValue: 0.00,
-        get() {
-            const value = this.getDataValue('allowances');
-            return value === null ? null : parseFloat(value);
-        }
-    },
-    deductions: {
-        type: DataTypes.DECIMAL(10, 2),
-        defaultValue: 0.00,
-        get() {
-            const value = this.getDataValue('deductions');
-            return value === null ? null : parseFloat(value);
-        }
-    },
-    net_salary: {
-        type: DataTypes.DECIMAL(10, 2),
-        allowNull: false,
-        get() {
-            const value = this.getDataValue('net_salary');
-            return value === null ? null : parseFloat(value);
-        }
-    },
-    payment_date: {
-        type: DataTypes.DATEONLY,
-        allowNull: true
-    },
-    status: {
-        type: DataTypes.ENUM('pending', 'processed', 'paid'),
-        defaultValue: 'pending'
-    },
-    notes: {
-        type: DataTypes.TEXT,
-        allowNull: true
-    },
-    created_by: {
-        type: DataTypes.INTEGER,
-        allowNull: true
-    },
-    created_at: {
-        type: DataTypes.DATE,
-        defaultValue: DataTypes.NOW
-    },
-    updated_at: {
-        type: DataTypes.DATE,
-        defaultValue: DataTypes.NOW
-    }
-}, {
-    tableName: 'payrolls',
-    timestamps: true,
-    createdAt: 'created_at',
-    updatedAt: 'updated_at'
-});
-
 // Credit Head Model
 const CreditHead = sequelize.define('CreditHead', {
     id: {
@@ -309,7 +231,6 @@ Expense.belongsTo(DebitHead, {
 module.exports = {
     Income,
     Expense,
-    Payroll,
     CreditHead,
     DebitHead
 };

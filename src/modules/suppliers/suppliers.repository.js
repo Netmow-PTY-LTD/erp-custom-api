@@ -1,6 +1,8 @@
 const { Supplier } = require('./suppliers.model');
 const { Op } = require('sequelize');
 
+const { sequelize } = require('../../core/database/sequelize');
+
 class SupplierRepository {
     async findAll(filters = {}, limit = 10, offset = 0) {
         const where = {};
@@ -20,6 +22,44 @@ class SupplierRepository {
 
         return await Supplier.findAndCountAll({
             where,
+            attributes: {
+                include: [
+                    [
+                        sequelize.literal(`(
+                            SELECT COALESCE(SUM(total_amount), 0)
+                            FROM purchase_orders AS po
+                            WHERE po.supplier_id = Supplier.id
+                            AND po.status != 'cancelled'
+                        )`),
+                        'total_purchase_amount'
+                    ],
+                    [
+                        sequelize.literal(`(
+                            SELECT COALESCE(SUM(pp.amount), 0)
+                            FROM purchase_payments AS pp
+                            INNER JOIN purchase_orders AS po ON po.id = pp.purchase_order_id
+                            WHERE po.supplier_id = Supplier.id
+                            AND pp.status = 'completed'
+                        )`),
+                        'total_paid_amount'
+                    ],
+                    [
+                        sequelize.literal(`(
+                            (SELECT COALESCE(SUM(total_amount), 0)
+                            FROM purchase_orders AS po
+                            WHERE po.supplier_id = Supplier.id
+                            AND po.status != 'cancelled')
+                            -
+                            (SELECT COALESCE(SUM(pp.amount), 0)
+                            FROM purchase_payments AS pp
+                            INNER JOIN purchase_orders AS po ON po.id = pp.purchase_order_id
+                            WHERE po.supplier_id = Supplier.id
+                            AND pp.status = 'completed')
+                        )`),
+                        'total_due_amount'
+                    ]
+                ]
+            },
             limit,
             offset,
             order: [['created_at', 'DESC']]

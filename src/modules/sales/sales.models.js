@@ -156,7 +156,7 @@ const Order = sequelize.define('Order', {
         defaultValue: DataTypes.NOW
     },
     status: {
-        type: DataTypes.ENUM('pending', 'confirmed', 'processing', 'shipped', 'delivered', 'cancelled'),
+        type: DataTypes.ENUM('pending', 'confirmed', 'processing', 'shipped', 'in_transit', 'delivered', 'cancelled'),
         defaultValue: 'pending'
     },
     total_amount: {
@@ -633,6 +633,8 @@ Delivery.belongsTo(Order, { foreignKey: 'order_id' });
 // Order Staff Assignments
 Order.belongsToMany(Staff, { through: OrderStaff, as: 'assignedStaff', foreignKey: 'order_id' });
 Staff.belongsToMany(Order, { through: OrderStaff, as: 'assignedOrders', foreignKey: 'staff_id' });
+
+
 
 module.exports = {
     Warehouse,

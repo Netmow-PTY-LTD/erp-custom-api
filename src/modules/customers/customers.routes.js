@@ -284,6 +284,11 @@ router.routesMeta = [
                     outstanding_balance: 2500.00,
                     customer_type: 'business',
                     is_active: true,
+                    thumb_url: 'http://example.com/profile.jpg',
+                    gallery_items: [
+                        'http://example.com/gallery1.jpg',
+                        'http://example.com/gallery2.jpg'
+                    ],
                     created_at: '2025-12-02T10:00:00.000Z'
                 }
             ]

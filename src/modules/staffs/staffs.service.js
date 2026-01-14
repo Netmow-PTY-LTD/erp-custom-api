@@ -83,6 +83,61 @@ class StaffService {
         }
         return staff;
     }
+
+    async getStaffsWithRoutes(filters = {}, page = 1, limit = 10) {
+        // Use SalesRouteRepository to fetch staff with deep inclusions
+        // We might need to adjust filters to pass 'search' correctly if needed
+        const result = await require('../sales/salesroute.repository').getStaffRoutes(filters, limit, (page - 1) * limit);
+
+        const formattedData = result.rows.map(staff => {
+            const routes = staff.assignedRoutes || [];
+
+            // Calculate aggregations
+            let completedOrdersCount = 0;
+
+            const formattedRoutes = routes.map(route => {
+                const customers = route.customers || [];
+                let routeOrderCount = 0;
+                let routeCompletedOrders = 0;
+
+                customers.forEach(customer => {
+                    const orders = customer.orders || [];
+                    routeOrderCount += orders.length;
+
+                    const completed = orders.filter(o => ['delivered', 'completed', 'shipped'].includes(o.status)).length;
+                    routeCompletedOrders += completed;
+                });
+
+                completedOrdersCount += routeCompletedOrders;
+
+                return {
+                    id: route.id,
+                    name: route.route_name,
+                    status: route.is_active ? 'Active' : 'Pending', // Mapping boolean to string status
+                    orders: routeOrderCount
+                };
+            });
+
+            return {
+                id: staff.id,
+                name: staff.name || `${staff.first_name || ''} ${staff.last_name || ''}`.trim(),
+                role: staff.position || 'Staff',
+                email: staff.email,
+                phone: staff.phone,
+                active: staff.status === 'active',
+                routes: formattedRoutes,
+                stats: {
+                    completedOrders: completedOrdersCount,
+                    rating: 4.5 // Placeholder as rating system is not implemented yet
+                }
+            };
+        });
+
+        return {
+            data: formattedData,
+            total: result.count
+        };
+    }
 }
 
 module.exports = new StaffService();
