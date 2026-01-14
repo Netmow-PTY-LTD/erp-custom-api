@@ -47,6 +47,7 @@ class CustomerRepository {
             ],
             limit,
             offset,
+            distinct: true, // Fix for correct pagination count with includes
             order: [['created_at', 'DESC']]
         });
     }

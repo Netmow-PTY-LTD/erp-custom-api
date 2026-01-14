@@ -1,335 +1,265 @@
-const { Income, Expense, Payroll, CreditHead, DebitHead } = require('./accounting.models');
+const { Account, Transaction, Journal, JournalLine } = require('./accounting.models');
 const { Op } = require('sequelize');
 const { sequelize } = require('../../core/database/sequelize');
 
 class AccountingRepository {
-    // --- Income Operations ---
-    async findAllIncomes(filters = {}, limit = 10, offset = 0) {
-        const where = {};
-        if (filters.start_date && filters.end_date) {
-            where.income_date = { [Op.between]: [filters.start_date, filters.end_date] };
-        }
-        if (filters.category) where.category = filters.category;
-        if (filters.credit_head_id) where.credit_head_id = filters.credit_head_id;
 
-        return await Income.findAndCountAll({
+    // --- Transaction Helper ---
+    async createTransaction(data, transaction) {
+        return await Transaction.create(data, { transaction });
+    }
+
+    async findAllTransactions(filters = {}, limit = 10, offset = 0) {
+        const where = {};
+        if (filters.type) where.type = filters.type;
+        if (filters.from && filters.to) where.date = { [Op.between]: [filters.from, filters.to] };
+
+        return await Transaction.findAndCountAll({
             where,
-            order: [['income_date', 'DESC']],
             limit,
             offset,
-            include: [{
-                model: CreditHead,
-                as: 'creditHead',
-                attributes: ['id', 'name', 'code']
-            }]
+            order: [['date', 'DESC'], ['id', 'DESC']]
         });
     }
 
-    async createIncome(data) {
-        return await Income.create(data);
+    // --- Account Operations ---
+    async findAccountByCode(code) {
+        return await Account.findOne({ where: { code } });
     }
 
-    // --- Expense Operations ---
-    async findAllExpenses(filters = {}, limit = 10, offset = 0) {
-        const where = {};
-        if (filters.start_date && filters.end_date) {
-            where.expense_date = { [Op.between]: [filters.start_date, filters.end_date] };
-        }
-        if (filters.category) where.category = filters.category;
-        if (filters.status) where.status = filters.status;
-        if (filters.debit_head_id) where.debit_head_id = filters.debit_head_id;
+    async findAllAccounts() {
+        return await Account.findAll({
+            order: [['code', 'ASC']]
+        });
+    }
 
-        return await Expense.findAndCountAll({
+    // --- Journal Operations (Core) ---
+    async createJournalEntry(journalData, linesData, transaction) {
+        // 1. Create Journal Header
+        const journal = await Journal.create(journalData, { transaction });
+
+        // 2. Create Journal Lines
+        const lines = linesData.map(line => ({
+            ...line,
+            journal_id: journal.id
+        }));
+
+        await JournalLine.bulkCreate(lines, { transaction });
+
+        return journal;
+    }
+
+    // --- Reports ---
+
+    // 1. Journal Report
+    async getJournalReport(filters = {}, limit = 10, offset = 0) {
+        const where = {};
+        if (filters.from && filters.to) {
+            where.date = { [Op.between]: [filters.from, filters.to] };
+        }
+
+        return await Journal.findAndCountAll({
             where,
-            order: [['expense_date', 'DESC']],
+            include: [{
+                model: JournalLine,
+                as: 'entries',
+                include: [{
+                    model: Account,
+                    as: 'account',
+                    attributes: ['code', 'name']
+                }]
+            }],
             limit,
             offset,
+            distinct: true, // Ensure correct count of journals despite includes
+            order: [['date', 'ASC'], ['id', 'ASC']]
+        });
+    }
+
+    // 2. Ledger Report
+    async getLedgerReport(accountId, filters = {}) {
+        // We need to calculate opening balance if 'from' date is provided
+        let openingBalance = 0;
+
+        if (filters.from) {
+            const prevLines = await JournalLine.findAll({
+                where: { account_id: accountId },
+                include: [{
+                    model: Journal,
+                    where: {
+                        date: { [Op.lt]: filters.from }
+                    }
+                }]
+            });
+
+            // Calc opening balance
+            // Asset/Expense: Dr + Cr -
+            // Liability/Income/Equity: Cr + Dr -
+            // For simplicity, we usually store as Dr-Cr or based on account type.
+            // Let's get account type first.
+            const account = await Account.findByPk(accountId);
+            const isDebitNature = ['ASSET', 'EXPENSE'].includes(account.type);
+
+            prevLines.forEach(line => {
+                const debit = parseFloat(line.debit) || 0;
+                const credit = parseFloat(line.credit) || 0;
+                if (isDebitNature) {
+                    openingBalance += (debit - credit);
+                } else {
+                    openingBalance += (credit - debit);
+                }
+            });
+        }
+
+        // Get transactions in range
+        const where = { account_id: accountId };
+        const journalWhere = {};
+        if (filters.from && filters.to) {
+            journalWhere.date = { [Op.between]: [filters.from, filters.to] };
+        }
+
+        const lines = await JournalLine.findAll({
+            where,
             include: [{
-                model: DebitHead,
-                as: 'debitHead',
-                attributes: ['id', 'name', 'code']
+                model: Journal,
+                where: journalWhere,
+                attributes: ['id', 'date', 'narration', 'reference_type', 'reference_id']
+            }],
+            order: [[Journal, 'date', 'ASC']]
+        });
+
+        return { openingBalance, lines };
+    }
+
+    // 3. Trial Balance
+    async getTrialBalance(date) {
+        // Sum all debits and credits for each account up to 'date'
+        const where = {};
+        if (date) {
+            where.date = { [Op.lte]: date };
+        }
+
+        const accounts = await Account.findAll({
+            include: [{
+                model: JournalLine,
+                include: [{
+                    model: Journal,
+                    where,
+                    attributes: []
+                }],
+                attributes: ['debit', 'credit']
             }]
         });
-    }
 
-    async createExpense(data) {
-        return await Expense.create(data);
-    }
+        const trialBalance = accounts.map(acc => {
+            let totalDebit = 0;
+            let totalCredit = 0;
 
-    // --- Payroll Operations ---
-    async findAllPayrolls(filters = {}, limit = 10, offset = 0) {
-        const where = {};
-        if (filters.salary_month) where.salary_month = filters.salary_month;
-        if (filters.staff_id) where.staff_id = filters.staff_id;
-        if (filters.status) where.status = filters.status;
+            acc.JournalLines.forEach(line => {
+                totalDebit += parseFloat(line.debit) || 0;
+                totalCredit += parseFloat(line.credit) || 0;
+            });
 
-        return await Payroll.findAndCountAll({
-            where,
-            order: [['salary_month', 'DESC']],
-            limit,
-            offset
+            // If balanced, debit == credit, net is 0. 
+            // Usually TB shows totals or net balance. 
+            // Let's show totals as per spec.
+            return {
+                account: acc.name,
+                code: acc.code,
+                type: acc.type,
+                debit: totalDebit,
+                credit: totalCredit
+            };
         });
+
+        return trialBalance;
     }
 
-    async createPayroll(data) {
-        return await Payroll.create(data);
-    }
-
-    // --- Credit Head Operations ---
-    async findAllCreditHeads(filters = {}, limit = 10, offset = 0) {
-        const where = {};
-        if (filters.is_active !== undefined) where.is_active = filters.is_active;
-        if (filters.search) {
-            where[Op.or] = [
-                { name: { [Op.like]: `%${filters.search}%` } },
-                { code: { [Op.like]: `%${filters.search}%` } }
-            ];
-        }
-
-        return await CreditHead.findAndCountAll({
-            where,
-            order: [['name', 'ASC']],
-            limit,
-            offset
-        });
-    }
-
-    async findCreditHeadById(id) {
-        return await CreditHead.findByPk(id);
-    }
-
-    async createCreditHead(data) {
-        return await CreditHead.create(data);
-    }
-
-    async updateCreditHead(id, data) {
-        const creditHead = await CreditHead.findByPk(id);
-        if (!creditHead) return null;
-        return await creditHead.update(data);
-    }
-
-    async deleteCreditHead(id) {
-        const creditHead = await CreditHead.findByPk(id);
-        if (!creditHead) return null;
-        await creditHead.destroy();
-        return creditHead;
-    }
-
-    // --- Debit Head Operations ---
-    async findAllDebitHeads(filters = {}, limit = 10, offset = 0) {
-        const where = {};
-        if (filters.is_active !== undefined) where.is_active = filters.is_active;
-        if (filters.search) {
-            where[Op.or] = [
-                { name: { [Op.like]: `%${filters.search}%` } },
-                { code: { [Op.like]: `%${filters.search}%` } }
-            ];
-        }
-
-        return await DebitHead.findAndCountAll({
-            where,
-            order: [['name', 'ASC']],
-            limit,
-            offset
-        });
-    }
-
-    async findDebitHeadById(id) {
-        return await DebitHead.findByPk(id);
-    }
-
-    async createDebitHead(data) {
-        return await DebitHead.create(data);
-    }
-
-    async updateDebitHead(id, data) {
-        const debitHead = await DebitHead.findByPk(id);
-        if (!debitHead) return null;
-        return await debitHead.update(data);
-    }
-
-    async deleteDebitHead(id) {
-        const debitHead = await DebitHead.findByPk(id);
-        if (!debitHead) return null;
-        await debitHead.destroy();
-        return debitHead;
-    }
-
-    // --- Overview Operations ---
+    // Re-implemented Overview for Dashboard using new tables
     async getFinancialOverview() {
-        // Helper to format date as YYYY-MM-DD
-        const formatDate = (date) => {
-            const d = new Date(date);
-            let month = '' + (d.getMonth() + 1);
-            let day = '' + d.getDate();
-            const year = d.getFullYear();
+        // Simple Totals for now based on Account Types
+        // Income = Total Credit of INCOME accounts
+        // Expense = Total Debit of EXPENSE accounts
 
-            if (month.length < 2) month = '0' + month;
-            if (day.length < 2) day = '0' + day;
+        const getSumByType = async (type) => {
+            const accounts = await Account.findAll({ where: { type } });
+            const accountIds = accounts.map(a => a.id);
 
-            return [year, month, day].join('-');
+            if (accountIds.length === 0) return 0;
+
+            const sum = await JournalLine.sum(type === 'INCOME' ? 'credit' : 'debit', {
+                where: { account_id: { [Op.in]: accountIds } }
+            });
+            return sum || 0;
         };
 
-        const now = new Date();
-        const currentYear = now.getFullYear();
-        const currentMonth = now.getMonth();
-
-        // 1. Daily (Today)
-        const todayStr = formatDate(now);
-
-        // 2. Weekly (Current Week - Starting Monday)
-        const startOfWeek = new Date(now);
-        const dayOfWeek = startOfWeek.getDay() || 7; // Make Sunday 7, Mon 1
-        startOfWeek.setDate(now.getDate() - dayOfWeek + 1);
-        const endOfWeek = new Date(startOfWeek);
-        endOfWeek.setDate(startOfWeek.getDate() + 6);
-
-        const startOfWeekStr = formatDate(startOfWeek);
-        const endOfWeekStr = formatDate(endOfWeek);
-
-        // 3. Monthly (Current Month)
-        const startOfMonth = new Date(currentYear, currentMonth, 1);
-        const endOfMonth = new Date(currentYear, currentMonth + 1, 0);
-
-        const startOfMonthStr = formatDate(startOfMonth);
-        const endOfMonthStr = formatDate(endOfMonth);
-
-        // 4. Yearly (Current Year)
-        const startOfYear = new Date(currentYear, 0, 1);
-        const endOfYear = new Date(currentYear, 11, 31);
-
-        const startOfYearStr = formatDate(startOfYear);
-        const endOfYearStr = formatDate(endOfYear);
-
-        // Define helper for sums
-        const getSum = async (model, dateField, start, end) => {
-            const where = {};
-            if (start === end) {
-                where[dateField] = start;
-            } else {
-                where[dateField] = { [Op.between]: [start, end] };
-            }
-            return await model.sum('amount', { where }) || 0;
-        };
-
-        const [
-            dailyIncome, dailyExpense,
-            weeklyIncome, weeklyExpense,
-            monthlyIncome, monthlyExpense,
-            yearlyIncome, yearlyExpense
-        ] = await Promise.all([
-            getSum(Income, 'income_date', todayStr, todayStr),
-            getSum(Expense, 'expense_date', todayStr, todayStr),
-
-            getSum(Income, 'income_date', startOfWeekStr, endOfWeekStr),
-            getSum(Expense, 'expense_date', startOfWeekStr, endOfWeekStr),
-
-            getSum(Income, 'income_date', startOfMonthStr, endOfMonthStr),
-            getSum(Expense, 'expense_date', startOfMonthStr, endOfMonthStr),
-
-            getSum(Income, 'income_date', startOfYearStr, endOfYearStr),
-            getSum(Expense, 'expense_date', startOfYearStr, endOfYearStr)
-        ]);
+        const totalIncome = await getSumByType('INCOME');
+        const totalExpense = await getSumByType('EXPENSE');
 
         return {
-            daily: {
-                income: dailyIncome,
-                expense: dailyExpense
-            },
-            weekly: {
-                income: weeklyIncome,
-                expense: weeklyExpense
-            },
-            monthly: {
-                income: monthlyIncome,
-                expense: monthlyExpense
-            },
-            yearly: {
-                income: yearlyIncome,
-                expense: yearlyExpense
-            }
+            total_income: totalIncome,
+            total_expense: totalExpense,
+            net_profit: totalIncome - totalExpense
         };
     }
 
-    // --- Chart Data Operations ---
-    async getChartData() {
-        // Helper to format date as YYYY-MM-DD
-        const formatDate = (date) => {
-            const d = new Date(date);
-            let month = '' + (d.getMonth() + 1);
-            let day = '' + d.getDate();
-            const year = d.getFullYear();
-
-            if (month.length < 2) month = '0' + month;
-            if (day.length < 2) day = '0' + day;
-
-            return [year, month, day].join('-');
-        };
-
-        // Calculate date range (last 30 days)
-        const endDate = new Date();
-        const startDate = new Date();
-        startDate.setDate(endDate.getDate() - 29); // 30 days including today
-
-        const startDateStr = formatDate(startDate);
-        const endDateStr = formatDate(endDate);
-
-        // Fetch income data grouped by date
-        const incomeData = await Income.findAll({
-            attributes: [
-                [sequelize.fn('DATE', sequelize.col('income_date')), 'date'],
-                [sequelize.fn('SUM', sequelize.col('amount')), 'total']
-            ],
-            where: {
-                income_date: {
-                    [Op.between]: [startDateStr, endDateStr]
-                }
-            },
-            group: [sequelize.fn('DATE', sequelize.col('income_date'))],
-            raw: true
-        });
-
-        // Fetch expense data grouped by date
-        const expenseData = await Expense.findAll({
-            attributes: [
-                [sequelize.fn('DATE', sequelize.col('expense_date')), 'date'],
-                [sequelize.fn('SUM', sequelize.col('amount')), 'total']
-            ],
-            where: {
-                expense_date: {
-                    [Op.between]: [startDateStr, endDateStr]
-                }
-            },
-            group: [sequelize.fn('DATE', sequelize.col('expense_date'))],
-            raw: true
-        });
-
-        // Create a map for quick lookup
-        const incomeMap = {};
-        incomeData.forEach(item => {
-            incomeMap[item.date] = parseFloat(item.total) || 0;
-        });
-
-        const expenseMap = {};
-        expenseData.forEach(item => {
-            expenseMap[item.date] = parseFloat(item.total) || 0;
-        });
-
-        // Generate array for all 30 days
-        const chartData = [];
-        const currentDate = new Date(startDate);
-
-        for (let i = 0; i < 30; i++) {
-            const dateStr = formatDate(currentDate);
-            chartData.push({
-                date: dateStr,
-                income: incomeMap[dateStr] || 0,
-                expense: expenseMap[dateStr] || 0
-            });
-            currentDate.setDate(currentDate.getDate() + 1);
+    async getProfitAndLoss(filters = {}) {
+        const where = {};
+        if (filters.from && filters.to) {
+            where.date = { [Op.between]: [filters.from, filters.to] };
         }
 
-        return chartData;
+        const accounts = await Account.findAll({
+            where: {
+                type: { [Op.in]: ['INCOME', 'EXPENSE'] }
+            },
+            include: [{
+                model: JournalLine,
+                include: [{
+                    model: Journal,
+                    where,
+                    attributes: []
+                }],
+                attributes: ['debit', 'credit']
+            }]
+        });
+
+        const report = {
+            income: [],
+            expense: [],
+            total_income: 0,
+            total_expense: 0,
+            net_profit: 0
+        };
+
+        accounts.forEach(acc => {
+            let balance = 0;
+            acc.JournalLines.forEach(line => {
+                const debit = parseFloat(line.debit) || 0;
+                const credit = parseFloat(line.credit) || 0;
+                // Income: Credit +, Debit -
+                // Expense: Debit +, Credit -
+                if (acc.type === 'INCOME') {
+                    balance += (credit - debit);
+                } else {
+                    balance += (debit - credit);
+                }
+            });
+
+            if (balance !== 0) {
+                const entry = { code: acc.code, name: acc.name, amount: balance };
+                if (acc.type === 'INCOME') {
+                    report.income.push(entry);
+                    report.total_income += balance;
+                } else {
+                    report.expense.push(entry);
+                    report.total_expense += balance;
+                }
+            }
+        });
+
+        report.net_profit = report.total_income - report.total_expense;
+        return report;
     }
 }
 
