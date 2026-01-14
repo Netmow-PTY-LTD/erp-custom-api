@@ -1,4 +1,5 @@
 const { PurchaseOrderRepository, PurchaseInvoiceRepository, PurchasePaymentRepository, PurchaseReceiptRepository } = require('./purchase.repository');
+const AccountingService = require('../accounting/accounting.service');
 
 class PurchaseService {
     // Purchase Orders
@@ -319,7 +320,24 @@ class PurchaseService {
             created_by: userId
         };
 
-        return await PurchaseInvoiceRepository.create(invoiceData);
+        const invoice = await PurchaseInvoiceRepository.create(invoiceData);
+
+        // Accounting: Book Purchase (Due)
+        if (invoice) {
+            try {
+                await AccountingService.processTransaction({
+                    type: 'PURCHASE',
+                    amount: invoice.total_payable_amount || invoice.total_amount,
+                    payment_mode: 'DUE',
+                    date: invoice.invoice_date || new Date(),
+                    description: `Purchase Invoice ${invoice.invoice_number}`
+                });
+            } catch (err) {
+                console.error('Accounting Error:', err.message);
+            }
+        }
+
+        return invoice;
     }
 
     async updatePurchaseInvoice(id, data) {
@@ -407,7 +425,30 @@ class PurchaseService {
             created_by: userId
         };
 
-        return await PurchasePaymentRepository.create(paymentData);
+        const payment = await PurchasePaymentRepository.create(paymentData);
+
+        // Accounting: Payment Out (Dr AP / Cr Cash)
+        if (payment) {
+            try {
+                let mode = 'CASH';
+                const method = (payment.payment_method || '').toUpperCase();
+                if (method.includes('BANK') || method.includes('CARD') || method.includes('TRANSFER') || method.includes('CHEQUE')) {
+                    mode = 'BANK';
+                }
+
+                await AccountingService.processTransaction({
+                    type: 'PAYMENT_OUT',
+                    amount: payment.amount,
+                    payment_mode: mode,
+                    date: payment.payment_date || new Date(),
+                    description: `Payment ${payment.reference_number} for PO #${order.po_number}`
+                });
+            } catch (err) {
+                console.error('Accounting Payment Error:', err.message);
+            }
+        }
+
+        return payment;
     }
 
     // Purchase Receipts (Goods Receiving)

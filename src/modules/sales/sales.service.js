@@ -1,4 +1,5 @@
 const { OrderRepository, InvoiceRepository, WarehouseRepository, PaymentRepository, DeliveryRepository, SalesRouteRepository } = require('./sales.repository');
+const AccountingService = require('../accounting/accounting.service');
 
 
 class SalesService {
@@ -385,7 +386,24 @@ class SalesService {
             created_by: userId
         };
 
-        return await InvoiceRepository.create(invoiceData);
+        const invoice = await InvoiceRepository.create(invoiceData);
+
+        // Accounting: Book Sales Revenue (Dr AR / Cr Sales)
+        if (invoice) {
+            try {
+                await AccountingService.processTransaction({
+                    type: 'SALES',
+                    amount: invoice.total_amount,
+                    payment_mode: 'DUE',
+                    date: invoice.created_at || new Date(),
+                    description: `Sales Invoice ${invoice.invoice_number}`
+                });
+            } catch (err) {
+                console.error('Accounting Error:', err.message);
+            }
+        }
+
+        return invoice;
     }
 
     async updateInvoiceStatus(id, status, userId) {
@@ -532,6 +550,28 @@ class SalesService {
         };
 
         const payment = await PaymentRepository.create(paymentData);
+
+        // Accounting: Payment In (Dr Cash/Bank / Cr AR)
+        if (payment && payment.status === 'completed') {
+            try {
+                let mode = 'CASH';
+                const method = (payment.payment_method || '').toUpperCase();
+                // Map common methods to BANK, otherwise default to CASH
+                if (method.includes('BANK') || method.includes('CARD') || method.includes('TRANSFER') || method.includes('CHEQUE') || method.includes('BKASH') || method.includes('NAGAD')) {
+                    mode = 'BANK';
+                }
+
+                await AccountingService.processTransaction({
+                    type: 'PAYMENT_IN',
+                    amount: payment.amount,
+                    payment_mode: mode,
+                    date: payment.payment_date || new Date(),
+                    description: `Payment Received ${payment.reference_number} for Invoice ${invoice ? invoice.invoice_number : 'Unknown'}`
+                });
+            } catch (err) {
+                console.error('Accounting Payment Error:', err.message);
+            }
+        }
 
         // Update Invoice and Order status based on new balance
         if (invoice) {

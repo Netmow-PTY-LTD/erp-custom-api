@@ -116,6 +116,20 @@ class AccountingService {
                     }
                     break;
 
+                case 'PAYMENT_OUT': // Paying a Vendor (AP)
+                    // Dr Accounts Payable
+                    drCode = ACCOUNTS.AP;
+                    // Cr Cash or Bank
+                    crCode = (data.payment_mode === 'BANK') ? ACCOUNTS.BANK : ACCOUNTS.CASH;
+                    break;
+
+                case 'PAYMENT_IN': // Receiving from Customer (AR)
+                    // Dr Cash or Bank
+                    drCode = (data.payment_mode === 'BANK') ? ACCOUNTS.BANK : ACCOUNTS.CASH;
+                    // Cr Accounts Receivable
+                    crCode = ACCOUNTS.AR;
+                    break;
+
                 default:
                     throw new Error(`Unknown Transaction Type: ${data.type}`);
             }
