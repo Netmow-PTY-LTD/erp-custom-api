@@ -22,8 +22,8 @@ router.routesMeta = [
         handler: (req, res) => staffsController.getAllStaffs(req, res),
         description: 'Get all staff members with pagination',
         database: {
-            tables: ['staffs', 'departments', 'roles'],
-            mainTable: 'staffs',
+            tables: ['users', 'departments', 'roles'],
+            mainTable: 'users',
             fields: {
                 staffs: ['id', 'first_name', 'last_name', 'email', 'phone', 'position', 'department_id', 'role_id', 'hire_date', 'salary', 'address', 'city', 'status', 'thumb_url', 'gallery_items', 'created_at', 'updated_at'],
                 departments: ['id', 'name'],
@@ -177,8 +177,8 @@ router.routesMeta = [
         handler: (req, res) => staffsController.getStaffRoutes(req, res),
         description: 'Get staff wise route assignments and stats',
         database: {
-            tables: ['staffs', 'sales_routes', 'customers', 'orders'],
-            mainTable: 'staffs',
+            tables: ['users', 'sales_routes', 'customers', 'orders'],
+            mainTable: 'users',
             relationships: ['staffs <-> sales_routes', 'sales_routes -> customers', 'customers -> orders']
         },
         queryParams: {
@@ -209,8 +209,8 @@ router.routesMeta = [
         handler: (req, res) => staffsController.getStaffById(req, res),
         description: 'Get staff details',
         database: {
-            tables: ['staffs', 'departments'],
-            mainTable: 'staffs',
+            tables: ['users', 'departments'],
+            mainTable: 'users',
             fields: {
                 staffs: ['id', 'first_name', 'last_name', 'email', 'phone', 'position', 'department_id', 'role_id', 'hire_date', 'salary', 'address', 'city', 'status', 'thumb_url', 'gallery_items', 'created_at', 'updated_at'],
                 departments: ['id', 'name']
@@ -330,8 +330,8 @@ router.routesMeta = [
         handler: (req, res) => staffsController.deleteStaff(req, res),
         description: 'Remove a staff member',
         database: {
-            tables: ['staffs', 'attendance'],
-            mainTable: 'staffs',
+            tables: ['users', 'attendance'],
+            mainTable: 'users',
             sideEffects: ['May affect attendance records']
         },
         sampleResponse: {

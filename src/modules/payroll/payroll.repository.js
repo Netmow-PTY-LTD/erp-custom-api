@@ -1,4 +1,5 @@
 const { PayrollRun, PayrollItem } = require('./payroll.models');
+const { PayrollStructure } = require('./payroll.structure.model');
 const { User: Staff } = require('../users/user.model');
 const { Op } = require('sequelize');
 const { sequelize } = require('../../core/database/sequelize');
@@ -73,7 +74,25 @@ class PayrollRepository {
         } catch (error) {
             await transaction.rollback();
             throw error;
+            throw error;
         }
+    }
+
+    async getStructure(staffId) {
+        return await PayrollStructure.findOne({ where: { staff_id: staffId } });
+    }
+
+    async upsertStructure(staffId, data) {
+        // Data contains basic_salary, allowances, deductions, bank_details
+        const [structure, created] = await PayrollStructure.findOrCreate({
+            where: { staff_id: staffId },
+            defaults: { ...data, staff_id: staffId }
+        });
+
+        if (!created) {
+            return await structure.update(data);
+        }
+        return structure;
     }
 }
 

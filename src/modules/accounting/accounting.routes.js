@@ -117,8 +117,12 @@ router.routesMeta = [
         queryParams: {
             page: 'Page number (default 1)',
             limit: 'Items per page (default 20)',
-            from: 'Start Date',
-            to: 'End Date',
+            query: 'Search Description',
+            from: 'Start Date (YYYY-MM-DD)',
+            to: 'End Date (YYYY-MM-DD)',
+            start_date: 'Alias for from',
+            end_date: 'Alias for to',
+            date: 'Exact Date (YYYY-MM-DD)',
             type: 'Transaction Type Filter'
         },
         examples: [

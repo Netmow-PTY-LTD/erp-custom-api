@@ -141,6 +141,82 @@ router.routesMeta = [
             tables: ['payroll_runs', 'payroll_items'],
             sideEffects: ['Deletes associated payroll items']
         }
+    },
+    {
+        path: '/structure/:staffId',
+        method: 'GET',
+        middlewares: [],
+        handler: (req, res) => payrollController.getStructure(req, res),
+        description: 'Get payroll structure for a staff',
+        database: { tables: ['payroll_structures'] },
+        sampleResponse: {
+            status: true,
+            message: 'Payroll structure retrieved',
+            data: {
+                staff_id: 101,
+                basic_salary: 5000.00,
+                allowances: [{ title: 'Rent', amount: 1000, type: 'fixed' }],
+                deductions: [{ title: 'Tax', amount: 200, type: 'fixed' }],
+                bank_details: { bank_name: 'Chase', account_number: '123' },
+                net_salary: 5800.00
+            }
+        },
+        examples: [
+            {
+                title: 'Get Structure',
+                description: 'Get salary configuration for staff 101',
+                url: '/api/payroll/structure/101',
+                method: 'GET',
+                response: {
+                    status: true,
+                    data: { staff_id: 101, net_salary: 5800.00 }
+                }
+            }
+        ]
+    },
+    {
+        path: '/structure/:staffId',
+        method: 'POST',
+        middlewares: [],
+        handler: (req, res) => payrollController.saveStructure(req, res),
+        description: 'Save/Update payroll structure for a staff',
+        database: {
+            tables: ['payroll_structures'],
+            requiredFields: ['basic_salary']
+        },
+        sampleRequest: {
+            basic_salary: 5000.00,
+            allowances: [{ title: 'Rent', amount: 1000, type: 'fixed' }],
+            deductions: [{ title: 'Tax', amount: 200, type: 'fixed' }],
+            bank_details: { bank_name: 'Chase', account_number: '123456789' }
+        },
+        sampleResponse: {
+            status: true,
+            message: 'Payroll structure saved',
+            data: {
+                id: 5,
+                staff_id: 101,
+                basic_salary: 5000.00,
+                updated_at: '2026-01-15T12:00:00Z'
+            }
+        },
+        examples: [
+            {
+                title: 'Update Structure',
+                description: 'Update salary details for staff 101',
+                url: '/api/payroll/structure/101',
+                method: 'POST',
+                request: {
+                    basic_salary: 6000.00,
+                    allowances: []
+                },
+                response: {
+                    status: true,
+                    message: 'Payroll structure saved',
+                    data: { staff_id: 101, basic_salary: 6000.00 }
+                }
+            }
+        ]
     }
 ];
 

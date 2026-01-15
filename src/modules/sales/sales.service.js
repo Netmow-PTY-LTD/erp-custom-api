@@ -673,6 +673,12 @@ class SalesService {
             postal_code: data.postalCode || data.postal_code,
             center_lat: data.centerLat || data.center_lat,
             center_lng: data.centerLng || data.center_lng,
+            end_lat: data.endLat || data.end_lat,
+            end_lng: data.endLng || data.end_lng,
+            end_city: data.endCity || data.end_city,
+            end_state: data.endState || data.end_state,
+            end_country: data.endCountry || data.end_country,
+            end_postal_code: data.endPostalCode || data.end_postal_code,
             coverage_radius: data.coverageRadius || data.coverage_radius,
             created_by: userId
         };
@@ -702,6 +708,12 @@ class SalesService {
         if (data.postalCode) routeData.postal_code = data.postalCode;
         if (data.centerLat) routeData.center_lat = data.centerLat;
         if (data.centerLng) routeData.center_lng = data.centerLng;
+        if (data.endLat) routeData.end_lat = data.endLat;
+        if (data.endLng) routeData.end_lng = data.endLng;
+        if (data.endCity) routeData.end_city = data.endCity;
+        if (data.endState) routeData.end_state = data.endState;
+        if (data.endCountry) routeData.end_country = data.endCountry;
+        if (data.endPostalCode) routeData.end_postal_code = data.endPostalCode;
         if (data.coverageRadius) routeData.coverage_radius = data.coverageRadius;
 
         const updatedRoute = await SalesRouteRepository.update(id, routeData);

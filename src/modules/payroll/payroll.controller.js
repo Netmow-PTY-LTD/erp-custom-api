@@ -67,6 +67,36 @@ class PayrollController {
             return error(res, err.message, 400);
         }
     }
+
+    async getStructure(req, res) {
+        try {
+            const { staffId } = req.params;
+            const structure = await PayrollService.getStructure(staffId);
+            if (!structure) {
+                return success(res, 'Payroll structure retrieved', {
+                    staff_id: parseInt(staffId),
+                    basic_salary: 0,
+                    allowances: [],
+                    deductions: [],
+                    bank_details: {},
+                    net_salary: 0
+                });
+            }
+            return success(res, 'Payroll structure retrieved', structure);
+        } catch (err) {
+            return error(res, err.message, 500);
+        }
+    }
+
+    async saveStructure(req, res) {
+        try {
+            const { staffId } = req.params;
+            const structure = await PayrollService.upsertStructure(staffId, req.body);
+            return success(res, 'Payroll structure saved', structure);
+        } catch (err) {
+            return error(res, err.message, 500);
+        }
+    }
 }
 
 module.exports = new PayrollController();

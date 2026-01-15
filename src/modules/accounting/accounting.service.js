@@ -178,6 +178,9 @@ class AccountingService {
         const filters = {
             from: query.from,
             to: query.to,
+            date: query.date,
+            start_date: query.start_date,
+            end_date: query.end_date,
             type: query.type
         };
 

@@ -108,6 +108,30 @@ const SalesRoute = sequelize.define('SalesRoute', {
         type: DataTypes.FLOAT,
         allowNull: true
     },
+    end_lat: {
+        type: DataTypes.FLOAT,
+        allowNull: true
+    },
+    end_lng: {
+        type: DataTypes.FLOAT,
+        allowNull: true
+    },
+    end_city: {
+        type: DataTypes.STRING(100),
+        allowNull: true
+    },
+    end_state: {
+        type: DataTypes.STRING(100),
+        allowNull: true
+    },
+    end_country: {
+        type: DataTypes.STRING(100),
+        allowNull: true
+    },
+    end_postal_code: {
+        type: DataTypes.STRING(20),
+        allowNull: true
+    },
     coverage_radius: {
         type: DataTypes.FLOAT,
         allowNull: true

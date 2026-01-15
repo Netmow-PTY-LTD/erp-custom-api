@@ -36,19 +36,26 @@ class PayrollService {
         // 3. Calculate payroll items
         let totalGross = 0;
         let totalNet = 0;
-        const items = staffs.map(staff => {
-            // Assuming simplified logic: Basic Salary field exists or defaults to 0
-            // If explicit salary field is added to User model, use it. 
-            // Currently User model might not have 'salary' explicitly unless I added it. 
-            // I'll check if 'salary' exists in User model, otherwise use 0.
-            const basic = parseFloat(staff.salary) || 0;
 
-            // Allowances/Deductions could be fetched from staff settings if they exist
-            const allowances = {};
-            const deductions = {};
+        const items = await Promise.all(staffs.map(async (staff) => {
+            const structure = await PayrollRepository.getStructure(staff.id);
 
-            const gross = basic; // + allowances
-            const net = basic; // - deductions
+            const basic = structure ? parseFloat(structure.basic_salary) : (parseFloat(staff.salary) || 0);
+
+            let allowanceTotal = 0;
+            const allowances = structure?.allowances || [];
+            if (Array.isArray(allowances)) {
+                allowanceTotal = allowances.reduce((acc, curr) => acc + (parseFloat(curr.amount) || 0), 0);
+            }
+
+            let deductionTotal = 0;
+            const deductions = structure?.deductions || [];
+            if (Array.isArray(deductions)) {
+                deductionTotal = deductions.reduce((acc, curr) => acc + (parseFloat(curr.amount) || 0), 0);
+            }
+
+            const gross = basic + allowanceTotal;
+            const net = gross - deductionTotal;
 
             totalGross += gross;
             totalNet += net;
@@ -56,12 +63,12 @@ class PayrollService {
             return {
                 staff_id: staff.id,
                 basic_salary: basic,
-                allowances,
-                deductions,
+                allowances: allowances,
+                deductions: deductions,
                 gross_pay: gross,
                 net_pay: net
             };
-        });
+        }));
 
         const runData = {
             month,
@@ -135,6 +142,31 @@ class PayrollService {
             throw new Error('Cannot delete a paid payroll run');
         }
         return await PayrollRepository.delete(id);
+    }
+
+    async getStructure(staffId) {
+        const structure = await PayrollRepository.getStructure(staffId);
+        if (!structure) return null;
+
+        // Compute net
+        const basic = parseFloat(structure.basic_salary) || 0;
+        const allowances = Array.isArray(structure.allowances) ? structure.allowances : [];
+        const deductions = Array.isArray(structure.deductions) ? structure.deductions : [];
+
+        const totalAllowance = allowances.reduce((acc, curr) => acc + (parseFloat(curr.amount) || 0), 0);
+        const totalDeduction = deductions.reduce((acc, curr) => acc + (parseFloat(curr.amount) || 0), 0);
+
+        const net = basic + totalAllowance - totalDeduction;
+
+        // Return plain object with Net
+        return {
+            ...structure.toJSON(),
+            net_salary: net
+        };
+    }
+
+    async upsertStructure(staffId, data) {
+        return await PayrollRepository.upsertStructure(staffId, data);
     }
 }
 

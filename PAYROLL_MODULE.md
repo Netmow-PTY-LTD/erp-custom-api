@@ -4,17 +4,18 @@
 - **Module Name**: Payroll
 - **Base Path**: `/api/payroll`
 
-## Routes
+## 1. Payroll Runs (Existing)
+Managing monthly payroll generation and processing.
 
-### 1. List Payrolls
+### 1.1 List Payroll Runs
 - **Method**: `GET`
 - **Path**: `/`
-- **Description**: List all payroll records
+- **Description**: List all payroll runs.
 - **Query Parameters**:
-  - `staff_id`: Filter by staff ID
-  - `month`: Filter by month
-  - `year`: Filter by year
-  - `status`: Filter by status
+  - `page`: Page number
+  - `limit`: Items per page
+  - `status`: Filter (pending, approved, paid)
+  - `month`: Filter by month (YYYY-MM)
 - **Sample Response**:
 ```json
 {
@@ -22,99 +23,93 @@
   "data": [
     {
       "id": 1,
-      "staff_id": 5,
-      "month": "December",
-      "year": 2025,
-      "basic_salary": "5000.00",
-      "net_salary": "5500.00",
-      "status": "pending",
-      "staff": {
-        "first_name": "John",
-        "last_name": "Doe"
-      }
+      "month": "2025-01",
+      "total_gross": 50000,
+      "total_net": 50000,
+      "status": "pending"
     }
   ]
 }
 ```
 
-### 2. Create Payroll
+### 1.2 Generate Payroll Run
 - **Method**: `POST`
-- **Path**: `/`
-- **Description**: Create a new payroll record
-- **Sample Request**:
+- **Path**: `/generate`
+- **Description**: Generate a new payroll run for all active staff for a specific month. Will use `PayrollStructure` if available.
+- **Request Body**:
 ```json
 {
-  "staff_id": 5,
-  "month": "December",
-  "year": 2025,
-  "basic_salary": 5000.00,
-  "allowances": {
-    "transport": 200,
-    "housing": 500
-  },
-  "deductions": {
-    "tax": 100,
-    "epf": 100
-  },
-  "status": "pending"
+  "month": "2025-01"
 }
 ```
 - **Sample Response**:
 ```json
 {
   "status": true,
-  "message": "Payroll record created successfully",
-  "data": {
-    "id": 1,
-    "net_salary": 5500.00
-  }
+  "message": "Payroll run generated successfully",
+  "data": { "id": 1, "month": "2025-01" }
 }
 ```
 
-### 3. Get Payroll by ID
+### 1.3 Get Payroll Run Details
 - **Method**: `GET`
 - **Path**: `/:id`
-- **Description**: Get payroll details
+- **Description**: Get details of a run including individual staff items.
+
+### 1.4 Approve Payroll Run
+- **Method**: `PATCH`
+- **Path**: `/:id/approve`
+- **Description**: Mark a pending run as approved.
+
+### 1.5 Pay Payroll Run
+- **Method**: `PATCH`
+- **Path**: `/:id/pay`
+- **Description**: Mark approved run as paid and create corresponding Accounting Expense.
+
+### 1.6 Delete Payroll Run
+- **Method**: `DELETE`
+- **Path**: `/:id`
+- **Description**: Delete a run (if not paid).
+
+---
+
+## 2. Payroll Setup (Planned/New)
+Configuration of salary structures for individual staff.
+
+### 2.1 Get Staff Payroll Structure
+- **Method**: `GET`
+- **Path**: `/structure/:staff_id`
+- **Description**: Get configured salary, allowances, deductions, and bank details for a staff member.
 - **Sample Response**:
 ```json
 {
   "status": true,
   "data": {
-    "id": 1,
-    "allowances": {},
-    "deductions": {}
+    "staff_id": 5,
+    "basic_salary": 5000,
+    "allowances": [{ "title": "Rent", "amount": 1000 }],
+    "deductions": [],
+    "bank_details": { "bank_name": "Chase", "account_number": "123" },
+    "net_salary": 6000
   }
 }
 ```
 
-### 4. Update Payroll
-- **Method**: `PUT`
-- **Path**: `/:id`
-- **Description**: Update payroll record
-- **Sample Request**:
+### 2.2 Upsert Staff Payroll Structure
+- **Method**: `POST`
+- **Path**: `/structure/:staff_id`
+- **Description**: Create or Update payroll configuration for a staff member.
+- **Request Body**:
 ```json
 {
-  "status": "paid",
-  "payment_date": "2025-12-31",
-  "payment_method": "bank_transfer"
-}
-```
-- **Sample Response**:
-```json
-{
-  "status": true,
-  "message": "Payroll record updated successfully"
+  "basic_salary": 5000,
+  "allowances": [{ "title": "Rent", "amount": 1000 }],
+  "deductions": [],
+  "bank_details": { "bank_name": "Chase", "account_number": "123" }
 }
 ```
 
-### 5. Delete Payroll
-- **Method**: `DELETE`
-- **Path**: `/:id`
-- **Description**: Delete payroll record
-- **Sample Response**:
-```json
-{
-  "status": true,
-  "message": "Payroll record deleted successfully"
-}
-```
+## Implementation Plan
+1. Create `payroll_structures` table.
+2. Implement Structure APIs (`GET/POST /structure/:staff_id`).
+3. Update `generateRun` logic to fetch Basic Salary and calculate specific Allowances/Deductions from the `payroll_structures` table instead of using `staff.salary` fallback.

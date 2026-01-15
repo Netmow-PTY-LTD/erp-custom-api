@@ -18,15 +18,15 @@ router.routesMeta = [
         handler: (req, res) => checkInController.getCheckIns(req, res),
         description: 'Get all staff check-ins with filters for staff, customer, and date',
         database: {
-            tables: ['staff_checkins', 'staffs', 'customers'],
+            tables: ['staff_checkins', 'users', 'customers'],
             mainTable: 'staff_checkins',
             fields: {
                 staff_checkins: ['id', 'customer_id', 'staff_id', 'check_in_time', 'latitude', 'longitude', 'distance_meters', 'note', 'created_at'],
-                staffs: ['id', 'first_name', 'last_name', 'email', 'phone', 'position'],
+                users: ['id', 'first_name', 'last_name', 'email', 'phone', 'position', 'thumb_url'],
                 customers: ['id', 'name', 'company', 'email', 'phone', 'address', 'city']
             },
             relationships: [
-                'staff_checkins.staff_id -> staffs.id (FK)',
+                'staff_checkins.staff_id -> users.id (FK)',
                 'staff_checkins.customer_id -> customers.id (FK)'
             ]
         },
@@ -62,7 +62,8 @@ router.routesMeta = [
                         last_name: 'Doe',
                         email: 'john@example.com',
                         phone: '1234567890',
-                        position: 'Sales Representative'
+                        position: 'Sales Representative',
+                        thumb_url: 'http://example.com/profile.jpg'
                     },
                     customer: {
                         id: 1,

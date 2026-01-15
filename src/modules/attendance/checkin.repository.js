@@ -25,7 +25,7 @@ class CheckInRepository {
                 {
                     model: Staff,
                     as: 'staff',
-                    attributes: ['id', 'first_name', 'last_name', 'email', 'phone', 'position']
+                    attributes: ['id', 'name', 'first_name', 'last_name', 'email', 'phone', 'position', 'thumb_url']
                 },
                 {
                     model: Customer,
@@ -45,7 +45,7 @@ class CheckInRepository {
                 {
                     model: Staff,
                     as: 'staff',
-                    attributes: ['id', 'first_name', 'last_name', 'email', 'phone', 'position']
+                    attributes: ['id', 'name', 'first_name', 'last_name', 'email', 'phone', 'position', 'thumb_url']
                 },
                 {
                     model: Customer,

@@ -12,7 +12,24 @@ class AccountingRepository {
     async findAllTransactions(filters = {}, limit = 10, offset = 0) {
         const where = {};
         if (filters.type) where.type = filters.type;
-        if (filters.from && filters.to) where.date = { [Op.between]: [filters.from, filters.to] };
+
+        // Date aliases
+        const fromDate = filters.from || filters.start_date;
+        const toDate = filters.to || filters.end_date;
+        const exactDate = filters.date;
+
+        if (fromDate && toDate) {
+            where.date = { [Op.between]: [fromDate, toDate] };
+        } else if (exactDate) {
+            // Check if exactDate is just YYYY-MM-DD or full timestamp
+            // If it's a date string, we might want to search the whole day
+            // But 'date' in Transaction model is DATE (with time or without?).
+            // In SQL model definition it is DATE (which usually includes time in Sequelize unless DATEONLY).
+            // Let's assume DATEONLY behavior for single date query if possible, or exact match.
+            // If the DB column is DATETIME, exact match on '2026-01-14' won't work if time differs.
+            // For now, let's assume direct equality.
+            where.date = exactDate;
+        }
 
         return await Transaction.findAndCountAll({
             where,

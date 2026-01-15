@@ -87,7 +87,25 @@ const createSalesRoute = z.object({
     centerLng: z.number().optional(),
 
     coverage_radius: z.number().optional(),
-    coverageRadius: z.number().optional()
+    coverageRadius: z.number().optional(),
+
+    end_lat: z.number().optional(),
+    endLat: z.number().optional(),
+
+    end_lng: z.number().optional(),
+    endLng: z.number().optional(),
+
+    end_city: z.string().optional(),
+    endCity: z.string().optional(),
+
+    end_state: z.string().optional(),
+    endState: z.string().optional(),
+
+    end_country: z.string().optional(),
+    endCountry: z.string().optional(),
+
+    end_postal_code: z.string().optional(),
+    endPostalCode: z.string().optional()
 }).refine(data => data.route_name || data.routeName, {
     message: "Route name is required",
     path: ["routeName"]
