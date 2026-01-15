@@ -73,6 +73,14 @@ const Supplier = sequelize.define('Supplier', {
         type: DataTypes.TEXT,
         allowNull: true
     },
+    thumb_url: {
+        type: DataTypes.STRING(255),
+        allowNull: true
+    },
+    gallery_items: {
+        type: DataTypes.JSON,
+        allowNull: true
+    },
     is_active: {
         type: DataTypes.BOOLEAN,
         defaultValue: true

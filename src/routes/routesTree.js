@@ -38,7 +38,7 @@ router.get('/', (req, res) => {
           auth,
           fields: routeFields || null,
           description: routeMeta?.description || null,
-          sampleRequest: routeMeta?.sampleRequest || null,
+          sampleRequest: routeMeta?.sampleRequest || routeMeta?.request || null,
           sampleResponse: routeMeta?.sampleResponse || null,
           queryParams: routeMeta?.queryParams || null,
           database: routeMeta?.database || null,
@@ -368,6 +368,13 @@ router.get('/', (req, res) => {
                         <span style="color: #2E7D32; font-weight: bold;">${example.method || 'GET'}</span> ${example.url}
                       </div>
                     </div>
+                    
+                    ${example.request ? `
+                    <div style="margin-bottom: 10px;">
+                      <strong style="font-size: 12px; color: #1565C0;">Request Body:</strong>
+                      <pre style="background: #f5f5f5; color: #333; padding: 8px; border-radius: 4px; margin-top: 5px; font-size: 11px; overflow-x: auto; max-height: 200px;">${JSON.stringify(example.request, null, 2)}</pre>
+                    </div>
+                    ` : ''}
                     
                     ${example.response ? `
                     <div>

@@ -5,7 +5,7 @@ const { verifyToken } = require('../../core/middleware/auth');
 const { moduleCheck } = require('../../core/middleware/moduleCheck');
 const { handlerWithFields } = require('../../core/utils/zodTypeView');
 const validate = require('../../core/middleware/validate');
-const { createAccount, updateAccount } = require('./accounting.validation');
+const { createAccount, updateAccount, createJournal } = require('./accounting.validation');
 
 // Module name for routes-tree grouping
 router.moduleName = 'Accounting';
@@ -16,6 +16,52 @@ router.use(moduleCheck('accounting'));
 // Define routes metadata
 router.routesMeta = [
     // --- Transactions (Entry Point) ---
+    {
+        path: '/journal-entry',
+        method: 'POST',
+        middlewares: [validate(createJournal)],
+        handler: handlerWithFields((req, res) => accountingController.createJournalEntry(req, res), createJournal),
+        description: 'Create a Manual Journal Entry',
+        database: {
+            tables: ['journals', 'journal_lines'],
+            mainTable: 'journals',
+            requiredFields: ['date', 'entries'],
+            optionalFields: ['narration']
+        },
+        request: {
+            date: '2026-01-15',
+            narration: 'Manual Adjustment',
+            entries: [
+                { account_id: 1, debit: 100, credit: 0 },
+                { account_id: 2, debit: 0, credit: 100 }
+            ]
+        },
+        examples: [
+            {
+                title: 'Create Manual Journal',
+                description: 'Record a general ledger adjustment',
+                url: '/api/accounting/journal-entry',
+                method: 'POST',
+                request: {
+                    date: '2026-01-15',
+                    narration: 'Depreciation',
+                    entries: [
+                        { account_id: 50, debit: 500, credit: 0 },
+                        { account_id: 51, debit: 0, credit: 500 }
+                    ]
+                },
+                response: {
+                    status: true,
+                    message: 'Journal Entry created successfully',
+                    data: {
+                        id: 10,
+                        date: '2026-01-15',
+                        narration: 'Depreciation'
+                    }
+                }
+            }
+        ]
+    },
     {
         path: '/transactions',
         method: 'POST',
@@ -295,27 +341,213 @@ router.routesMeta = [
         method: 'GET',
         middlewares: [],
         handler: (req, res) => accountingController.getAccounts(req, res),
-        description: 'Get Chart of Accounts',
+        description: 'Get Chart of Accounts with pagination and search',
         database: {
             tables: ['accounts'],
             mainTable: 'accounts',
             fields: {
                 accounts: ['id', 'code', 'name', 'type', 'parent_id']
-            }
+            },
+        },
+        queryParams: {
+            page: 'Page number (default: 1)',
+            limit: 'Items per page (default: 10)',
+            search: 'Search by accounting name or code'
         },
         examples: [
             {
                 title: 'List Accounts',
-                description: 'Get all available accounts for dropdowns',
-                url: '/api/accounting/accounts',
+                description: 'Get hierarchical flat list with levels',
+                url: '/api/accounting/accounts?page=1&limit=10',
                 method: 'GET',
                 response: {
                     status: true,
                     message: 'Chart of Accounts retrieved successfully',
+                    pagination: {
+                        total: 50,
+                        page: 1,
+                        limit: 10,
+                        totalPage: 5
+                    },
                     data: [
-                        { id: 1, code: '1000', name: 'Cash', type: 'ASSET' },
+                        { id: 1, code: "1000", name: "Assets", type: "Asset", parent: null, level: 0 },
+                        { id: 2, code: "1001", name: "Current Assets", type: "Asset", parent: 1, level: 1 },
+                        { id: 3, code: "1002", name: "Cash in Hand", type: "Asset", parent: 2, level: 2 }
+                    ]
+                }
+            }
+        ]
+    },
+    {
+        path: '/accounts/heads/income',
+        method: 'GET',
+        middlewares: [],
+        handler: (req, res) => accountingController.getIncomeHeads(req, res),
+        description: 'Get Income Heads (Income)',
+        database: {
+            tables: ['accounts'],
+            mainTable: 'accounts',
+            fields: {
+                accounts: ['id', 'code', 'name', 'type']
+            }
+        },
+        examples: [
+            {
+                title: 'List Income Heads',
+                description: 'Get accounts that usually have Income balances',
+                url: '/api/accounting/accounts/heads/income',
+                method: 'GET',
+                response: {
+                    status: true,
+                    message: 'Income Heads retrieved successfully',
+                    data: [
                         { id: 2, code: '4000', name: 'Sales', type: 'INCOME' }
                     ]
+                }
+            }
+        ]
+    },
+    {
+        path: '/accounts/heads/expense',
+        method: 'GET',
+        middlewares: [],
+        handler: (req, res) => accountingController.getExpenseHeads(req, res),
+        description: 'Get Expense Heads (Expense)',
+        database: {
+            tables: ['accounts'],
+            mainTable: 'accounts',
+            fields: {
+                accounts: ['id', 'code', 'name', 'type']
+            }
+        },
+        examples: [
+            {
+                title: 'List Expense Heads',
+                description: 'Get accounts that usually have Expense balances',
+                url: '/api/accounting/accounts/heads/expense',
+                method: 'GET',
+                response: {
+                    status: true,
+                    message: 'Expense Heads retrieved successfully',
+                    data: [
+                        { id: 1, code: '5000', name: 'Purchase', type: 'EXPENSE' }
+                    ]
+                }
+            }
+        ]
+    },
+    {
+        path: '/accounts/heads/income',
+        method: 'POST',
+        middlewares: [validate(createAccount)],
+        handler: handlerWithFields((req, res) => accountingController.createIncomeHead(req, res), createAccount),
+        description: 'Create Income Head (Must be INCOME)',
+        database: { tables: ['accounts'], requiredFields: ['code', 'name', 'type'] },
+        request: {
+            code: '4500',
+            name: 'Consulting Income',
+            type: 'INCOME'
+        },
+        examples: [
+            {
+                title: 'Create Income Head',
+                description: 'Create a new Income Account',
+                url: '/api/accounting/accounts/heads/income',
+                method: 'POST',
+                request: {
+                    code: '4500',
+                    name: 'Consulting Income',
+                    type: 'INCOME'
+                },
+                response: {
+                    status: true,
+                    message: 'Income Head created successfully',
+                    data: { id: 105, code: '4500', name: 'Consulting Income', type: 'INCOME' }
+                }
+            }
+        ]
+    },
+    {
+        path: '/accounts/heads/income/:id',
+        method: 'PUT',
+        middlewares: [validate(updateAccount)],
+        handler: handlerWithFields((req, res) => accountingController.updateIncomeHead(req, res), updateAccount),
+        description: 'Update Income Head',
+        database: { tables: ['accounts'], updatableFields: ['name', 'type', 'parent_id'] },
+        request: {
+            name: 'Service Income'
+        },
+        examples: [
+            {
+                title: 'Update Income Head',
+                description: 'Update the name of an Income Head',
+                url: '/api/accounting/accounts/heads/income/105',
+                method: 'PUT',
+                request: {
+                    name: 'Service Income'
+                },
+                response: {
+                    status: true,
+                    message: 'Income Head updated successfully',
+                    data: { id: 105, code: '4500', name: 'Service Income', type: 'INCOME' }
+                }
+            }
+        ]
+    },
+    {
+        path: '/accounts/heads/expense',
+        method: 'POST',
+        middlewares: [validate(createAccount)],
+        handler: handlerWithFields((req, res) => accountingController.createExpenseHead(req, res), createAccount),
+        description: 'Create Expense Head (Must be EXPENSE)',
+        database: { tables: ['accounts'], requiredFields: ['code', 'name', 'type'] },
+        request: {
+            code: '5500',
+            name: 'Travel Expense',
+            type: 'EXPENSE'
+        },
+        examples: [
+            {
+                title: 'Create Expense Head',
+                description: 'Create a new Expense Account',
+                url: '/api/accounting/accounts/heads/expense',
+                method: 'POST',
+                request: {
+                    code: '5500',
+                    name: 'Travel Expense',
+                    type: 'EXPENSE'
+                },
+                response: {
+                    status: true,
+                    message: 'Expense Head created successfully',
+                    data: { id: 106, code: '5500', name: 'Travel Expense', type: 'EXPENSE' }
+                }
+            }
+        ]
+    },
+    {
+        path: '/accounts/heads/expense/:id',
+        method: 'PUT',
+        middlewares: [validate(updateAccount)],
+        handler: handlerWithFields((req, res) => accountingController.updateExpenseHead(req, res), updateAccount),
+        description: 'Update Expense Head',
+        database: { tables: ['accounts'], updatableFields: ['name', 'type', 'parent_id'] },
+        request: {
+            name: 'Local Travel'
+        },
+        examples: [
+            {
+                title: 'Update Expense Head',
+                description: 'Update the name of an Expense Head',
+                url: '/api/accounting/accounts/heads/expense/106',
+                method: 'PUT',
+                request: {
+                    name: 'Local Travel'
+                },
+                response: {
+                    status: true,
+                    message: 'Expense Head updated successfully',
+                    data: { id: 106, code: '5500', name: 'Local Travel', type: 'EXPENSE' }
                 }
             }
         ]
@@ -331,6 +563,12 @@ router.routesMeta = [
             requiredFields: ['code', 'name', 'type'],
             optionalFields: ['parent_id', 'description']
         },
+        request: {
+            code: '5201',
+            name: 'Rent Expense',
+            type: 'EXPENSE',
+            parent_id: 100
+        },
         examples: [
             {
                 title: 'Create Sub-Account',
@@ -345,7 +583,14 @@ router.routesMeta = [
                 },
                 response: {
                     status: true,
-                    message: 'Account created successfully'
+                    message: 'Account created successfully',
+                    data: {
+                        id: 101,
+                        code: '5201',
+                        name: 'Rent Expense',
+                        type: 'EXPENSE',
+                        parent_id: 100
+                    }
                 }
             }
         ]

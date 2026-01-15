@@ -27,10 +27,61 @@ class AccountingRepository {
         return await Account.findOne({ where: { code } });
     }
 
-    async findAllAccounts() {
+    async findAccountById(id) {
+        return await Account.findByPk(id);
+    }
+
+    async findAccountByName(name) {
+        return await Account.findOne({ where: { name } });
+    }
+
+    async findAllAccounts(filters = {}, limit = 10, offset = 0) {
+        const where = {};
+        if (filters.search) {
+            where[Op.or] = [
+                { name: { [Op.like]: `%${filters.search}%` } },
+                { code: { [Op.like]: `%${filters.search}%` } }
+            ];
+        }
+
+        const options = {
+            where,
+            order: [['code', 'ASC']]
+        };
+
+        if (limit) {
+            options.limit = parseInt(limit);
+            options.offset = parseInt(offset);
+        }
+
+        return await Account.findAndCountAll(options);
+    }
+
+    async findAccountsByTypes(types) {
         return await Account.findAll({
+            where: {
+                type: {
+                    [Op.in]: types
+                }
+            },
             order: [['code', 'ASC']]
         });
+    }
+
+    async createAccount(data) {
+        return await Account.create(data);
+    }
+
+    async updateAccount(id, data) {
+        const account = await Account.findByPk(id);
+        if (!account) throw new Error('Account not found');
+        return await account.update(data);
+    }
+
+    async deleteAccount(id) {
+        const account = await Account.findByPk(id);
+        if (!account) throw new Error('Account not found');
+        return await account.destroy();
     }
 
     // --- Journal Operations (Core) ---
@@ -72,7 +123,7 @@ class AccountingRepository {
             limit,
             offset,
             distinct: true, // Ensure correct count of journals despite includes
-            order: [['date', 'ASC'], ['id', 'ASC']]
+            order: [['date', 'DESC'], ['id', 'DESC']]
         });
     }
 
@@ -173,6 +224,26 @@ class AccountingRepository {
         });
 
         return trialBalance;
+    }
+
+    async createManualJournal(data) {
+        return await sequelize.transaction(async (t) => {
+            const journal = await Journal.create({
+                date: data.date,
+                narration: data.narration,
+                reference_type: 'MANUAL',
+            }, { transaction: t });
+
+            const lines = data.entries.map(e => ({
+                journal_id: journal.id,
+                account_id: e.account_id,
+                debit: e.debit,
+                credit: e.credit
+            }));
+
+            await JournalLine.bulkCreate(lines, { transaction: t });
+            return journal;
+        });
     }
 
     // Re-implemented Overview for Dashboard using new tables

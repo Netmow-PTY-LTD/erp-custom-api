@@ -13,11 +13,29 @@ class AccountingController {
             return error(res, err.message, 400);
         }
     }
+    async createJournalEntry(req, res) {
+        try {
+            const journal = await AccountingService.createManualJournal(req.body);
+            return success(res, 'Journal Entry created successfully', journal, 201);
+        } catch (err) {
+            const message = err.errors ? err.errors.map(e => e.message).join(', ') : err.message;
+            return error(res, message, 400);
+        }
+    }
+
 
     async getTransactions(req, res) {
         try {
             const { count, rows } = await AccountingService.getTransactions(req.query);
-            return successWithPagination(res, 'Transactions retrieved successfully', rows, count, req.query);
+            const page = parseInt(req.query.page) || 1;
+            const limit = parseInt(req.query.limit) || 10;
+            const pagination = {
+                total: count,
+                page,
+                limit,
+                totalPage: Math.ceil(count / limit)
+            };
+            return successWithPagination(res, 'Transactions retrieved successfully', rows, pagination);
         } catch (err) {
             return error(res, err.message, 500);
         }
@@ -27,7 +45,15 @@ class AccountingController {
     async getJournalReport(req, res) {
         try {
             const { count, rows } = await AccountingService.getJournalReport(req.query);
-            return successWithPagination(res, 'Journal report retrieved successfully', rows, count, req.query);
+            const page = parseInt(req.query.page) || 1;
+            const limit = parseInt(req.query.limit) || 10;
+            const pagination = {
+                total: count,
+                page,
+                limit,
+                totalPage: Math.ceil(count / limit)
+            };
+            return successWithPagination(res, 'Journal report retrieved successfully', rows, pagination);
         } catch (err) {
             return error(res, err.message, 500);
         }
@@ -76,10 +102,71 @@ class AccountingController {
     // --- Settings / Master Data ---
     async getAccounts(req, res) {
         try {
-            const accounts = await AccountingService.getAccounts();
-            return success(res, 'Chart of Accounts retrieved successfully', accounts);
+            const { count, rows } = await AccountingService.getAccounts(req.query);
+            const pagination = {
+                total: count,
+                page: parseInt(req.query.page) || 1,
+                limit: parseInt(req.query.limit) || 10
+            };
+            return successWithPagination(res, 'Chart of Accounts retrieved successfully', rows, pagination);
         } catch (err) {
             return error(res, err.message, 500);
+        }
+    }
+
+    async getIncomeHeads(req, res) {
+        try {
+            const accounts = await AccountingService.getIncomeHeads();
+            return success(res, 'Income Heads retrieved successfully', accounts);
+        } catch (err) {
+            return error(res, err.message, 500);
+        }
+    }
+
+    async getExpenseHeads(req, res) {
+        try {
+            const accounts = await AccountingService.getExpenseHeads();
+            return success(res, 'Expense Heads retrieved successfully', accounts);
+        } catch (err) {
+            return error(res, err.message, 500);
+        }
+    }
+
+    async createIncomeHead(req, res) {
+        try {
+            const account = await AccountingService.createIncomeHead(req.body);
+            return success(res, 'Income Head created successfully', account, 201);
+        } catch (err) {
+            const message = err.errors ? err.errors.map(e => e.message).join(', ') : err.message;
+            return error(res, message, 400);
+        }
+    }
+
+    async updateIncomeHead(req, res) {
+        try {
+            const account = await AccountingService.updateIncomeHead(req.params.id, req.body);
+            return success(res, 'Income Head updated successfully', account);
+        } catch (err) {
+            return error(res, err.message, 400);
+        }
+    }
+
+    async createExpenseHead(req, res) {
+        try {
+            const account = await AccountingService.createExpenseHead(req.body);
+            return success(res, 'Expense Head created successfully', account, 201);
+        } catch (err) {
+            const message = err.errors ? err.errors.map(e => e.message).join(', ') : err.message;
+            return error(res, message, 400);
+        }
+    }
+
+    async updateExpenseHead(req, res) {
+        try {
+            const account = await AccountingService.updateExpenseHead(req.params.id, req.body);
+            return success(res, 'Expense Head updated successfully', account);
+        } catch (err) {
+            return error(res, err.message, 400);
         }
     }
 
@@ -88,7 +175,8 @@ class AccountingController {
             const account = await AccountingService.createAccount(req.body);
             return success(res, 'Account created successfully', account, 201);
         } catch (err) {
-            return error(res, err.message, 400);
+            const message = err.errors ? err.errors.map(e => e.message).join(', ') : err.message;
+            return error(res, message, 400);
         }
     }
 

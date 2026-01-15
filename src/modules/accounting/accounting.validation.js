@@ -31,8 +31,19 @@ const createTransaction = z.object({
     reference: z.string().optional()
 });
 
+const createJournal = z.object({
+    date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Date must be YYYY-MM-DD'),
+    narration: z.string().optional(),
+    entries: z.array(z.object({
+        account_id: z.number().int().positive(),
+        debit: z.number().min(0).default(0),
+        credit: z.number().min(0).default(0)
+    })).min(2, 'Journal must have at least 2 entries')
+});
+
 module.exports = {
     createAccount,
     updateAccount,
-    createTransaction
+    createTransaction,
+    createJournal
 };

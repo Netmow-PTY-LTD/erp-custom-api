@@ -239,16 +239,193 @@ class AccountingService {
         };
     }
 
-    async getAccounts() {
-        return await AccountingRepository.findAllAccounts();
+    async getAccounts(query = {}) {
+        // Fetch all accounts to build the tree
+        const { rows: allAccounts } = await AccountingRepository.findAllAccounts({}, null, null);
+
+        // 1. Build Map and standardise objects
+        const accountMap = new Map();
+        allAccounts.forEach(acc => {
+            const type = acc.type.charAt(0).toUpperCase() + acc.type.slice(1).toLowerCase();
+            const accObj = {
+                id: acc.id,
+                code: acc.code,
+                name: acc.name,
+                type: type,
+                parent: acc.parent_id,
+                children: [] // Init children
+            };
+            accountMap.set(acc.id, accObj);
+        });
+
+        // 2. Build Tree and Calculate Levels
+        const rootAccounts = [];
+
+        // Helper for level (though in tree level is implicit depth, explicit is nice)
+        // We can calc level during traversal or just use the map parent pointers
+
+        // Single pass to link parents
+        accountMap.forEach(acc => {
+            if (acc.parent) {
+                const parent = accountMap.get(acc.parent);
+                if (parent) {
+                    parent.children.push(acc);
+                } else {
+                    rootAccounts.push(acc); // Orphan or missing parent
+                }
+            } else {
+                rootAccounts.push(acc);
+            }
+        });
+
+        // 3. Recursive Level Assignment (top-down) & Flattening
+        const flatList = [];
+        const processNode = (nodes, level) => {
+            // Sort nodes by code within the same level/parent for consistency
+            nodes.sort((a, b) => a.code.localeCompare(b.code));
+
+            nodes.forEach(node => {
+                node.level = level;
+                // Create flat copy
+                const { children, ...rest } = node;
+                flatList.push(rest);
+
+                if (node.children.length > 0) {
+                    processNode(node.children, level + 1);
+                }
+            });
+        };
+        processNode(rootAccounts, 0);
+
+        // 4. In-memory Search (if applied)
+        let result = flatList;
+        if (query.search) {
+            const searchLower = query.search.toLowerCase();
+            result = result.filter(acc =>
+                acc.name.toLowerCase().includes(searchLower) ||
+                acc.code.toLowerCase().includes(searchLower)
+            );
+        }
+
+        // 5. Pagination
+        const page = parseInt(query.page) || 1;
+        const limit = parseInt(query.limit) || 10;
+        const startIndex = (page - 1) * limit;
+        const endIndex = startIndex + limit;
+
+        const paginatedRows = result.slice(startIndex, endIndex);
+
+        return {
+            count: result.length,
+            rows: paginatedRows
+        };
+    }
+
+    async getAccountDetails(id) {
+        const account = await AccountingRepository.findAccountById(id);
+        if (!account) return null;
+
+        // Calculate level
+        let level = 0;
+        let parentId = account.parent_id;
+        while (parentId) {
+            level++;
+            const parent = await AccountingRepository.findAccountById(parentId);
+            if (!parent) break;
+            parentId = parent.parent_id;
+        }
+
+        const type = account.type.charAt(0).toUpperCase() + account.type.slice(1).toLowerCase();
+
+        return {
+            id: account.id,
+            code: account.code,
+            name: account.name,
+            type: type,
+            parent: account.parent_id,
+            level: level,
+            description: account.description || undefined
+        };
+    }
+
+    async getIncomeHeads() {
+        return await AccountingRepository.findAccountsByTypes(['INCOME']);
+    }
+
+    async getExpenseHeads() {
+        return await AccountingRepository.findAccountsByTypes(['EXPENSE']);
+    }
+
+    async createIncomeHead(data) {
+        if (data.type !== 'INCOME') {
+            throw new Error(`Invalid type for Income Head. Must be INCOME`);
+        }
+        if (!data.parent_id) {
+            let root = await AccountingRepository.findAccountByName('Income');
+            if (!root) {
+                try {
+                    root = await AccountingRepository.createAccount({
+                        code: 'ROOT_INCOME',
+                        name: 'Income',
+                        type: 'INCOME'
+                    });
+                } catch (e) {
+                    // Ignore error if creating root fails, fall back to null parent
+                }
+            }
+            if (root) data.parent_id = root.id;
+        }
+        const account = await AccountingRepository.createAccount(data);
+        return await this.getAccountDetails(account.id);
+    }
+
+    async updateIncomeHead(id, data) {
+        if (data.type && data.type !== 'INCOME') {
+            throw new Error(`Invalid type for Income Head. Must be INCOME`);
+        }
+        const account = await AccountingRepository.updateAccount(id, data);
+        return await this.getAccountDetails(account.id);
+    }
+
+    async createExpenseHead(data) {
+        if (data.type !== 'EXPENSE') {
+            throw new Error(`Invalid type for Expense Head. Must be EXPENSE`);
+        }
+        if (!data.parent_id) {
+            let root = await AccountingRepository.findAccountByName('Expenses');
+            if (!root) {
+                try {
+                    root = await AccountingRepository.createAccount({
+                        code: 'ROOT_EXPENSE',
+                        name: 'Expenses',
+                        type: 'EXPENSE'
+                    });
+                } catch (e) {
+                    // Ignore
+                }
+            }
+            if (root) data.parent_id = root.id;
+        }
+        const account = await AccountingRepository.createAccount(data);
+        return await this.getAccountDetails(account.id);
+    }
+
+    async updateExpenseHead(id, data) {
+        if (data.type && data.type !== 'EXPENSE') {
+            throw new Error(`Invalid type for Expense Head. Must be EXPENSE`);
+        }
+        const account = await AccountingRepository.updateAccount(id, data);
+        return await this.getAccountDetails(account.id);
     }
 
     async createAccount(data) {
-        return await AccountingRepository.createAccount(data);
+        const account = await AccountingRepository.createAccount(data);
+        return await this.getAccountDetails(account.id);
     }
 
     async updateAccount(id, data) {
-        return await AccountingRepository.updateAccount(id, data);
+        const account = await AccountingRepository.updateAccount(id, data);
+        return await this.getAccountDetails(account.id);
     }
 
     async deleteAccount(id) {
@@ -287,6 +464,16 @@ class AccountingService {
             results.push(account);
         }
         return results;
+    }
+
+    async createManualJournal(data) {
+        // Double check balance
+        const totalDebit = data.entries.reduce((sum, e) => sum + (e.debit || 0), 0);
+        const totalCredit = data.entries.reduce((sum, e) => sum + (e.credit || 0), 0);
+        if (Math.abs(totalDebit - totalCredit) > 0.01) {
+            throw new Error('Journal Entry is not balanced.');
+        }
+        return await AccountingRepository.createManualJournal(data);
     }
 
     async getProfitAndLoss(filters) {

@@ -17,6 +17,8 @@ const createSupplier = z.object({
     website: z.string().url().max(255).optional().or(z.literal('')),
     payment_terms: z.string().max(100).optional(),
     notes: z.string().optional(),
+    thumb_url: z.string().optional(),
+    gallery_items: z.array(z.any()).optional(),
     is_active: z.boolean().default(true)
 });
 
@@ -37,6 +39,8 @@ const updateSupplier = z.object({
     website: z.string().url().max(255).optional().or(z.literal('')),
     payment_terms: z.string().max(100).optional(),
     notes: z.string().optional(),
+    thumb_url: z.string().optional(),
+    gallery_items: z.array(z.any()).optional(),
     is_active: z.boolean().optional()
 });
 
