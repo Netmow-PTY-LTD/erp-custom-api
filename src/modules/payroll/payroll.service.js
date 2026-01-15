@@ -166,7 +166,17 @@ class PayrollService {
     }
 
     async upsertStructure(staffId, data) {
-        return await PayrollRepository.upsertStructure(staffId, data);
+        const structure = await PayrollRepository.upsertStructure(staffId, data);
+
+        // Sync basic_salary to Staff (User) table's salary field
+        if (data.basic_salary) {
+            await Staff.update(
+                { salary: data.basic_salary },
+                { where: { id: staffId } }
+            );
+        }
+
+        return structure;
     }
 }
 

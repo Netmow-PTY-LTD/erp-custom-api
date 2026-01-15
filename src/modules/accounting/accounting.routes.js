@@ -118,12 +118,12 @@ router.routesMeta = [
             page: 'Page number (default 1)',
             limit: 'Items per page (default 20)',
             query: 'Search Description',
-            from: 'Start Date (YYYY-MM-DD)',
-            to: 'End Date (YYYY-MM-DD)',
-            start_date: 'Alias for from',
-            end_date: 'Alias for to',
-            date: 'Exact Date (YYYY-MM-DD)',
-            type: 'Transaction Type Filter'
+            start_date: 'Start Date (YYYY-MM-DD)',
+            end_date: 'End Date (YYYY-MM-DD)',
+            date: 'Specific Date (YYYY-MM-DD)',
+            type: 'Transaction Type Filter',
+            from: 'Alias for start_date (Legacy)',
+            to: 'Alias for end_date (Legacy)'
         },
         examples: [
             {
@@ -141,7 +141,47 @@ router.routesMeta = [
                         itemsPerPage: 10
                     },
                     data: [
-                        { id: 10, type: 'SALES', amount: 500 }
+                        { id: 10, type: 'SALES', amount: 500, date: '2026-01-15' }
+                    ]
+                }
+            },
+            {
+                title: 'Filter by date',
+                description: 'Get transactions for a specific date',
+                url: '/api/accounting/transactions?date=2026-01-14&page=1&limit=10',
+                method: 'GET',
+                response: {
+                    status: true,
+                    message: 'Transactions retrieved successfully',
+                    data: [
+                        { id: 10, type: 'SALES', amount: 500, date: '2026-01-14' }
+                    ]
+                }
+            },
+            {
+                title: 'Filter by Date Range',
+                description: 'Get transactions within a date range',
+                url: '/api/accounting/transactions?page=1&limit=10&start_date=2026-01-01&end_date=2026-01-31',
+                method: 'GET',
+                response: {
+                    status: true,
+                    message: 'Transactions retrieved successfully',
+                    data: [
+                        { id: 10, type: 'SALES', amount: 500, date: '2026-01-14' }
+                    ]
+                }
+            },
+            {
+                title: 'Filter by Type',
+                description: 'Get transactions of a specific type (e.g. SALES, EXPENSE)',
+                url: '/api/accounting/transactions?page=1&limit=10&type=SALES',
+                method: 'GET',
+                response: {
+                    status: true,
+                    message: 'Transactions retrieved successfully',
+                    data: [
+                        { id: 10, type: 'SALES', amount: 500, date: '2026-01-14' },
+                        { id: 11, type: 'SALES', amount: 1200, date: '2026-01-15' }
                     ]
                 }
             }
