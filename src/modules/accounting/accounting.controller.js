@@ -99,6 +99,18 @@ class AccountingController {
         }
     }
 
+    async getRecentActivity(req, res) {
+        try {
+            const activity = await AccountingService.getRecentActivity();
+            // Just return the array directly as 'data' is standard, but user format requests specific structure?
+            // User requested: "Recent Activity ...". Let's assume they want the JSON array.
+            // The JSON preview showed keys "title", "date", "amount".
+            return success(res, 'Recent activity retrieved successfully', activity);
+        } catch (err) {
+            return error(res, err.message, 500);
+        }
+    }
+
     // --- Settings / Master Data ---
     async getAccounts(req, res) {
         try {

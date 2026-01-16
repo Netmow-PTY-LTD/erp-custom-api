@@ -370,10 +370,46 @@ router.routesMeta = [
                     status: true,
                     message: 'Financial overview retrieved successfully',
                     data: {
-                        total_income: 50000,
-                        total_expense: 20000,
-                        net_profit: 30000
+                        today: { income: 500, expense: 100, net: 400 },
+                        this_week: { income: 2500, expense: 500, net: 2000 },
+                        this_month: { income: 10000, expense: 2000, net: 8000 },
+                        this_year: { income: 50000, expense: 20000, net: 30000 }
                     }
+                }
+            }
+        ]
+    },
+    {
+        path: '/recent-activity',
+        method: 'GET',
+        middlewares: [],
+        handler: (req, res) => accountingController.getRecentActivity(req, res),
+        description: 'Get Recent Activity (formatted list)',
+        database: {
+            tables: ['transactions'],
+            sideEffects: ['Fetches last 5 transactions']
+        },
+        examples: [
+            {
+                title: 'Get Recent Activity',
+                description: 'Dashboard widget data',
+                url: '/api/accounting/recent-activity',
+                method: 'GET',
+                response: {
+                    status: true,
+                    message: 'Recent activity retrieved successfully',
+                    data: [
+                        {
+                            title: "Consulting Fee Received",
+                            date: "January 16th, 2026",
+                            amount: "+ RM 1,500"
+                        },
+                        {
+                            title: "Office Rent Payment",
+                            date: "January 16th, 2026",
+                            amount: "- RM 2,000"
+                        }
+                    ]
                 }
             }
         ]
