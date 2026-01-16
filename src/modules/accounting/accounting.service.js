@@ -242,8 +242,7 @@ class AccountingService {
         };
     }
 
-    async getAccounts(query = {}) {
-        // Fetch all accounts to build the tree
+    async getFormattedAccountList() {
         const { rows: allAccounts } = await AccountingRepository.findAllAccounts({}, null, null);
 
         // 1. Build Map and standardise objects
@@ -254,6 +253,7 @@ class AccountingService {
                 id: acc.id,
                 code: acc.code,
                 name: acc.name,
+                label: acc.name,
                 type: type,
                 parent: acc.parent_id,
                 children: [] // Init children
@@ -263,9 +263,6 @@ class AccountingService {
 
         // 2. Build Tree and Calculate Levels
         const rootAccounts = [];
-
-        // Helper for level (though in tree level is implicit depth, explicit is nice)
-        // We can calc level during traversal or just use the map parent pointers
 
         // Single pass to link parents
         accountMap.forEach(acc => {
@@ -300,8 +297,13 @@ class AccountingService {
         };
         processNode(rootAccounts, 0);
 
+        return flatList;
+    }
+
+    async getAccounts(query = {}) {
+        let result = await this.getFormattedAccountList();
+
         // 4. In-memory Search (if applied)
-        let result = flatList;
         if (query.search) {
             const searchLower = query.search.toLowerCase();
             result = result.filter(acc =>
@@ -352,11 +354,13 @@ class AccountingService {
     }
 
     async getIncomeHeads() {
-        return await AccountingRepository.findAccountsByTypes(['INCOME']);
+        const accounts = await this.getFormattedAccountList();
+        return accounts.filter(acc => acc.type === 'Income');
     }
 
     async getExpenseHeads() {
-        return await AccountingRepository.findAccountsByTypes(['EXPENSE']);
+        const accounts = await this.getFormattedAccountList();
+        return accounts.filter(acc => acc.type === 'Expense');
     }
 
     async createIncomeHead(data) {
@@ -419,6 +423,108 @@ class AccountingService {
         }
         const account = await AccountingRepository.updateAccount(id, data);
         return await this.getAccountDetails(account.id);
+    }
+
+    async createHeadWiseExpense(data) {
+        // 1. Verify Debit Head (Expense Account)
+        const debitHead = await AccountingRepository.findAccountById(data.debit_head_id);
+        if (!debitHead) {
+            throw new Error(`Debit Head (Expense Account) not found with ID: ${data.debit_head_id}`);
+        }
+
+        // 2. Verify Credit Head (Payment Method - Asset Account)
+        let responseCreditHead;
+        if (typeof data.payment_method === 'number') {
+            responseCreditHead = await AccountingRepository.findAccountById(data.payment_method);
+        } else {
+            responseCreditHead = await AccountingRepository.findAccountByName(data.payment_method);
+        }
+
+        if (!responseCreditHead) {
+            // Try lenient search if exact match fails?
+            // Optional: responseCreditHead = await AccountingRepository.findOne({ where: { name: { [Op.like]: `%${data.payment_method}%` } } });
+            throw new Error(`Payment account '${data.payment_method}' not found. Please verify the account name or create it first.`);
+        }
+
+        return await sequelize.transaction(async (t) => {
+            // Create Transaction Record
+            const transactionData = {
+                type: 'EXPENSE',
+                amount: data.amount,
+                payment_mode: responseCreditHead.name.toLowerCase().includes('bank') ? 'BANK' : 'CASH',
+                date: data.expense_date,
+                description: data.title + (data.description ? ` - ${data.description}` : ''),
+            };
+
+            const transaction = await AccountingRepository.createTransaction(transactionData, t);
+
+            // Create Journal Entry
+            const journalData = {
+                date: data.expense_date,
+                reference_type: 'TRANSACTION',
+                reference_id: transaction.id,
+                narration: data.title + (data.description ? ` - ${data.description}` : '') + (data.reference_number ? ` (Ref: ${data.reference_number})` : '')
+            };
+
+            const linesData = [
+                { account_id: debitHead.id, debit: data.amount, credit: 0 }, // Dr Expenses
+                { account_id: responseCreditHead.id, debit: 0, credit: data.amount } // Cr Asset (Bank/Cash)
+            ];
+
+            const journal = await AccountingRepository.createJournalEntry(journalData, linesData, t);
+
+            return { transaction, journal };
+        });
+    }
+
+    async createHeadWiseIncome(data) {
+        // 1. Verify Credit Head (Income Account)
+        const creditHead = await AccountingRepository.findAccountById(data.income_head_id);
+        if (!creditHead) {
+            throw new Error(`Income Head (Income Account) not found with ID: ${data.income_head_id}`);
+        }
+
+        // 2. Verify Debit Head (Received In - Asset Account)
+        let responseDebitHead;
+        if (typeof data.payment_method === 'number') {
+            responseDebitHead = await AccountingRepository.findAccountById(data.payment_method);
+        } else {
+            responseDebitHead = await AccountingRepository.findAccountByName(data.payment_method);
+        }
+
+        if (!responseDebitHead) {
+            throw new Error(`Payment account '${data.payment_method}' not found. Please verify the account name or create it first.`);
+        }
+
+        return await sequelize.transaction(async (t) => {
+            // Create Transaction Record
+            const transactionData = {
+                type: 'INCOME',
+                amount: data.amount,
+                payment_mode: responseDebitHead.name.toLowerCase().includes('bank') ? 'BANK' : 'CASH',
+                date: data.income_date,
+                description: data.title + (data.description ? ` - ${data.description}` : ''),
+            };
+
+            const transaction = await AccountingRepository.createTransaction(transactionData, t);
+
+            // Create Journal Entry
+            const journalData = {
+                date: data.income_date,
+                reference_type: 'TRANSACTION',
+                reference_id: transaction.id,
+                narration: data.title + (data.description ? ` - ${data.description}` : '') + (data.reference_number ? ` (Ref: ${data.reference_number})` : '')
+            };
+
+            const linesData = [
+                { account_id: responseDebitHead.id, debit: data.amount, credit: 0 }, // Dr Asset (Bank/Cash)
+                { account_id: creditHead.id, debit: 0, credit: data.amount } // Cr Income
+            ];
+
+            const journal = await AccountingRepository.createJournalEntry(journalData, linesData, t);
+
+            return { transaction, journal };
+        });
     }
 
     async createAccount(data) {

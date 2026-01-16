@@ -41,9 +41,31 @@ const createJournal = z.object({
     })).min(2, 'Journal must have at least 2 entries')
 });
 
+const createHeadWiseExpense = z.object({
+    title: z.string().min(1, 'Title is required'),
+    expense_date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Date must be YYYY-MM-DD'),
+    debit_head_id: z.number().int().positive('Debit Head ID is required'),
+    description: z.string().optional(),
+    amount: z.number().positive('Amount must be positive'),
+    payment_method: z.union([z.string(), z.number()]), // Allow ID or Name
+    reference_number: z.string().optional()
+});
+
+const createHeadWiseIncome = z.object({
+    title: z.string().min(1, 'Title is required'),
+    income_date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Date must be YYYY-MM-DD'),
+    income_head_id: z.number().int().positive('Income Head ID is required'),
+    description: z.string().optional(),
+    amount: z.number().positive('Amount must be positive'),
+    payment_method: z.union([z.string(), z.number()]), // Received In (Asset Account)
+    reference_number: z.string().optional()
+});
+
 module.exports = {
     createAccount,
     updateAccount,
     createTransaction,
-    createJournal
+    createJournal,
+    createHeadWiseExpense,
+    createHeadWiseIncome
 };
