@@ -170,6 +170,26 @@ class AccountingController {
         }
     }
 
+    async createHeadWiseExpense(req, res) {
+        try {
+            const result = await AccountingService.createHeadWiseExpense(req.body);
+            return success(res, 'Expense recorded successfully', result, 201);
+        } catch (err) {
+            const message = err.errors ? err.errors.map(e => e.message).join(', ') : err.message;
+            return error(res, message, 400);
+        }
+    }
+
+    async createHeadWiseIncome(req, res) {
+        try {
+            const result = await AccountingService.createHeadWiseIncome(req.body);
+            return success(res, 'Income recorded successfully', result, 201);
+        } catch (err) {
+            const message = err.errors ? err.errors.map(e => e.message).join(', ') : err.message;
+            return error(res, message, 400);
+        }
+    }
+
     async createAccount(req, res) {
         try {
             const account = await AccountingService.createAccount(req.body);

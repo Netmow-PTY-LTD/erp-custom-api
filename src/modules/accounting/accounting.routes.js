@@ -5,7 +5,7 @@ const { verifyToken } = require('../../core/middleware/auth');
 const { moduleCheck } = require('../../core/middleware/moduleCheck');
 const { handlerWithFields } = require('../../core/utils/zodTypeView');
 const validate = require('../../core/middleware/validate');
-const { createAccount, updateAccount, createJournal } = require('./accounting.validation');
+const { createAccount, updateAccount, createJournal, createHeadWiseExpense, createHeadWiseIncome } = require('./accounting.validation');
 
 // Module name for routes-tree grouping
 router.moduleName = 'Accounting';
@@ -414,9 +414,9 @@ router.routesMeta = [
                         totalPage: 5
                     },
                     data: [
-                        { id: 1, code: "1000", name: "Assets", type: "Asset", parent: null, level: 0 },
-                        { id: 2, code: "1001", name: "Current Assets", type: "Asset", parent: 1, level: 1 },
-                        { id: 3, code: "1002", name: "Cash in Hand", type: "Asset", parent: 2, level: 2 }
+                        { id: 1, code: "1000", name: "Assets", label: "Assets", type: "Asset", parent: null, level: 0 },
+                        { id: 2, code: "1001", name: "Current Assets", label: "Current Assets", type: "Asset", parent: 1, level: 1 },
+                        { id: 3, code: "1002", name: "Cash in Hand", label: "Cash in Hand", type: "Asset", parent: 2, level: 2 }
                     ]
                 }
             }
@@ -445,7 +445,7 @@ router.routesMeta = [
                     status: true,
                     message: 'Income Heads retrieved successfully',
                     data: [
-                        { id: 2, code: '4000', name: 'Sales', type: 'INCOME' }
+                        { id: 2, code: '4000', name: 'Sales', label: 'Sales', type: 'Income', parent: null, level: 0 }
                     ]
                 }
             }
@@ -474,7 +474,7 @@ router.routesMeta = [
                     status: true,
                     message: 'Expense Heads retrieved successfully',
                     data: [
-                        { id: 1, code: '5000', name: 'Purchase', type: 'EXPENSE' }
+                        { id: 1, code: '5000', name: 'Purchase', label: 'Purchase', type: 'Expense', parent: null, level: 0 }
                     ]
                 }
             }
@@ -592,6 +592,96 @@ router.routesMeta = [
                     status: true,
                     message: 'Expense Head updated successfully',
                     data: { id: 106, code: '5500', name: 'Local Travel', type: 'EXPENSE' }
+                }
+            }
+        ]
+    },
+    {
+        path: '/expenses/head-wise',
+        method: 'POST',
+        middlewares: [validate(createHeadWiseExpense)],
+        handler: handlerWithFields((req, res) => accountingController.createHeadWiseExpense(req, res), createHeadWiseExpense),
+        description: 'Create Head-wise Expense',
+        database: {
+            tables: ['transactions', 'journals'],
+            sideEffects: ['Creates Transaction', 'Creates Journal Entry']
+        },
+        request: {
+            title: "test expanse",
+            expense_date: "2026-01-16",
+            debit_head_id: 10,
+            description: "test",
+            amount: 2500,
+            payment_method: "DBBL 2025",
+            reference_number: "wertyu"
+        },
+        examples: [
+            {
+                title: 'Create Head Wise Expense',
+                description: 'Record a specific expense against a head',
+                url: '/api/accounting/expenses/head-wise',
+                method: 'POST',
+                request: {
+                    title: "test expanse",
+                    expense_date: "2026-01-16",
+                    debit_head_id: 10,
+                    description: "test",
+                    amount: 2500,
+                    payment_method: "DBBL 2025",
+                    reference_number: "wertyu"
+                },
+                response: {
+                    status: true,
+                    message: 'Expense recorded successfully',
+                    data: {
+                        transaction: { id: 50, amount: 2500, type: 'EXPENSE' },
+                        journal: { id: 100, narration: 'test expanse - test' }
+                    }
+                }
+            }
+        ]
+    },
+    {
+        path: '/incomes/head-wise',
+        method: 'POST',
+        middlewares: [validate(createHeadWiseIncome)],
+        handler: handlerWithFields((req, res) => accountingController.createHeadWiseIncome(req, res), createHeadWiseIncome),
+        description: 'Create Head-wise Income',
+        database: {
+            tables: ['transactions', 'journals'],
+            sideEffects: ['Creates Transaction', 'Creates Journal Entry']
+        },
+        request: {
+            title: "Project Alpha",
+            income_date: "2026-01-16",
+            income_head_id: 8,
+            description: "Consulting Fee",
+            amount: 5000,
+            payment_method: "Bank",
+            reference_number: "REF123"
+        },
+        examples: [
+            {
+                title: 'Create Head Wise Income',
+                description: 'Record a specific income against a head',
+                url: '/api/accounting/incomes/head-wise',
+                method: 'POST',
+                request: {
+                    title: "Project Alpha",
+                    income_date: "2026-01-16",
+                    income_head_id: 8,
+                    description: "Consulting Fee",
+                    amount: 5000,
+                    payment_method: "Bank",
+                    reference_number: "REF123"
+                },
+                response: {
+                    status: true,
+                    message: 'Income recorded successfully',
+                    data: {
+                        transaction: { id: 51, amount: 5000, type: 'INCOME' },
+                        journal: { id: 101, narration: 'Project Alpha - Consulting Fee' }
+                    }
                 }
             }
         ]
