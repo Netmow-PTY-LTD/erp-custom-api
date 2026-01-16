@@ -10,8 +10,8 @@ class ProductService {
             ...productData,
             thumb_url: productData.image_url || null,
             // Convert numeric fields to proper numbers
-            price: productData.price ? parseFloat(productData.price) : null,
-            cost: productData.cost ? parseFloat(productData.cost) : null,
+            price: (productData.price !== null && productData.price !== undefined) ? parseFloat(productData.price) : null,
+            cost: (productData.cost !== null && productData.cost !== undefined) ? parseFloat(productData.cost) : null,
             purchase_tax: productData.purchase_tax ? parseFloat(productData.purchase_tax) : 0,
             sales_tax: productData.sales_tax ? parseFloat(productData.sales_tax) : 0,
             stock_quantity: productData.stock_quantity ? parseInt(productData.stock_quantity) : 0,
@@ -322,8 +322,8 @@ class ProductService {
         return category;
     }
 
-    async createCategory(data) {
-        return await CategoryRepository.create(data);
+    async createCategory(data, userId) {
+        return await CategoryRepository.create({ ...data, created_by: userId });
     }
 
     async updateCategory(id, data) {
@@ -360,8 +360,8 @@ class ProductService {
         return unit;
     }
 
-    async createUnit(data) {
-        return await UnitRepository.create(data);
+    async createUnit(data, userId) {
+        return await UnitRepository.create({ ...data, created_by: userId });
     }
 
     async updateUnit(id, data) {
@@ -382,6 +382,34 @@ class ProductService {
 
     async getStockDetails() {
         return await ProductRepository.getStockDetails();
+    }
+
+    async getProductStats() {
+        const stats = await ProductRepository.getStats();
+
+        // Format to match user request
+        return [
+            {
+                label: "Total Products",
+                value: stats.totalProducts,
+                color: "bg-blue-600"
+            },
+            {
+                label: "Active Products",
+                value: stats.activeProducts,
+                color: "bg-green-700"
+            },
+            {
+                label: "Low Stock",
+                value: stats.lowStockProducts,
+                color: "bg-red-600"
+            },
+            {
+                label: "Total Stock",
+                value: stats.totalStock || 0,
+                color: "bg-cyan-500"
+            }
+        ];
     }
 }
 

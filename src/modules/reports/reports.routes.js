@@ -30,7 +30,23 @@ router.routesMeta = [
                 total_revenue: 45000.00,
                 average_order_value: 300.00
             }
-        }
+        },
+        examples: [
+            {
+                title: 'Sales Summary',
+                description: 'Get sales summary within date range',
+                url: '/api/reports/sales/summary?startDate=2025-01-01&endDate=2025-01-31',
+                method: 'GET',
+                response: {
+                    status: true,
+                    data: {
+                        total_orders: 150,
+                        total_revenue: 45000.00,
+                        average_order_value: 300.00
+                    }
+                }
+            }
+        ]
     },
     {
         path: '/sales/top-customers',
@@ -64,7 +80,20 @@ router.routesMeta = [
                     total_spent: 9500.00
                 }
             ]
-        }
+        },
+        examples: [
+            {
+                title: 'Top Customers',
+                description: 'Get top 5 customers by revenue',
+                url: '/api/reports/sales/top-customers?limit=5',
+                method: 'GET',
+                response: {
+                    success: true,
+                    message: 'Top customers retrieved',
+                    data: [{ id: 1, name: 'Acme Corp', total_spent: 15000.00 }]
+                }
+            }
+        ]
     },
     {
         path: '/sales/top-products',
@@ -98,7 +127,20 @@ router.routesMeta = [
                     total_revenue: 24000.00
                 }
             ]
-        }
+        },
+        examples: [
+            {
+                title: 'Top Products',
+                description: 'Get top 5 selling products',
+                url: '/api/reports/sales/top-products?limit=5',
+                method: 'GET',
+                response: {
+                    success: true,
+                    message: 'Top products retrieved',
+                    data: [{ id: 101, name: 'Wireless Mouse', total_revenue: 12500.00 }]
+                }
+            }
+        ]
     },
     {
         path: '/sales/by-customer',
@@ -120,7 +162,20 @@ router.routesMeta = [
                 { customer: "Tech Solutions Sdn Bhd", orders: 12, sales: 15000.00 },
                 { customer: "Global Trading Co", orders: 5, sales: 8000.00 }
             ]
-        }
+        },
+        examples: [
+            {
+                title: 'Sales by Customer',
+                description: 'Group sales by customer',
+                url: '/api/reports/sales/by-customer?page=1&limit=10',
+                method: 'GET',
+                response: {
+                    success: true,
+                    message: 'Sales by customer retrieved',
+                    data: [{ customer: "Tech Solutions Sdn Bhd", orders: 12, sales: 15000.00 }]
+                }
+            }
+        ]
     },
     {
         path: '/customers/account-receivables',
@@ -158,7 +213,20 @@ router.routesMeta = [
                     balance: 715.5
                 }
             ]
-        }
+        },
+        examples: [
+            {
+                title: 'Account Receivables',
+                description: 'Get pending customer payments',
+                url: '/api/reports/customers/account-receivables?page=1',
+                method: 'GET',
+                response: {
+                    success: true,
+                    message: 'Account receivables retrieved',
+                    data: [{ invoiceNumber: "INV-20251012-D72F5C", balance: 1325 }]
+                }
+            }
+        ]
     },
 
     // --- Purchase ---
@@ -175,7 +243,19 @@ router.routesMeta = [
                 total_orders: 45,
                 total_spent: 32000.00
             }
-        }
+        },
+        examples: [
+            {
+                title: 'Purchase Summary',
+                description: 'Get purchase summary metrics',
+                url: '/api/reports/purchase/summary?startDate=2025-01-01&endDate=2025-01-31',
+                method: 'GET',
+                response: {
+                    status: true,
+                    data: { total_orders: 45, total_spent: 32000.00 }
+                }
+            }
+        ]
     },
     {
         path: '/purchase/by-supplier',
@@ -207,7 +287,20 @@ router.routesMeta = [
                     total_spent: 5000.00
                 }
             ]
-        }
+        },
+        examples: [
+            {
+                title: 'Spending by Supplier',
+                description: 'Get spending breakdown',
+                url: '/api/reports/purchase/by-supplier?limit=10',
+                method: 'GET',
+                response: {
+                    success: true,
+                    message: 'Supplier spending retrieved',
+                    data: [{ name: 'Tech Supplies Inc', total_spent: 18000.00 }]
+                }
+            }
+        ]
     },
 
     // --- Inventory ---
@@ -224,7 +317,19 @@ router.routesMeta = [
                 low_stock_count: 12,
                 out_of_stock_count: 3
             }
-        }
+        },
+        examples: [
+            {
+                title: 'Inventory Status',
+                description: 'Get current stock status',
+                url: '/api/reports/inventory/status',
+                method: 'GET',
+                response: {
+                    status: true,
+                    data: { total_products: 500, low_stock_count: 12 }
+                }
+            }
+        ]
     },
     {
         path: '/inventory/valuation',
@@ -239,7 +344,19 @@ router.routesMeta = [
                 total_Valuation: 95000.00,
                 potential_Sales_Value: 150000.00
             }
-        }
+        },
+        examples: [
+            {
+                title: 'Inventory Valuation',
+                description: 'Get inventory financial value',
+                url: '/api/reports/inventory/valuation',
+                method: 'GET',
+                response: {
+                    status: true,
+                    data: { total_Valuation: 95000.00 }
+                }
+            }
+        ]
     },
     {
         path: '/inventory/low-stock-list',
@@ -263,7 +380,19 @@ router.routesMeta = [
                 { sku: "SKU004", product: "Laptop Computer", stock: -16, minLevel: 5 },
                 { sku: "SKU010", product: "Cable Management", stock: 1, minLevel: 10 }
             ]
-        }
+        },
+        examples: [
+            {
+                title: 'Low Stock List',
+                description: 'Get items below minimum level',
+                url: '/api/reports/inventory/low-stock-list',
+                method: 'GET',
+                response: {
+                    status: true,
+                    data: [{ sku: "SKU004", stock: -16 }]
+                }
+            }
+        ]
     },
 
     // --- HR ---
@@ -299,7 +428,20 @@ router.routesMeta = [
                     half_days: 0
                 }
             ]
-        }
+        },
+        examples: [
+            {
+                title: 'Attendance Summary',
+                description: 'Get monthly attendance summary',
+                url: '/api/reports/hr/attendance?month=1&year=2025',
+                method: 'GET',
+                response: {
+                    success: true,
+                    message: 'Attendance summary retrieved',
+                    data: [{ first_name: 'John', present_days: 20 }]
+                }
+            }
+        ]
     },
     {
         path: '/hr/payroll',
@@ -331,7 +473,20 @@ router.routesMeta = [
                     total_net_payout: 76500.00
                 }
             ]
-        }
+        },
+        examples: [
+            {
+                title: 'Payroll Summary',
+                description: 'Get payroll summary for year',
+                url: '/api/reports/hr/payroll?year=2025',
+                method: 'GET',
+                response: {
+                    success: true,
+                    message: 'Payroll summary retrieved',
+                    data: [{ month: 'January', total_net_payout: 72000.00 }]
+                }
+            }
+        ]
     },
 
     // --- Finance ---
@@ -351,7 +506,19 @@ router.routesMeta = [
                 expenses: 15000.00,
                 net_profit: 25000.00
             }
-        }
+        },
+        examples: [
+            {
+                title: 'Profit & Loss',
+                description: 'Get financial P&L statement',
+                url: '/api/reports/finance/profit-loss?startDate=2025-01-01&endDate=2025-01-31',
+                method: 'GET',
+                response: {
+                    status: true,
+                    data: { net_profit: 25000.00 }
+                }
+            }
+        ]
     }
 ];
 

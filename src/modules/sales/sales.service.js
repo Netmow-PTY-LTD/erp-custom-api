@@ -1,4 +1,5 @@
 const { OrderRepository, InvoiceRepository, WarehouseRepository, PaymentRepository, DeliveryRepository, SalesRouteRepository } = require('./sales.repository');
+const AccountingService = require('../accounting/accounting.service');
 
 
 class SalesService {
@@ -28,6 +29,48 @@ class SalesService {
         };
     }
 
+    async getOrdersBySalesRoute(filters = {}, page = 1, limit = 10) {
+        const offset = (page - 1) * limit;
+        const result = await SalesRouteRepository.findAllWithOrders(filters, limit, offset);
+
+        // Transform: SalesRoute -> Customers -> Orders  ===>  SalesRoute -> Orders
+        const transformedRows = result.rows.map(route => {
+            const routeData = route.toJSON();
+
+            const allOrders = [];
+            if (routeData.customers) {
+                routeData.customers.forEach(customer => {
+                    if (customer.orders) {
+                        customer.orders.forEach(order => {
+                            allOrders.push({
+                                id: order.id,
+                                customer: customer.name || customer.company,
+                                amount: parseFloat(order.total_amount),
+                                status: order.status, // e.g., 'pending', 'delivered'
+                                date: order.order_date ? new Date(order.order_date).toISOString().split('T')[0] : null // Format date YYYY-MM-DD
+                            });
+                        });
+                    }
+                });
+            }
+
+            // Sort orders by date/id descending
+            allOrders.sort((a, b) => b.id - a.id);
+
+            return {
+                id: routeData.id,
+                name: routeData.route_name,
+                region: routeData.description || 'Dhaka', // Defaulting region based on description or placeholder as per sample
+                orders: allOrders
+            };
+        });
+
+        return {
+            data: transformedRows,
+            total: result.count
+        };
+    }
+
     async getOrderById(id) {
         const order = await OrderRepository.findById(id);
         if (!order) {
@@ -47,15 +90,21 @@ class SalesService {
         orderData.total_invoice_amount = orderData.invoice ? parseFloat(orderData.invoice.total_amount) : 0;
 
         // Total Discount
-        const itemsDiscount = orderData.items ? orderData.items.reduce((sum, item) => sum + (parseFloat(item.discount) || 0), 0) : 0;
-        const orderDiscount = parseFloat(orderData.discount_amount) || 0;
-        orderData.total_discount = itemsDiscount + orderDiscount;
+        // discount_amount in DB is the sum of item discounts (populated in createOrder)
+        // So we strictly use the DB value, or recalculate from items. Let's use DB value.
+        orderData.total_discount = parseFloat(orderData.discount_amount) || 0;
+
+        // Net Amount (after discount, before tax)
+        // = total_amount - discount_amount OR sum of line_total
+        const itemsLineTotal = orderData.items ? orderData.items.reduce((sum, item) => sum + (parseFloat(item.line_total) || 0), 0) : 0;
+        orderData.net_amount = itemsLineTotal;
 
         // Total Payable Amount
-        // Sum(items.total_price) + tax - orderDiscount
-        const itemsTotal = orderData.items ? orderData.items.reduce((sum, item) => sum + (parseFloat(item.total_price) || 0), 0) : 0;
+        // This is the actual amount customer needs to pay
+        // = Sum of line_total (after discount) + tax
         const tax = parseFloat(orderData.tax_amount) || 0;
-        orderData.total_payable_amount = itemsTotal + tax - orderDiscount;
+
+        orderData.total_payable_amount = itemsLineTotal + tax;
 
         // Total Paid Amount
         orderData.total_paid_amount = orderData.payments
@@ -91,20 +140,21 @@ class SalesService {
                 const product = await ProductRepository.findById(item.product_id);
                 const sales_tax_rate = product && product.sales_tax ? Number(product.sales_tax) : 0;
 
-                const subtotal = quantity * unit_price;
-                const line_total = subtotal - discount;
+                const total_price = quantity * unit_price; // Before discount
+                const line_total = total_price - discount; // After discount
 
-                // Calculate item tax (from product's sales_tax)
+                // Calculate item tax (from product's sales_tax) on line_total
                 const item_tax_amount = (line_total * sales_tax_rate) / 100;
 
                 discount_amount += discount;
-                total_amount += line_total;
+                total_amount += total_price; // Sum of total_price (before discount)
                 item_level_tax += item_tax_amount;
 
                 return {
                     ...item,
                     tax_amount: item_tax_amount,
-                    sales_tax_percent: sales_tax_rate  // Store the tax percentage
+                    sales_tax_percent: sales_tax_rate,  // Store the tax percentage
+                    purchase_cost: product ? product.cost : 0 // Lock in the cost at time of sale
                 };
             }));
         }
@@ -128,6 +178,7 @@ class SalesService {
             discount_amount,
             tax_amount,
             sales_tax_percent: tax_percent,
+            status: 'pending', // Force status to pending (dummy order)
             created_by: userId
         };
 
@@ -186,12 +237,64 @@ class SalesService {
         return order;
     }
 
+    async reviewOrder(id, action, userId) {
+        // action: 'approve' | 'reject' (or 'cancel')
+        const order = await OrderRepository.findById(id);
+        if (!order) {
+            throw new Error('Order not found');
+        }
+
+        if (action === 'approve') {
+            // Only pending orders can be approved
+            if (order.status !== 'pending') {
+                throw new Error('Only pending orders can be approved');
+            }
+            return await OrderRepository.update(id, { status: 'confirmed' });
+        } else if (action === 'reject' || action === 'cancel') {
+            // If order was not already cancelled, we might need to restore stock
+            // Current createOrder ALWAYS deducts stock. So any cancellation should restore it.
+            if (order.status === 'cancelled') {
+                throw new Error('Order is already cancelled');
+            }
+
+            // Restore stock
+            const { ProductRepository } = require('../products/products.repository');
+            const StockMovement = require('../products/stock-movement.model');
+
+            // Iterate items and restore
+            if (order.items && order.items.length > 0) {
+                for (const item of order.items) {
+                    const product = await ProductRepository.findById(item.product_id);
+                    if (product) {
+                        const newStock = product.stock_quantity + item.quantity;
+                        await ProductRepository.update(item.product_id, { stock_quantity: newStock });
+
+                        // Log movement
+                        await StockMovement.create({
+                            product_id: item.product_id,
+                            movement_type: 'adjustment', // or 'return'? Using adjustment for now or 'sale_return' if available
+                            quantity: item.quantity,
+                            reference_type: 'order',
+                            reference_id: order.id,
+                            notes: `Stock restored due to order ${action}`,
+                            created_by: userId
+                        });
+                    }
+                }
+            }
+
+            return await OrderRepository.update(id, { status: 'cancelled' });
+        } else {
+            throw new Error('Invalid action');
+        }
+    }
+
     // Invoices
     async getAllInvoices(filters = {}, page = 1, limit = 10) {
         const offset = (page - 1) * limit;
         const result = await InvoiceRepository.findAll(filters, limit, offset);
 
-        // Calculate remaining balance for each invoice
+        // Calculate remaining balance for each invoice using order amounts
         const invoicesWithBalance = result.rows.map(invoice => {
             const invoiceData = invoice.toJSON();
 
@@ -202,12 +305,23 @@ class SalesService {
                     .reduce((sum, payment) => sum + parseFloat(payment.amount), 0)
                 : 0;
 
-            const totalAmount = parseFloat(invoiceData.total_amount);
-            const remainingBalance = totalAmount - paidAmount;
+            // Get order amounts
+            const orderTotalAmount = invoiceData.order ? parseFloat(invoiceData.order.total_amount) : 0;
+            const orderDiscountAmount = invoiceData.order ? parseFloat(invoiceData.order.discount_amount) : 0;
+            const orderTaxAmount = invoiceData.order ? parseFloat(invoiceData.order.tax_amount) : 0;
+
+            // Set invoice total_amount from order
+            invoiceData.total_amount = orderTotalAmount;
+
+            // Calculate remaining balance from order amounts
+            // remaining_balance = total_amount - discount_amount + tax_amount - paid_amount
+            const totalPayable = orderTotalAmount - orderDiscountAmount + orderTaxAmount;
+            const remainingBalance = totalPayable - paidAmount;
 
             // Add calculated fields
             invoiceData.paid_amount = paidAmount;
             invoiceData.remaining_balance = remainingBalance;
+            invoiceData.total_payable = totalPayable;
 
             return invoiceData;
         });
@@ -233,12 +347,23 @@ class SalesService {
                 .reduce((sum, payment) => sum + parseFloat(payment.amount), 0)
             : 0;
 
-        const totalAmount = parseFloat(invoiceData.total_amount);
-        const remainingBalance = totalAmount - paidAmount;
+        // Get order amounts
+        const orderTotalAmount = invoiceData.order ? parseFloat(invoiceData.order.total_amount) : 0;
+        const orderDiscountAmount = invoiceData.order ? parseFloat(invoiceData.order.discount_amount) : 0;
+        const orderTaxAmount = invoiceData.order ? parseFloat(invoiceData.order.tax_amount) : 0;
+
+        // Set invoice total_amount from order
+        invoiceData.total_amount = orderTotalAmount;
+
+        // Calculate remaining balance from order amounts
+        // remaining_balance = total_amount - discount_amount + tax_amount - paid_amount
+        const totalPayable = orderTotalAmount - orderDiscountAmount + orderTaxAmount;
+        const remainingBalance = totalPayable - paidAmount;
 
         // Add calculated fields
         invoiceData.paid_amount = paidAmount;
         invoiceData.remaining_balance = remainingBalance;
+        invoiceData.total_payable = totalPayable; // Also add total payable for reference
 
         return invoiceData;
     }
@@ -261,7 +386,24 @@ class SalesService {
             created_by: userId
         };
 
-        return await InvoiceRepository.create(invoiceData);
+        const invoice = await InvoiceRepository.create(invoiceData);
+
+        // Accounting: Book Sales Revenue (Dr AR / Cr Sales)
+        if (invoice) {
+            try {
+                await AccountingService.processTransaction({
+                    type: 'SALES',
+                    amount: invoice.total_amount,
+                    payment_mode: 'DUE',
+                    date: invoice.created_at || new Date(),
+                    description: `Sales Invoice ${invoice.invoice_number}`
+                });
+            } catch (err) {
+                console.error('Accounting Error:', err.message);
+            }
+        }
+
+        return invoice;
     }
 
     async updateInvoiceStatus(id, status, userId) {
@@ -378,8 +520,15 @@ class SalesService {
                     .reduce((sum, payment) => sum + parseFloat(payment.amount), 0)
                 : 0;
 
-            const totalAmount = parseFloat(invoiceData.total_amount);
-            const remainingBalance = totalAmount - paidAmount;
+            // Get order amounts for correct calculation
+            const orderTotalAmount = invoiceData.order ? parseFloat(invoiceData.order.total_amount) : parseFloat(invoiceData.total_amount);
+            const orderDiscountAmount = invoiceData.order ? parseFloat(invoiceData.order.discount_amount) : 0;
+            const orderTaxAmount = invoiceData.order ? parseFloat(invoiceData.order.tax_amount) : 0;
+
+            // Calculate remaining balance from order amounts
+            // remaining_balance = total_amount - discount_amount + tax_amount - paid_amount
+            const totalPayable = orderTotalAmount - orderDiscountAmount + orderTaxAmount;
+            const remainingBalance = totalPayable - paidAmount;
 
             // Check if invoice is already fully paid
             if (remainingBalance <= 0) {
@@ -400,19 +549,104 @@ class SalesService {
             status: data.status || 'completed' // Default to completed
         };
 
-        return await PaymentRepository.create(paymentData);
+        const payment = await PaymentRepository.create(paymentData);
+
+        // Accounting: Payment In (Dr Cash/Bank / Cr AR)
+        if (payment && payment.status === 'completed') {
+            try {
+                let mode = 'CASH';
+                const method = (payment.payment_method || '').toUpperCase();
+                // Map common methods to BANK, otherwise default to CASH
+                if (method.includes('BANK') || method.includes('CARD') || method.includes('TRANSFER') || method.includes('CHEQUE') || method.includes('BKASH') || method.includes('NAGAD')) {
+                    mode = 'BANK';
+                }
+
+                await AccountingService.processTransaction({
+                    type: 'PAYMENT_IN',
+                    amount: payment.amount,
+                    payment_mode: mode,
+                    date: payment.payment_date || new Date(),
+                    description: `Payment Received ${payment.reference_number} for Invoice ${invoice ? invoice.invoice_number : 'Unknown'}`
+                });
+            } catch (err) {
+                console.error('Accounting Payment Error:', err.message);
+            }
+        }
+
+        // Update Invoice and Order status based on new balance
+        if (invoice) {
+            // Re-fetch invoice with payments to get the updated total paid
+            const updatedInvoice = await InvoiceRepository.findById(invoice.id);
+            const invoiceData = updatedInvoice.toJSON();
+
+            const totalPaid = invoiceData.payments
+                ? invoiceData.payments
+                    .filter(p => p.status === 'completed')
+                    .reduce((sum, p) => sum + parseFloat(p.amount), 0)
+                : 0;
+
+            const invoiceTotal = parseFloat(invoiceData.total_amount);
+
+            // Determine statuses
+            let newInvoiceStatus = invoiceData.status;
+            let newOrderPaymentStatus = 'unpaid';
+
+            if (totalPaid >= invoiceTotal) {
+                newInvoiceStatus = 'paid';
+                newOrderPaymentStatus = 'paid';
+            } else if (totalPaid > 0) {
+                newOrderPaymentStatus = 'partially_paid';
+            }
+
+            // Update Invoice Status if changed
+            if (newInvoiceStatus !== invoiceData.status) {
+                await InvoiceRepository.update(invoice.id, { status: newInvoiceStatus });
+            }
+
+            // Update Order Payment Status
+            if (order) {
+                await OrderRepository.update(order.id, { payment_status: newOrderPaymentStatus });
+            }
+        } else if (order) {
+            // If no invoice, just update order based on direct payments? 
+            // Current logic forces invoice for validation, but if we allow direct order payments later:
+            // checks order total vs order paid... (skipping for now to keep safe)
+        }
+
+        return payment;
     }
 
     // Deliveries
     async createDelivery(orderId, data, userId) {
-        // ... (existing implementation)
+        // Fetch order to get shipping address if not provided
+        const order = await OrderRepository.findById(orderId);
+        if (!order) {
+            throw new Error('Order not found');
+        }
+
+        const delivery_number = `DEL-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
+
+        // Use provided delivery address or fallback to order shipping/billing address
+        const delivery_address = data.delivery_address || order.shipping_address || order.billing_address;
+
+        if (!delivery_address) {
+            throw new Error('Delivery address is required and could not be found in the order.');
+        }
+
+        const deliveryData = {
+            order_id: orderId,
+            ...data,
+            delivery_number,
+            delivery_address,
+            created_by: userId
+        };
         const delivery = await DeliveryRepository.create(deliveryData);
 
         // Update Order status based on delivery status
         if (data.status === 'delivered') {
             await OrderRepository.update(orderId, { status: 'delivered' });
         } else if (data.status === 'in_transit') {
-            await OrderRepository.update(orderId, { status: 'shipped' });
+            await OrderRepository.update(orderId, { status: 'in_transit' });
         } else if (data.status === 'confirmed') {
             await OrderRepository.update(orderId, { status: 'confirmed' });
         }
@@ -439,6 +673,12 @@ class SalesService {
             postal_code: data.postalCode || data.postal_code,
             center_lat: data.centerLat || data.center_lat,
             center_lng: data.centerLng || data.center_lng,
+            end_lat: data.endLat || data.end_lat,
+            end_lng: data.endLng || data.end_lng,
+            end_city: data.endCity || data.end_city,
+            end_state: data.endState || data.end_state,
+            end_country: data.endCountry || data.end_country,
+            end_postal_code: data.endPostalCode || data.end_postal_code,
             coverage_radius: data.coverageRadius || data.coverage_radius,
             created_by: userId
         };
@@ -447,6 +687,177 @@ class SalesService {
 
         return await SalesRouteRepository.create(routeData);
     }
+
+    async getSalesRouteById(id) {
+        const route = await SalesRouteRepository.findById(id);
+        if (!route) {
+            throw new Error('Sales route not found');
+        }
+        return route;
+    }
+
+    async updateSalesRoute(id, data, userId) {
+        // Map camelCase to snake_case if present
+        const routeData = {
+            ...data,
+            updated_at: new Date()
+        };
+
+        if (data.routeName) routeData.route_name = data.routeName;
+        if (data.zoomLevel) routeData.zoom_level = data.zoomLevel;
+        if (data.postalCode) routeData.postal_code = data.postalCode;
+        if (data.centerLat) routeData.center_lat = data.centerLat;
+        if (data.centerLng) routeData.center_lng = data.centerLng;
+        if (data.endLat) routeData.end_lat = data.endLat;
+        if (data.endLng) routeData.end_lng = data.endLng;
+        if (data.endCity) routeData.end_city = data.endCity;
+        if (data.endState) routeData.end_state = data.endState;
+        if (data.endCountry) routeData.end_country = data.endCountry;
+        if (data.endPostalCode) routeData.end_postal_code = data.endPostalCode;
+        if (data.coverageRadius) routeData.coverage_radius = data.coverageRadius;
+
+        const updatedRoute = await SalesRouteRepository.update(id, routeData);
+        if (!updatedRoute) {
+            throw new Error('Sales route not found');
+        }
+        return updatedRoute;
+    }
+
+    async deleteSalesRoute(id) {
+        const result = await SalesRouteRepository.delete(id);
+        if (!result) {
+            throw new Error('Sales route not found');
+        }
+        return true;
+    }
+
+    async assignSalesRoute(id, staffIds, userId) {
+        // Ensure staffIds is an array
+        if (!Array.isArray(staffIds)) {
+            // Check if it's a single value (legacy support)
+            if (staffIds) {
+                staffIds = [staffIds];
+            } else {
+                throw new Error('staff_ids array is required');
+            }
+        }
+
+        const route = await SalesRouteRepository.assignStaff(id, staffIds, userId);
+        if (!route) {
+            throw new Error('Sales route not found');
+        }
+        return route;
+    }
+
+    async getSalesRouteAssignment(id) {
+        // Reuse getById but we might want to ensure we fetch staff details if not already
+        // findById in repo already fetches complex data, maybe too much?
+        // But for assignment we specifically care about 'assigned_sales_rep_id'
+        const route = await SalesRouteRepository.findById(id);
+        if (!route) {
+            throw new Error('Sales route not found');
+        }
+        return {
+            id: route.id,
+            route_name: route.route_name,
+            assigned_sales_rep_id: route.assigned_sales_rep_id,
+            // If User/Staff included, return it here.
+            // Assuming the repo findById might not include rep details, we return the ID at least.
+        };
+    }
+
+    async getStaffRoutes(filters = {}, page = 1, limit = 10) {
+        const offset = (page - 1) * limit;
+        const result = await SalesRouteRepository.getStaffRoutes(filters, limit, offset);
+
+        const transformedData = result.rows.map(staff => {
+            const staffData = staff.toJSON();
+            const routes = staffData.assignedRoutes || [];
+
+            let totalCompletedOrders = 0;
+            const mappedRoutes = routes.map(route => {
+                let routeOrderCount = 0;
+                if (route.customers) {
+                    route.customers.forEach(customer => {
+                        if (customer.orders) {
+                            routeOrderCount += customer.orders.length;
+                            customer.orders.forEach(order => {
+                                if (order.status === 'delivered' || order.status === 'completed') {
+                                    totalCompletedOrders++;
+                                }
+                            });
+                        }
+                    });
+                }
+
+                return {
+                    id: route.id,
+                    name: route.route_name,
+                    status: route.is_active ? 'Active' : 'Inactive',
+                    orders: routeOrderCount
+                };
+            });
+
+            return {
+                id: staffData.id,
+                name: `${staffData.first_name} ${staffData.last_name}`,
+                role: staffData.position || 'Staff',
+                email: staffData.email,
+                phone: staffData.phone,
+                active: staffData.is_active,
+                routes: mappedRoutes,
+                stats: {
+                    completedOrders: totalCompletedOrders,
+                    rating: (Math.random() * (5.0 - 4.0) + 4.0).toFixed(1) // Placeholder rating logic
+                }
+            };
+        });
+
+        return {
+            data: transformedData,
+            total: result.count
+        };
+    }
+
+    // Order Staff Assignment
+    async assignStaffToOrder(orderId, staffIds, userId) {
+        const result = await OrderRepository.assignStaffToOrder(orderId, staffIds, userId);
+        if (!result) {
+            throw new Error('Order not found');
+        }
+        return result;
+    }
+
+    async getOrdersWithStaff(filters = {}, page = 1, limit = 10) {
+        const offset = (page - 1) * limit;
+        const result = await OrderRepository.getOrdersWithStaff(filters, limit, offset);
+
+        const transformedData = result.rows.map(order => {
+            const orderData = order.toJSON();
+            const assignedStaff = orderData.assignedStaff || [];
+
+            return {
+                id: orderData.id,
+                order_number: orderData.order_number,
+                customer: orderData.customer ? orderData.customer.name || orderData.customer.company : 'Unknown',
+                order_date: orderData.order_date,
+                status: orderData.status,
+                total_amount: orderData.total_amount,
+                assigned_staff: assignedStaff.map(staff => ({
+                    id: staff.id,
+                    name: `${staff.first_name} ${staff.last_name}`,
+                    email: staff.email,
+                    position: staff.position
+                }))
+            };
+        });
+
+        return {
+            data: transformedData,
+            total: result.count
+        };
+    }
+
 
     // Reports & Charts
     async getReportsCharts(start_date, end_date) {
@@ -563,6 +974,17 @@ class SalesService {
                 count: parseInt(row.count) || 0,
                 amount: parseFloat(row.amount) || 0
             }))
+        };
+    }
+    async getOrderStats() {
+        const stats = await OrderRepository.getStats();
+
+        // Format to match user request
+        return {
+            total_orders: stats.totalOrders,
+            pending_orders: stats.pendingOrders,
+            delivered_orders: stats.deliveredOrders,
+            total_value: stats.totalValue.toLocaleString()
         };
     }
 }

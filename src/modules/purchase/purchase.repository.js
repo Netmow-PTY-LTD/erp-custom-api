@@ -38,11 +38,14 @@ class PurchaseOrderRepository {
                     attributes: ['id', 'name']
                 }
             ],
-            order: [['created_at', 'DESC']]
+            order: [['created_at', 'DESC']],
+            distinct: true
         });
     }
 
     async findById(id) {
+        const { User } = require('../users/user.model');
+
         return await PurchaseOrder.findByPk(id, {
             include: [
                 {
@@ -61,8 +64,44 @@ class PurchaseOrderRepository {
                         }
                     ]
                 },
-                { model: PurchaseInvoice, as: 'invoice' },
-                { model: PurchasePayment, as: 'payments' }
+                {
+                    model: PurchaseInvoice,
+                    as: 'invoice',
+                    include: [
+                        {
+                            model: PurchasePayment,
+                            as: 'payments',
+                            include: [
+                                {
+                                    model: User,
+                                    as: 'creator',
+                                    attributes: ['id', 'name', 'email']
+                                }
+                            ]
+                        },
+                        {
+                            model: User,
+                            as: 'creator',
+                            attributes: ['id', 'name', 'email']
+                        }
+                    ]
+                },
+                {
+                    model: PurchasePayment,
+                    as: 'payments',
+                    include: [
+                        {
+                            model: User,
+                            as: 'creator',
+                            attributes: ['id', 'name', 'email']
+                        }
+                    ]
+                },
+                {
+                    model: User,
+                    as: 'creator',
+                    attributes: ['id', 'name', 'email']
+                }
             ]
         });
     }
@@ -123,7 +162,11 @@ class PurchaseOrderRepository {
                 {
                     model: Supplier,
                     as: 'supplier',
-                    attributes: ['id', 'name', 'contact_person', 'address', 'city', 'phone', 'email', 'latitude', 'longitude']
+                    attributes: ['id', 'name', 'contact_person', 'address', 'city', 'phone', 'email', 'latitude', 'longitude'],
+                    where: {
+                        latitude: { [Op.ne]: null },
+                        longitude: { [Op.ne]: null }
+                    }
                 }
             ],
             order: [['created_at', 'DESC']]
@@ -183,6 +226,17 @@ class PurchaseInvoiceRepository {
                             model: Supplier,
                             as: 'supplier',
                             attributes: ['id', 'name', 'email', 'phone', 'contact_person']
+                        },
+                        {
+                            model: PurchaseOrderItem,
+                            as: 'items',
+                            include: [
+                                {
+                                    model: require('../products/products.model').Product,
+                                    as: 'product',
+                                    attributes: ['id', 'name', 'sku']
+                                }
+                            ]
                         }
                     ]
                 }
@@ -194,6 +248,8 @@ class PurchaseInvoiceRepository {
 
     async findById(id) {
         const { Supplier } = require('../suppliers/suppliers.model');
+        const { User } = require('../users/user.model');
+
         return await PurchaseInvoice.findByPk(id, {
             attributes: {
                 include: [
@@ -231,7 +287,22 @@ class PurchaseInvoiceRepository {
                         }
                     ]
                 },
-                { model: PurchasePayment, as: 'payments' }
+                {
+                    model: PurchasePayment,
+                    as: 'payments',
+                    include: [
+                        {
+                            model: User,
+                            as: 'creator',
+                            attributes: ['id', 'name', 'email']
+                        }
+                    ]
+                },
+                {
+                    model: User,
+                    as: 'creator',
+                    attributes: ['id', 'name', 'email']
+                }
             ]
         });
     }

@@ -2,19 +2,27 @@ const PayrollService = require('./payroll.service');
 const { success, error, successWithPagination } = require('../../core/utils/response');
 
 class PayrollController {
-    async getPayrolls(req, res) {
+    async generateRun(req, res) {
+        try {
+            const { month } = req.body;
+            const run = await PayrollService.generateRun(month, req.user.id);
+            return success(res, 'Payroll run generated successfully', run, 201);
+        } catch (err) {
+            return error(res, err.message, 400);
+        }
+    }
+
+    async getRuns(req, res) {
         try {
             const page = parseInt(req.query.page) || 1;
             const limit = parseInt(req.query.limit) || 10;
             const filters = {
-                staff_id: req.query.staff_id,
                 month: req.query.month,
-                year: req.query.year,
                 status: req.query.status
             };
 
-            const result = await PayrollService.getAllPayrolls(filters, page, limit);
-            return successWithPagination(res, 'Payroll records retrieved successfully', result.data, {
+            const result = await PayrollService.getAllRuns(filters, page, limit);
+            return successWithPagination(res, 'Payroll runs retrieved successfully', result.data, {
                 total: result.total,
                 page,
                 limit
@@ -24,39 +32,69 @@ class PayrollController {
         }
     }
 
-    async getPayrollById(req, res) {
+    async getRunById(req, res) {
         try {
-            const payroll = await PayrollService.getPayrollById(req.params.id);
-            return success(res, 'Payroll record retrieved successfully', payroll);
+            const run = await PayrollService.getRunById(req.params.id);
+            return success(res, 'Payroll run retrieved successfully', run);
         } catch (err) {
             return error(res, err.message, 404);
         }
     }
 
-    async createPayroll(req, res) {
+    async approveRun(req, res) {
         try {
-            const payroll = await PayrollService.createPayroll(req.body, req.user.id);
-            return success(res, 'Payroll record created successfully', payroll, 201);
+            const run = await PayrollService.approveRun(req.params.id);
+            return success(res, 'Payroll run approved successfully', run);
         } catch (err) {
             return error(res, err.message, 400);
         }
     }
 
-    async updatePayroll(req, res) {
+    async payRun(req, res) {
         try {
-            const payroll = await PayrollService.updatePayroll(req.params.id, req.body);
-            return success(res, 'Payroll record updated successfully', payroll);
+            const run = await PayrollService.payRun(req.params.id);
+            return success(res, 'Payroll run paid and expense recorded successfully', run);
         } catch (err) {
             return error(res, err.message, 400);
         }
     }
 
-    async deletePayroll(req, res) {
+    async deleteRun(req, res) {
         try {
-            await PayrollService.deletePayroll(req.params.id);
-            return success(res, 'Payroll record deleted successfully');
+            await PayrollService.deleteRun(req.params.id);
+            return success(res, 'Payroll run deleted successfully', null);
         } catch (err) {
-            return error(res, err.message, 404);
+            return error(res, err.message, 400);
+        }
+    }
+
+    async getStructure(req, res) {
+        try {
+            const { staffId } = req.params;
+            const structure = await PayrollService.getStructure(staffId);
+            if (!structure) {
+                return success(res, 'Payroll structure retrieved', {
+                    staff_id: parseInt(staffId),
+                    basic_salary: 0,
+                    allowances: [],
+                    deductions: [],
+                    bank_details: {},
+                    net_salary: 0
+                });
+            }
+            return success(res, 'Payroll structure retrieved', structure);
+        } catch (err) {
+            return error(res, err.message, 500);
+        }
+    }
+
+    async saveStructure(req, res) {
+        try {
+            const { staffId } = req.params;
+            const structure = await PayrollService.upsertStructure(staffId, req.body);
+            return success(res, 'Payroll structure saved', structure);
+        } catch (err) {
+            return error(res, err.message, 500);
         }
     }
 }

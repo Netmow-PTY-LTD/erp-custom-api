@@ -21,7 +21,7 @@ class UserService {
     return userWithoutPassword;
   }
 
-  async createUser(data) {
+  async createUser(data, userId) {
     // Check if email already exists
     const existing = await UserRepository.findByEmail(data.email);
     if (existing) {
@@ -30,7 +30,7 @@ class UserService {
 
     // Hash password
     const hashedPassword = await bcrypt.hash(data.password, 10);
-    const userData = { ...data, password: hashedPassword };
+    const userData = { ...data, password: hashedPassword, created_by: userId };
 
     const user = await UserRepository.create(userData);
     const { password, ...userWithoutPassword } = user.toJSON();

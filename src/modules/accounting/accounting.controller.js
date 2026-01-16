@@ -2,202 +2,216 @@ const AccountingService = require('./accounting.service');
 const { success, error, successWithPagination } = require('../../core/utils/response');
 
 class AccountingController {
-    // --- Overview ---
+
+    // --- Transactions (Entry Point) ---
+    async createTransaction(req, res) {
+        try {
+            // req.body should contain { type, amount, payment_mode, ... }
+            const result = await AccountingService.processTransaction(req.body);
+            return success(res, 'Transaction posted and journalized successfully', result, 201);
+        } catch (err) {
+            return error(res, err.message, 400);
+        }
+    }
+    async createJournalEntry(req, res) {
+        try {
+            const journal = await AccountingService.createManualJournal(req.body);
+            return success(res, 'Journal Entry created successfully', journal, 201);
+        } catch (err) {
+            const message = err.errors ? err.errors.map(e => e.message).join(', ') : err.message;
+            return error(res, message, 400);
+        }
+    }
+
+
+    async getTransactions(req, res) {
+        try {
+            const { count, rows } = await AccountingService.getTransactions(req.query);
+            const page = parseInt(req.query.page) || 1;
+            const limit = parseInt(req.query.limit) || 10;
+            const pagination = {
+                total: count,
+                page,
+                limit,
+                totalPage: Math.ceil(count / limit)
+            };
+            return successWithPagination(res, 'Transactions retrieved successfully', rows, pagination);
+        } catch (err) {
+            return error(res, err.message, 500);
+        }
+    }
+
+    // --- Reports ---
+    async getJournalReport(req, res) {
+        try {
+            const { count, rows } = await AccountingService.getJournalReport(req.query);
+            const page = parseInt(req.query.page) || 1;
+            const limit = parseInt(req.query.limit) || 10;
+            const pagination = {
+                total: count,
+                page,
+                limit,
+                totalPage: Math.ceil(count / limit)
+            };
+            return successWithPagination(res, 'Journal report retrieved successfully', rows, pagination);
+        } catch (err) {
+            return error(res, err.message, 500);
+        }
+    }
+
+    async getLedgerReport(req, res) {
+        try {
+            const { id } = req.params; // Account ID
+            const { from, to } = req.query;
+            const report = await AccountingService.getLedgerReport(id, { from, to, code: req.query.code });
+            return success(res, 'Ledger report retrieved successfully', report);
+        } catch (err) {
+            return error(res, err.message, 500);
+        }
+    }
+
+    async getTrialBalance(req, res) {
+        try {
+            const { date } = req.query;
+            const report = await AccountingService.getTrialBalance(date);
+            return success(res, 'Trial Balance retrieved successfully', report);
+        } catch (err) {
+            return error(res, err.message, 500);
+        }
+    }
+
+    async getProfitAndLoss(req, res) {
+        try {
+            const { from, to } = req.query;
+            const report = await AccountingService.getProfitAndLoss({ from, to });
+            return success(res, 'Profit and Loss report retrieved successfully', report);
+        } catch (err) {
+            return error(res, err.message, 500);
+        }
+    }
+
     async getOverview(req, res) {
         try {
-            const { start_date, end_date } = req.query;
-            const overview = await AccountingService.getOverview(start_date, end_date);
+            const overview = await AccountingService.getOverview();
             return success(res, 'Financial overview retrieved successfully', overview);
         } catch (err) {
             return error(res, err.message, 500);
         }
     }
 
-    // --- Income ---
-    async getIncomes(req, res) {
+    // --- Settings / Master Data ---
+    async getAccounts(req, res) {
         try {
-            const page = parseInt(req.query.page) || 1;
-            const limit = parseInt(req.query.limit) || 10;
-            const result = await AccountingService.getAllIncomes(req.query, page, limit);
-            return successWithPagination(res, 'Income records retrieved successfully', result.data, {
-                total: result.total,
-                page,
-                limit
-            });
-        } catch (err) {
-            return error(res, err.message, 500);
-        }
-    }
-
-    async createIncome(req, res) {
-        try {
-            const income = await AccountingService.createIncome(req.body, req.user.id);
-            return success(res, 'Income record created successfully', income, 201);
-        } catch (err) {
-            return error(res, err.message, 400);
-        }
-    }
-
-    // --- Expense ---
-    async getExpenses(req, res) {
-        try {
-            const page = parseInt(req.query.page) || 1;
-            const limit = parseInt(req.query.limit) || 10;
-            const result = await AccountingService.getAllExpenses(req.query, page, limit);
-            return successWithPagination(res, 'Expense records retrieved successfully', result.data, {
-                total: result.total,
-                page,
-                limit
-            });
-        } catch (err) {
-            return error(res, err.message, 500);
-        }
-    }
-
-    async createExpense(req, res) {
-        try {
-            const expense = await AccountingService.createExpense(req.body, req.user.id);
-            return success(res, 'Expense record created successfully', expense, 201);
-        } catch (err) {
-            return error(res, err.message, 400);
-        }
-    }
-
-    // --- Payroll ---
-    async getPayrolls(req, res) {
-        try {
-            const page = parseInt(req.query.page) || 1;
-            const limit = parseInt(req.query.limit) || 10;
-            const result = await AccountingService.getAllPayrolls(req.query, page, limit);
-            return successWithPagination(res, 'Payroll records retrieved successfully', result.data, {
-                total: result.total,
-                page,
-                limit
-            });
-        } catch (err) {
-            return error(res, err.message, 500);
-        }
-    }
-
-    async createPayroll(req, res) {
-        try {
-            const payroll = await AccountingService.createPayroll(req.body, req.user.id);
-            return success(res, 'Payroll record created successfully', payroll, 201);
-        } catch (err) {
-            return error(res, err.message, 400);
-        }
-    }
-
-    // --- Credit Head ---
-    async getAllCreditHeads(req, res) {
-        try {
-            const page = parseInt(req.query.page) || 1;
-            const limit = parseInt(req.query.limit) || 10;
-            const filters = {
-                is_active: req.query.is_active,
-                search: req.query.search
+            const { count, rows } = await AccountingService.getAccounts(req.query);
+            const pagination = {
+                total: count,
+                page: parseInt(req.query.page) || 1,
+                limit: parseInt(req.query.limit) || 10
             };
-            const result = await AccountingService.getAllCreditHeads(filters, page, limit);
-            return successWithPagination(res, 'Credit heads retrieved successfully', result.data, {
-                total: result.total,
-                page,
-                limit
-            });
+            return successWithPagination(res, 'Chart of Accounts retrieved successfully', rows, pagination);
         } catch (err) {
             return error(res, err.message, 500);
         }
     }
 
-    async getCreditHeadById(req, res) {
+    async getIncomeHeads(req, res) {
         try {
-            const creditHead = await AccountingService.getCreditHeadById(req.params.id);
-            return success(res, 'Credit head retrieved successfully', creditHead);
-        } catch (err) {
-            return error(res, err.message, 404);
-        }
-    }
-
-    async createCreditHead(req, res) {
-        try {
-            const creditHead = await AccountingService.createCreditHead(req.body);
-            return success(res, 'Credit head created successfully', creditHead, 201);
-        } catch (err) {
-            return error(res, err.message, 400);
-        }
-    }
-
-    async updateCreditHead(req, res) {
-        try {
-            const creditHead = await AccountingService.updateCreditHead(req.params.id, req.body);
-            return success(res, 'Credit head updated successfully', creditHead);
-        } catch (err) {
-            return error(res, err.message, 400);
-        }
-    }
-
-    async deleteCreditHead(req, res) {
-        try {
-            await AccountingService.deleteCreditHead(req.params.id);
-            return success(res, 'Credit head deleted successfully', null);
-        } catch (err) {
-            return error(res, err.message, 404);
-        }
-    }
-
-    // --- Debit Head ---
-    async getAllDebitHeads(req, res) {
-        try {
-            const page = parseInt(req.query.page) || 1;
-            const limit = parseInt(req.query.limit) || 10;
-            const filters = {
-                is_active: req.query.is_active,
-                search: req.query.search
-            };
-            const result = await AccountingService.getAllDebitHeads(filters, page, limit);
-            return successWithPagination(res, 'Debit heads retrieved successfully', result.data, {
-                total: result.total,
-                page,
-                limit
-            });
+            const accounts = await AccountingService.getIncomeHeads();
+            return success(res, 'Income Heads retrieved successfully', accounts);
         } catch (err) {
             return error(res, err.message, 500);
         }
     }
 
-    async getDebitHeadById(req, res) {
+    async getExpenseHeads(req, res) {
         try {
-            const debitHead = await AccountingService.getDebitHeadById(req.params.id);
-            return success(res, 'Debit head retrieved successfully', debitHead);
+            const accounts = await AccountingService.getExpenseHeads();
+            return success(res, 'Expense Heads retrieved successfully', accounts);
         } catch (err) {
-            return error(res, err.message, 404);
+            return error(res, err.message, 500);
         }
     }
 
-    async createDebitHead(req, res) {
+    async createIncomeHead(req, res) {
         try {
-            const debitHead = await AccountingService.createDebitHead(req.body);
-            return success(res, 'Debit head created successfully', debitHead, 201);
+            const account = await AccountingService.createIncomeHead(req.body);
+            return success(res, 'Income Head created successfully', account, 201);
+        } catch (err) {
+            const message = err.errors ? err.errors.map(e => e.message).join(', ') : err.message;
+            return error(res, message, 400);
+        }
+    }
+
+    async updateIncomeHead(req, res) {
+        try {
+            const account = await AccountingService.updateIncomeHead(req.params.id, req.body);
+            return success(res, 'Income Head updated successfully', account);
         } catch (err) {
             return error(res, err.message, 400);
         }
     }
 
-    async updateDebitHead(req, res) {
+    async createExpenseHead(req, res) {
         try {
-            const debitHead = await AccountingService.updateDebitHead(req.params.id, req.body);
-            return success(res, 'Debit head updated successfully', debitHead);
+            const account = await AccountingService.createExpenseHead(req.body);
+            return success(res, 'Expense Head created successfully', account, 201);
+        } catch (err) {
+            const message = err.errors ? err.errors.map(e => e.message).join(', ') : err.message;
+            return error(res, message, 400);
+        }
+    }
+
+    async updateExpenseHead(req, res) {
+        try {
+            const account = await AccountingService.updateExpenseHead(req.params.id, req.body);
+            return success(res, 'Expense Head updated successfully', account);
         } catch (err) {
             return error(res, err.message, 400);
         }
     }
 
-    async deleteDebitHead(req, res) {
+    async createAccount(req, res) {
         try {
-            await AccountingService.deleteDebitHead(req.params.id);
-            return success(res, 'Debit head deleted successfully', null);
+            const account = await AccountingService.createAccount(req.body);
+            return success(res, 'Account created successfully', account, 201);
+        } catch (err) {
+            const message = err.errors ? err.errors.map(e => e.message).join(', ') : err.message;
+            return error(res, message, 400);
+        }
+    }
+
+    async updateAccount(req, res) {
+        try {
+            const account = await AccountingService.updateAccount(req.params.id, req.body);
+            return success(res, 'Account updated successfully', account);
+        } catch (err) {
+            return error(res, err.message, 400);
+        }
+    }
+
+    async deleteAccount(req, res) {
+        try {
+            await AccountingService.deleteAccount(req.params.id);
+            return success(res, 'Account deleted successfully', null);
         } catch (err) {
             return error(res, err.message, 404);
         }
+    }
+
+    async seedAccounts(req, res) {
+        try {
+            const result = await AccountingService.seedAccounts();
+            return success(res, 'Accounts seeded successfully', result, 201);
+        } catch (err) {
+            return error(res, err.message, 500);
+        }
+    }
+
+    // --- Chart Data (If needed) ---
+    async getChartData(req, res) {
+        // Implementation for charts if needed using new tables
+        // For now returning basic overview or empty
+        return success(res, 'Chart data endpoint pending implementation with new schema', []);
     }
 }
 

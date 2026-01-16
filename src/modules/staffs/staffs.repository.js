@@ -1,5 +1,6 @@
-const { Staff } = require('./staffs.model');
+const { User: Staff } = require('../users/user.model');
 const { Department } = require('../departments/departments.model');
+const { Role } = require('../roles/role.model');
 const { Op } = require('sequelize');
 
 class StaffRepository {
@@ -10,6 +11,10 @@ class StaffRepository {
             where.department_id = filters.department_id;
         }
 
+        if (filters.role_id) {
+            where.role_id = filters.role_id;
+        }
+
         if (filters.status) {
             where.status = filters.status;
         }
@@ -18,6 +23,7 @@ class StaffRepository {
             where[Op.or] = [
                 { first_name: { [Op.like]: `%${filters.search}%` } },
                 { last_name: { [Op.like]: `%${filters.search}%` } },
+                { name: { [Op.like]: `%${filters.search}%` } },
                 { email: { [Op.like]: `%${filters.search}%` } },
                 { position: { [Op.like]: `%${filters.search}%` } }
             ];
@@ -28,21 +34,35 @@ class StaffRepository {
             limit,
             offset,
             order: [['created_at', 'DESC']],
-            include: [{
-                model: Department,
-                as: 'department',
-                attributes: ['id', 'name', 'description']
-            }]
+            include: [
+                {
+                    model: Department,
+                    as: 'department',
+                    attributes: ['id', 'name', 'description']
+                },
+                {
+                    model: Role,
+                    as: 'role',
+                    attributes: ['id', 'name', 'display_name']
+                }
+            ]
         });
     }
 
     async findById(id) {
         return await Staff.findByPk(id, {
-            include: [{
-                model: Department,
-                as: 'department',
-                attributes: ['id', 'name', 'description']
-            }]
+            include: [
+                {
+                    model: Department,
+                    as: 'department',
+                    attributes: ['id', 'name', 'description']
+                },
+                {
+                    model: Role,
+                    as: 'role',
+                    attributes: ['id', 'name', 'display_name']
+                }
+            ]
         });
     }
 

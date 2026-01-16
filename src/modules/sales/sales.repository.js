@@ -1,4 +1,4 @@
-const { Warehouse, SalesRoute, Order, OrderItem, Invoice, Payment, Delivery } = require('./sales.models');
+const { Warehouse, SalesRoute, SalesRouteStaff, Order, OrderStaff, OrderItem, Invoice, Payment, Delivery } = require('./sales.models');
 const { Op } = require('sequelize');
 const { sequelize } = require('../../core/database/sequelize');
 
@@ -9,7 +9,13 @@ class OrderRepository {
 
     async findAll(filters = {}, limit = 10, offset = 0) {
         const where = {};
-        if (filters.status) where.status = filters.status;
+        if (filters.status) {
+            if (filters.status === 'in_transit') {
+                where.status = { [Op.or]: ['in_transit', 'shipped'] };
+            } else {
+                where.status = filters.status;
+            }
+        }
         if (filters.customer_id) where.customer_id = filters.customer_id;
 
         if (filters.search) {
@@ -17,6 +23,8 @@ class OrderRepository {
                 { order_number: { [Op.like]: `%${filters.search}%` } }
             ];
         }
+
+        const { Staff } = require('../staffs/staffs.model');
 
         return await Order.findAndCountAll({
             where,
@@ -45,13 +53,22 @@ class OrderRepository {
                     limit: 1,
                     order: [['created_at', 'DESC']],
                     separate: true
+                },
+                {
+                    model: Staff,
+                    as: 'assignedStaff',
+                    attributes: ['id', 'first_name', 'last_name', 'email', 'position'],
+                    through: { attributes: ['assigned_at', 'role'] }
                 }
             ],
-            order: [['created_at', 'DESC']]
+            order: [['created_at', 'DESC']],
+            distinct: true
         });
     }
 
     async findById(id) {
+        const { Staff } = require('../staffs/staffs.model');
+
         return await Order.findByPk(id, {
             include: [
                 {
@@ -72,7 +89,13 @@ class OrderRepository {
                 },
                 { model: Invoice, as: 'invoice' },
                 { model: Payment, as: 'payments' },
-                { model: Delivery, as: 'deliveries' }
+                { model: Delivery, as: 'deliveries' },
+                {
+                    model: Staff,
+                    as: 'assignedStaff',
+                    attributes: ['id', 'first_name', 'last_name', 'email', 'position'],
+                    through: { attributes: ['assigned_at', 'role'] }
+                }
             ]
         });
     }
@@ -88,17 +111,17 @@ class OrderRepository {
 
             const items = itemsData.map(item => {
                 const discount = item.discount || 0;
-                const subtotal = item.quantity * item.unit_price;
-                const line_total = item.line_total || (subtotal - discount);
+                const total_price = item.quantity * item.unit_price; // Before discount
+                const line_total = item.line_total || (total_price - discount); // After discount
 
                 return {
                     ...item,
                     order_id: order.id,
                     discount: discount,
+                    total_price: total_price,
                     line_total: line_total,
                     tax_amount: item.tax_amount || 0,
-                    sales_tax_percent: item.sales_tax_percent || 0,
-                    total_price: line_total
+                    sales_tax_percent: item.sales_tax_percent || 0
                 };
             });
 
@@ -125,6 +148,201 @@ class OrderRepository {
         if (!order) return null;
         await order.destroy();
         return order;
+    }
+
+    async getStats() {
+        const [totalOrders, pendingOrders, deliveredOrders, totalValueResult] = await Promise.all([
+            // Total Orders
+            Order.count(),
+
+            // Pending Orders
+            Order.count({ where: { status: 'pending' } }),
+
+            // Delivered Orders
+            Order.count({ where: { status: 'delivered' } }),
+
+            // Total Value
+            Order.sum('total_amount', { where: { status: { [Op.not]: 'cancelled' } } })
+        ]);
+
+        return {
+            totalOrders,
+            pendingOrders,
+            deliveredOrders,
+            totalValue: totalValueResult || 0
+        };
+    }
+
+    async assignStaffToOrder(orderId, staffIds, assignedBy) {
+        const transaction = await sequelize.transaction();
+
+        try {
+            // Verify order exists
+            const order = await Order.findByPk(orderId);
+            if (!order) {
+                await transaction.rollback();
+                return null;
+            }
+
+            // Remove all existing staff assignments for this order
+            await OrderStaff.destroy({
+                where: { order_id: orderId },
+                transaction
+            });
+
+            // Add new staff assignments
+            if (staffIds && staffIds.length > 0) {
+                const { Staff } = require('../staffs/staffs.model');
+
+                // Verify all staff members exist
+                const existingStaff = await Staff.findAll({
+                    where: {
+                        id: {
+                            [Op.in]: staffIds
+                        }
+                    },
+                    attributes: ['id'],
+                    transaction
+                });
+
+                const existingIds = existingStaff.map(s => s.id);
+                const missingIds = staffIds.filter(id => !existingIds.includes(id));
+
+                if (missingIds.length > 0) {
+                    throw new Error(`Invalid Staff IDs: ${missingIds.join(', ')}`);
+                }
+
+                const assignments = staffIds.map(staffId => ({
+                    order_id: orderId,
+                    staff_id: staffId,
+                    assigned_by: assignedBy,
+                    assigned_at: new Date()
+                }));
+
+                await OrderStaff.bulkCreate(assignments, { transaction });
+            }
+
+            await transaction.commit();
+
+            // Fetch and return the updated order with assigned staff
+            return await this.findById(orderId);
+        } catch (error) {
+            if (!transaction.finished) {
+                await transaction.rollback();
+            }
+            throw error;
+        }
+    }
+
+    async getOrdersWithStaff(filters = {}, limit = 10, offset = 0) {
+        const where = {};
+        if (filters.status) {
+            if (filters.status === 'in_transit') {
+                where.status = { [Op.or]: ['in_transit', 'shipped'] };
+            } else {
+                where.status = filters.status;
+            }
+        }
+        if (filters.customer_id) where.customer_id = filters.customer_id;
+
+        if (filters.search) {
+            where[Op.or] = [
+                { order_number: { [Op.like]: `%${filters.search}%` } }
+            ];
+        }
+
+        const { Staff } = require('../staffs/staffs.model');
+
+        return await Order.findAndCountAll({
+            where,
+            limit,
+            offset,
+            include: [
+                {
+                    model: require('../customers/customers.model').Customer,
+                    as: 'customer',
+                    attributes: ['id', 'name', 'email', 'phone', 'company']
+                },
+                {
+                    model: Staff,
+                    as: 'assignedStaff',
+                    attributes: ['id', 'first_name', 'last_name', 'email', 'position'],
+                    through: { attributes: ['assigned_at', 'role'] }
+                }
+            ],
+            order: [['created_at', 'DESC']],
+            distinct: true
+        });
+    }
+
+    async findAllBySalesRoute(filters = {}, limit = 10, offset = 0) {
+        const where = {};
+        const customerWhere = {};
+
+        // Filter by sales route
+        if (filters.sales_route_id) {
+            customerWhere.sales_route_id = filters.sales_route_id;
+        }
+
+        // Filter by order status
+        if (filters.status) {
+            if (filters.status === 'in_transit') {
+                where.status = { [Op.or]: ['in_transit', 'shipped'] };
+            } else {
+                where.status = filters.status;
+            }
+        }
+
+        // Search by order number
+        if (filters.search) {
+            where[Op.or] = [
+                { order_number: { [Op.like]: `%${filters.search}%` } }
+            ];
+        }
+
+        const { Customer } = require('../customers/customers.model');
+
+        return await Order.findAndCountAll({
+            where,
+            limit,
+            offset,
+            include: [
+                {
+                    model: Customer,
+                    as: 'customer',
+                    where: Object.keys(customerWhere).length > 0 ? customerWhere : undefined,
+                    required: true, // Only get orders with customers
+                    attributes: ['id', 'name', 'email', 'phone', 'company', 'address', 'city', 'sales_route_id'],
+                    include: [
+                        {
+                            model: SalesRoute,
+                            as: 'salesRoute',
+                            attributes: ['id', 'route_name', 'description']
+                        }
+                    ]
+                },
+                {
+                    model: OrderItem,
+                    as: 'items',
+                    include: [
+                        {
+                            model: require('../products/products.model').Product,
+                            as: 'product',
+                            attributes: ['id', 'name', 'sku', 'price', 'image_url']
+                        }
+                    ]
+                },
+                {
+                    model: Delivery,
+                    as: 'deliveries',
+                    limit: 1,
+                    order: [['created_at', 'DESC']],
+                    separate: true
+                }
+            ],
+            order: [['created_at', 'DESC']],
+            distinct: true
+        });
     }
 }
 
@@ -214,7 +432,22 @@ class InvoiceRepository {
                         }
                     ]
                 },
-                { model: Payment, as: 'payments' }
+                {
+                    model: Payment,
+                    as: 'payments',
+                    include: [
+                        {
+                            model: require('../users/user.model').User,
+                            as: 'creator',
+                            attributes: ['id', 'name', 'email']
+                        }
+                    ]
+                },
+                {
+                    model: require('../users/user.model').User,
+                    as: 'creator',
+                    attributes: ['id', 'name', 'email']
+                }
             ]
         });
     }
@@ -370,8 +603,174 @@ class SalesRouteRepository {
         });
     }
 
+    async findAllWithOrders(filters = {}, limit = 10, offset = 0) {
+        const routeWhere = {};
+        if (filters.sales_route_id) routeWhere.id = filters.sales_route_id;
+
+        // Search routes
+        if (filters.search) {
+            routeWhere[Op.or] = [
+                { route_name: { [Op.like]: `%${filters.search}%` } }
+            ];
+        }
+
+        // Order filters
+        const orderWhere = {};
+        if (filters.status) orderWhere.status = filters.status;
+
+        // Date filter
+        if (filters.date) {
+            // specific date match
+            orderWhere.order_date = sequelize.where(
+                sequelize.fn('DATE', sequelize.col('customers.orders.order_date')),
+                filters.date
+            );
+        }
+
+        const { Customer } = require('../customers/customers.model');
+
+        return await SalesRoute.findAndCountAll({
+            where: routeWhere,
+            limit,
+            offset,
+            include: [
+                {
+                    model: Customer,
+                    as: 'customers',
+                    required: false,
+                    include: [
+                        {
+                            model: Order,
+                            as: 'orders',
+                            where: Object.keys(orderWhere).length > 0 ? orderWhere : undefined,
+                            required: false, // Include customers even if no orders unless we strictly want only routes/custs with orders? 
+                            // If we filter orders, we might want to see routes but with empty orders list if none match.
+                            // However, 'where' inside include usually forces inner join if required is true. false -> LEFT JOIN.
+                            include: [
+                                // We need delivery status too? User JSON just says "status".
+                                // But let's include items count or something if needed?
+                                // User JSON: id, customer (name), amount, status, date.
+                            ]
+                        }
+                    ]
+                }
+            ],
+            distinct: true,
+            order: [['id', 'ASC']]
+        });
+    }
+
     async findById(id) {
-        return await SalesRoute.findByPk(id);
+        const { Customer } = require('../customers/customers.model');
+        const { Staff } = require('../staffs/staffs.model');
+
+        return await SalesRoute.findByPk(id, {
+            include: [
+                {
+                    model: Customer,
+                    as: 'customers',
+                    attributes: ['id', 'name', 'email', 'phone', 'company', 'address', 'city', 'latitude', 'longitude'],
+                    required: false,
+                    include: [
+                        {
+                            model: Order,
+                            as: 'orders',
+                            attributes: ['id', 'order_number', 'order_date', 'total_amount', 'status'],
+                            limit: 1,
+                            order: [['order_date', 'DESC']],
+                            required: false
+                        }
+                    ]
+                },
+                {
+                    model: Staff,
+                    as: 'assignedStaffMembers',
+                    attributes: ['id', 'first_name', 'last_name', 'email', 'position'],
+                    through: {
+                        attributes: ['assigned_at', 'assigned_by']
+                    }
+                }
+            ]
+        });
+    }
+
+    async assignStaff(routeId, staffIds, assignedBy) {
+        const transaction = await sequelize.transaction();
+
+        try {
+            // Verify route exists
+            const route = await SalesRoute.findByPk(routeId);
+            if (!route) {
+                await transaction.rollback();
+                return null;
+            }
+
+            // Remove all existing staff assignments for this route
+            await SalesRouteStaff.destroy({
+                where: { sales_route_id: routeId },
+                transaction
+            });
+
+            // Add new staff assignments
+            if (staffIds && staffIds.length > 0) {
+                const { Staff } = require('../staffs/staffs.model');
+
+                // Verify ONLY staff members exist
+                // strict check: ensure all staffIds are valid numbers
+                const validStaffIds = staffIds.map(id => parseInt(id)).filter(id => !isNaN(id) && id > 0);
+
+                if (validStaffIds.length !== staffIds.length) {
+                    throw new Error('Staff IDs must be positive numbers');
+                }
+
+                const existingStaff = await Staff.findAll({
+                    where: {
+                        id: {
+                            [Op.in]: validStaffIds
+                        }
+                    },
+                    attributes: ['id'],
+                    transaction
+                });
+
+                const existingIds = existingStaff.map(s => s.id);
+                const missingIds = validStaffIds.filter(id => !existingIds.includes(id));
+
+                if (missingIds.length > 0) {
+                    throw new Error(`Invalid Staff IDs: ${missingIds.join(', ')}`);
+                }
+
+                const assignments = validStaffIds.map(staffId => ({
+                    sales_route_id: routeId,
+                    staff_id: staffId,
+                    assigned_by: assignedBy,
+                    assigned_at: new Date()
+                }));
+
+                await SalesRouteStaff.bulkCreate(assignments, { transaction });
+            }
+
+            await transaction.commit();
+
+            // Return updated route
+            return await this.findById(routeId);
+        } catch (error) {
+            if (!transaction.finished) {
+                await transaction.rollback();
+            }
+            throw error;
+        }
+    }
+    async update(id, data) {
+        const route = await SalesRoute.findByPk(id);
+        if (!route) return null;
+        return await route.update(data);
+    }
+
+    async delete(id) {
+        const route = await SalesRoute.findByPk(id);
+        if (!route) return null;
+        return await route.destroy();
     }
 }
 

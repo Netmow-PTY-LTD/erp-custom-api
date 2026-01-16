@@ -17,8 +17,19 @@ const createCustomer = z.object({
     outstanding_balance: z.number().min(0).optional(),
     customer_type: z.enum(['individual', 'business']).default('individual'),
     sales_route_id: z.number().int().positive().optional(),
+    salesRouteId: z.number().int().positive().optional(), // camelCase alias
     notes: z.string().optional(),
-    is_active: z.boolean().default(true)
+    is_active: z.boolean().default(true),
+    image_url: z.string().url().optional().or(z.literal('')),
+    thumb_url: z.string().url().optional().or(z.literal('')),
+    gallery_items: z.array(z.string().url()).optional()
+}).transform(data => {
+    // Convert salesRouteId to sales_route_id if provided
+    if (data.salesRouteId !== undefined && data.sales_route_id === undefined) {
+        data.sales_route_id = data.salesRouteId;
+    }
+    delete data.salesRouteId;
+    return data;
 });
 
 const updateCustomer = z.object({
@@ -38,8 +49,19 @@ const updateCustomer = z.object({
     outstanding_balance: z.number().min(0).optional(),
     customer_type: z.enum(['individual', 'business']).optional(),
     sales_route_id: z.number().int().positive().optional().nullable(),
+    salesRouteId: z.number().int().positive().optional().nullable(), // camelCase alias
     notes: z.string().optional(),
-    is_active: z.boolean().optional()
+    is_active: z.boolean().optional(),
+    image_url: z.string().url().optional().or(z.literal('')),
+    thumb_url: z.string().url().optional().or(z.literal('')),
+    gallery_items: z.array(z.string().url()).optional()
+}).transform(data => {
+    // Convert salesRouteId to sales_route_id if provided
+    if (data.salesRouteId !== undefined && data.sales_route_id === undefined) {
+        data.sales_route_id = data.salesRouteId;
+    }
+    delete data.salesRouteId;
+    return data;
 });
 
 module.exports = {

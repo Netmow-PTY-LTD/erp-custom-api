@@ -3,7 +3,7 @@ const router = express.Router();
 const controller = require('./auth.controller');
 const validate = require('../../core/middleware/validate');
 const { verifyToken } = require('../../core/middleware/auth');
-const { loginSchema, registerSchema, refreshSchema } = require('./auth.validation');
+const { loginSchema, registerSchema, refreshSchema, updateProfileSchema } = require('./auth.validation');
 const { handlerWithFields } = require('../../core/utils/zodTypeView');
 
 // Module name for routes-tree grouping
@@ -60,73 +60,32 @@ router.routesMeta = [
           }
         },
         token: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...',
-        menus: [
-          {
-            id: 1,
-            title: 'Dashboard',
-            icon: 'dashboard',
-            path: '/dashboard',
-            parent_id: null,
-            sort_order: 1,
-            is_active: true,
-            children: []
-          },
-          {
-            id: 2,
-            title: 'Users',
-            icon: 'people',
-            path: null,
-            parent_id: null,
-            sort_order: 2,
-            is_active: true,
-            children: [
-              {
-                id: 3,
-                title: 'User List',
-                icon: null,
-                path: '/users',
-                parent_id: 2,
-                sort_order: 1,
-                is_active: true,
-                children: []
-              },
-              {
-                id: 4,
-                title: 'Roles',
-                icon: null,
-                path: '/roles',
-                parent_id: 2,
-                sort_order: 2,
-                is_active: true,
-                children: []
-              }
-            ]
-          }
-        ],
-        dashboards: [
-          {
-            id: 1,
-            name: 'Total Users',
-            slug: 'total_users',
-            type: 'stat',
-            size: '1x1',
-            is_active: true,
-            created_at: '2025-01-01T00:00:00.000Z',
-            updated_at: '2025-01-01T00:00:00.000Z'
-          },
-          {
-            id: 2,
-            name: 'Sales Chart',
-            slug: 'sales_chart',
-            type: 'chart',
-            size: '2x1',
-            is_active: true,
-            created_at: '2025-01-01T00:00:00.000Z',
-            updated_at: '2025-01-01T00:00:00.000Z'
-          }
-        ]
+        menus: [],
+        dashboards: []
       }
-    }
+    },
+    examples: [
+      {
+        title: 'User Login',
+        description: 'Authenticate a user with email and password to receive an access token.',
+        url: '/api/auth/login',
+        method: 'POST',
+        request: {
+          email: 'admin@example.com',
+          password: 'SecurePassword123!'
+        },
+        response: {
+          status: true,
+          message: 'Login successful',
+          data: {
+            user: { id: 1, name: 'Admin User', email: 'admin@example.com', role_id: 1 },
+            token: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...',
+            menus: [],
+            dashboards: []
+          }
+        }
+      }
+    ]
   },
   {
     path: '/register',
@@ -163,7 +122,32 @@ router.routesMeta = [
         expiresIn: 3600
       },
       code: 201
-    }
+    },
+    examples: [
+      {
+        title: 'User Registration',
+        description: 'Register a new user account.',
+        url: '/api/auth/register',
+        method: 'POST',
+        request: {
+          name: 'John Doe',
+          email: 'john.doe@example.com',
+          password: 'SecurePassword123!',
+          role_id: 2
+        },
+        response: {
+          status: true,
+          message: 'Registration successful',
+          data: {
+            user: { id: 25, name: 'John Doe', email: 'john.doe@example.com' },
+            token: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...',
+            refreshToken: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...',
+            expiresIn: 3600
+          },
+          code: 201
+        }
+      }
+    ]
   },
   {
     path: '/me',
@@ -195,6 +179,8 @@ router.routesMeta = [
           id: 1,
           name: 'Admin User',
           email: 'admin@example.com',
+          phone: '+1234567890',
+          profile_image: 'https://example.com/avatar.jpg',
           role_id: 1,
           created_at: '2025-01-01T00:00:00.000Z',
           role: {
@@ -214,32 +200,33 @@ router.routesMeta = [
             }
           }
         },
-        menus: [
-          {
-            id: 1,
-            title: 'Dashboard',
-            icon: 'dashboard',
-            path: '/dashboard',
-            parent_id: null,
-            sort_order: 1,
-            is_active: true,
-            children: []
-          }
-        ],
-        dashboards: [
-          {
-            id: 1,
-            name: 'Total Users',
-            slug: 'total_users',
-            type: 'stat',
-            size: '1x1',
-            is_active: true,
-            created_at: '2025-01-01T00:00:00.000Z',
-            updated_at: '2025-01-01T00:00:00.000Z'
-          }
-        ]
+        menus: [],
+        dashboards: []
       }
-    }
+    },
+    examples: [
+      {
+        title: 'Get Current User',
+        description: 'Retrieve details of the currently authenticated user.',
+        url: '/api/auth/me',
+        method: 'GET',
+        response: {
+          status: true,
+          message: 'User retrieved successfully',
+          data: {
+            user: {
+              id: 1,
+              name: 'Admin User',
+              email: 'admin@example.com',
+              phone: '+1234567890',
+              profile_image: 'https://example.com/avatar.jpg'
+            },
+            menus: [],
+            dashboards: []
+          }
+        }
+      }
+    ]
   },
   {
     path: '/refresh',
@@ -258,7 +245,27 @@ router.routesMeta = [
         refreshToken: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...',
         expiresIn: 3600
       }
-    }
+    },
+    examples: [
+      {
+        title: 'Refresh Token',
+        description: 'Obtain a new access token using a valid refresh token.',
+        url: '/api/auth/refresh',
+        method: 'POST',
+        request: {
+          refreshToken: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...'
+        },
+        response: {
+          status: true,
+          message: 'Token refreshed successfully',
+          data: {
+            token: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...',
+            refreshToken: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...',
+            expiresIn: 3600
+          }
+        }
+      }
+    ]
   },
   {
     path: '/logout',
@@ -270,8 +277,79 @@ router.routesMeta = [
       status: true,
       message: 'Logout successful',
       data: null
-    }
+    },
+    examples: [
+      {
+        title: 'Logout',
+        description: 'Invalidate the current user session.',
+        url: '/api/auth/logout',
+        method: 'POST',
+        response: {
+          status: true,
+          message: 'Logout successful',
+          data: null
+        }
+      }
+    ]
   },
+  {
+    path: '/profile',
+    method: 'PUT',
+    middlewares: [verifyToken, validate(updateProfileSchema)],
+    handler: handlerWithFields(controller.updateProfile, updateProfileSchema),
+    description: 'Update current user profile',
+    database: {
+      tables: ['users', 'staffs'],
+      mainTable: 'users/staffs',
+      optionalFields: ['first_name', 'last_name', 'phone', 'position', 'address', 'city', 'state', 'country', 'postal_code', 'thumb_url']
+    },
+    sampleRequest: {
+      first_name: 'John',
+      last_name: 'Doe',
+      phone: '+1234567890',
+      city: 'New York'
+    },
+    sampleResponse: {
+      status: true,
+      message: 'Profile updated successfully',
+      data: {
+        id: 1,
+        first_name: 'John',
+        last_name: 'Doe',
+        email: 'john@example.com',
+        phone: '+1234567890',
+        profile_image: 'https://example.com/new-avatar.jpg',
+        city: 'New York',
+        role_id: 2
+      }
+    },
+    examples: [
+      {
+        title: 'Update Profile',
+        description: 'Update user profile information',
+        url: '/api/auth/profile',
+        method: 'PUT',
+        request: {
+          first_name: 'John',
+          last_name: 'Doe',
+          phone: '+1234567890',
+          profile_image: 'https://example.com/new-avatar.jpg'
+        },
+        response: {
+          status: true,
+          message: 'Profile updated successfully',
+          data: {
+            id: 1,
+            first_name: 'John',
+            last_name: 'Doe',
+            email: 'john@example.com',
+            phone: '+1234567890',
+            profile_image: 'https://example.com/new-avatar.jpg'
+          }
+        }
+      }
+    ]
+  }
 ];
 
 // Register routes from metadata

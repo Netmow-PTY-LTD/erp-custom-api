@@ -1,0 +1,278 @@
+const express = require('express');
+const router = express.Router();
+const controller = require('./auth.controller');
+const validate = require('../../core/middleware/validate');
+const { verifyToken } = require('../../core/middleware/auth');
+const { loginSchema, registerSchema, refreshSchema } = require('./auth.validation');
+const { handlerWithFields } = require('../../core/utils/zodTypeView');
+// Module name for routes-tree grouping
+router.moduleName = 'Auth';
+// Define routes metadata with comprehensive documentation
+router.routesMeta = [
+    {
+        path: '/login',
+        method: 'POST',
+        middlewares: [validate(loginSchema)],
+        handler: handlerWithFields(controller.login, loginSchema),
+        description: 'Authenticate user and get access token',
+        database: {
+            tables: ['users', 'roles', 'role_settings', 'role_menus', 'role_dashboards'],
+            mainTable: 'users',
+            requiredFields: ['email', 'password'],
+            relationships: [
+                'users.role_id -> roles.id (FK)',
+                'roles.id -> role_settings.role_id (FK)',
+                'role_menus.parent_id -> role_menus.id (Self-referencing FK)'
+            ],
+            sideEffects: ['Generates JWT token']
+        },
+        sampleRequest: {
+            email: 'admin@example.com',
+            password: 'SecurePassword123!'
+        },
+        sampleResponse: {
+            status: true,
+            message: 'Login successful',
+            data: {
+                user: {
+                    id: 1,
+                    name: 'Admin User',
+                    email: 'admin@example.com',
+                    role_id: 1,
+                    created_at: '2025-01-01T00:00:00.000Z',
+                    role: {
+                        id: 1,
+                        name: 'admin',
+                        display_name: 'Administrator',
+                        description: 'Full system access',
+                        status: 'active',
+                        permissions: ['users.create', 'users.read', 'users.update', 'users.delete'],
+                        created_at: '2025-01-01T00:00:00.000Z',
+                        RoleSettings: {
+                            id: 1,
+                            role_id: 1,
+                            menu: null,
+                            dashboard: null,
+                            custom: null
+                        }
+                    }
+                },
+                token: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...',
+                menus: [
+                    {
+                        id: 1,
+                        title: 'Dashboard',
+                        icon: 'dashboard',
+                        path: '/dashboard',
+                        parent_id: null,
+                        sort_order: 1,
+                        is_active: true,
+                        children: []
+                    },
+                    {
+                        id: 2,
+                        title: 'Users',
+                        icon: 'people',
+                        path: null,
+                        parent_id: null,
+                        sort_order: 2,
+                        is_active: true,
+                        children: [
+                            {
+                                id: 3,
+                                title: 'User List',
+                                icon: null,
+                                path: '/users',
+                                parent_id: 2,
+                                sort_order: 1,
+                                is_active: true,
+                                children: []
+                            },
+                            {
+                                id: 4,
+                                title: 'Roles',
+                                icon: null,
+                                path: '/roles',
+                                parent_id: 2,
+                                sort_order: 2,
+                                is_active: true,
+                                children: []
+                            }
+                        ]
+                    }
+                ],
+                dashboards: [
+                    {
+                        id: 1,
+                        name: 'Total Users',
+                        slug: 'total_users',
+                        type: 'stat',
+                        size: '1x1',
+                        is_active: true,
+                        created_at: '2025-01-01T00:00:00.000Z',
+                        updated_at: '2025-01-01T00:00:00.000Z'
+                    },
+                    {
+                        id: 2,
+                        name: 'Sales Chart',
+                        slug: 'sales_chart',
+                        type: 'chart',
+                        size: '2x1',
+                        is_active: true,
+                        created_at: '2025-01-01T00:00:00.000Z',
+                        updated_at: '2025-01-01T00:00:00.000Z'
+                    }
+                ]
+            }
+        }
+    },
+    {
+        path: '/register',
+        method: 'POST',
+        middlewares: [validate(registerSchema)],
+        handler: handlerWithFields(controller.register, registerSchema),
+        description: 'Register a new user account',
+        database: {
+            tables: ['users', 'roles'],
+            mainTable: 'users',
+            requiredFields: ['name', 'email', 'password', 'role_id'],
+            autoGeneratedFields: ['id', 'created_at', 'updated_at'],
+            relationships: ['users.role_id -> roles.id (FK)']
+        },
+        sampleRequest: {
+            name: 'John Doe',
+            email: 'john.doe@example.com',
+            password: 'SecurePassword123!',
+            role_id: 2
+        },
+        sampleResponse: {
+            status: true,
+            message: 'Registration successful',
+            data: {
+                user: {
+                    id: 25,
+                    name: 'John Doe',
+                    email: 'john.doe@example.com',
+                    role_id: 2,
+                    created_at: '2025-12-02T10:00:00.000Z'
+                },
+                token: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...',
+                refreshToken: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...',
+                expiresIn: 3600
+            },
+            code: 201
+        }
+    },
+    {
+        path: '/me',
+        method: 'GET',
+        middlewares: [verifyToken],
+        handler: controller.me,
+        description: 'Get current authenticated user information',
+        database: {
+            tables: ['users', 'roles', 'role_settings', 'role_menus', 'role_dashboards'],
+            mainTable: 'users',
+            fields: {
+                users: ['id', 'name', 'email', 'role_id', 'created_at'],
+                roles: ['id', 'name', 'display_name', 'description', 'status', 'permissions', 'created_at'],
+                role_settings: ['id', 'role_id', 'menu', 'dashboard', 'custom'],
+                role_menus: ['id', 'title', 'icon', 'path', 'parent_id', 'sort_order', 'is_active'],
+                role_dashboards: ['id', 'name', 'slug', 'type', 'size', 'is_active']
+            },
+            relationships: [
+                'users.role_id -> roles.id (FK)',
+                'roles.id -> role_settings.role_id (FK)',
+                'role_menus.parent_id -> role_menus.id (Self-referencing FK)'
+            ]
+        },
+        sampleResponse: {
+            status: true,
+            message: 'User retrieved successfully',
+            data: {
+                user: {
+                    id: 1,
+                    name: 'Admin User',
+                    email: 'admin@example.com',
+                    role_id: 1,
+                    created_at: '2025-01-01T00:00:00.000Z',
+                    role: {
+                        id: 1,
+                        name: 'admin',
+                        display_name: 'Administrator',
+                        description: 'Full system access',
+                        status: 'active',
+                        permissions: ['users.create', 'users.read', 'users.update', 'users.delete'],
+                        created_at: '2025-01-01T00:00:00.000Z',
+                        RoleSettings: {
+                            id: 1,
+                            role_id: 1,
+                            menu: null,
+                            dashboard: null,
+                            custom: null
+                        }
+                    }
+                },
+                menus: [
+                    {
+                        id: 1,
+                        title: 'Dashboard',
+                        icon: 'dashboard',
+                        path: '/dashboard',
+                        parent_id: null,
+                        sort_order: 1,
+                        is_active: true,
+                        children: []
+                    }
+                ],
+                dashboards: [
+                    {
+                        id: 1,
+                        name: 'Total Users',
+                        slug: 'total_users',
+                        type: 'stat',
+                        size: '1x1',
+                        is_active: true,
+                        created_at: '2025-01-01T00:00:00.000Z',
+                        updated_at: '2025-01-01T00:00:00.000Z'
+                    }
+                ]
+            }
+        }
+    },
+    {
+        path: '/refresh',
+        method: 'POST',
+        middlewares: [validate(refreshSchema)],
+        handler: handlerWithFields(controller.refresh, refreshSchema),
+        description: 'Refresh access token using refresh token',
+        sampleRequest: {
+            refreshToken: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...'
+        },
+        sampleResponse: {
+            status: true,
+            message: 'Token refreshed successfully',
+            data: {
+                token: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...',
+                refreshToken: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...',
+                expiresIn: 3600
+            }
+        }
+    },
+    {
+        path: '/logout',
+        method: 'POST',
+        middlewares: [verifyToken],
+        handler: controller.logout,
+        description: 'Logout user and invalidate tokens',
+        sampleResponse: {
+            status: true,
+            message: 'Logout successful',
+            data: null
+        }
+    },
+];
+// Register routes from metadata
+router.routesMeta.forEach(r => {
+    router[r.method.toLowerCase()](r.path, ...r.middlewares, r.handler);
+});
+module.exports = router;

@@ -63,7 +63,78 @@ router.routesMeta = [
                     created_at: '2025-12-03T05:00:00.000Z'
                 }
             ]
-        }
+        },
+        examples: [
+            {
+                title: 'List Purchase Orders',
+                description: 'Get paginated list of purchase orders',
+                url: '/api/purchase/orders?page=1&limit=10&status=pending',
+                method: 'GET',
+                response: {
+                    success: true,
+                    message: 'Purchase orders retrieved successfully',
+                    pagination: { total: 10, page: '1', limit: '10', totalPage: 1 },
+                    data: [{ id: 1, po_number: 'PO-1733130000000-123', status: 'pending' }]
+                }
+            }
+        ]
+    },
+    {
+        path: '/orders/approved',
+        method: 'GET',
+        middlewares: [],
+        handler: (req, res) => purchaseController.getApprovedPurchaseOrders(req, res),
+        description: 'Get all approved purchase orders',
+        database: {
+            tables: ['purchase_orders', 'purchase_order_items', 'suppliers'],
+            mainTable: 'purchase_orders',
+            fields: {
+                purchase_orders: ['id', 'po_number', 'supplier_id', 'status', 'total_amount', 'created_at'],
+                suppliers: ['id', 'name']
+            },
+            relationships: [
+                'purchase_orders.supplier_id -> suppliers.id (FK)'
+            ]
+        },
+        queryParams: {
+            page: 'Page number (default: 1)',
+            limit: 'Items per page (default: 10)',
+            search: 'Search by PO number'
+        },
+        sampleResponse: {
+            success: true,
+            message: 'Approved purchase orders retrieved successfully',
+            pagination: {
+                total: 5,
+                page: '1',
+                limit: '10',
+                totalPage: 1
+            },
+            data: [
+                {
+                    id: 2,
+                    po_number: 'PO-1733130000000-456',
+                    supplier_id: 1,
+                    total_amount: 1500.00,
+                    status: 'approved',
+                    created_at: '2025-12-04T05:00:00.000Z'
+                }
+            ]
+        },
+        examples: [
+            {
+                title: 'List Approved Purchase Orders',
+                description: 'Get list of orders with status "approved"',
+                url: '/api/purchase/orders/approved',
+                method: 'GET',
+                response: {
+                    success: true,
+                    message: 'Approved purchase orders retrieved successfully',
+                    pagination: { total: 5, page: '1', limit: '10', totalPage: 1 },
+                    data: [{ id: 2, po_number: 'PO-1733130000000-456', status: 'approved' }]
+                }
+            }
+        ]
     },
     {
         path: '/orders',
@@ -106,7 +177,26 @@ router.routesMeta = [
                 total_amount: 4450.00,
                 created_by: 1
             }
-        }
+        },
+        examples: [
+            {
+                title: 'Create Purchase Order',
+                description: 'Create a new purchase order with items',
+                url: '/api/purchase/orders',
+                method: 'POST',
+                request: {
+                    supplier_id: 1,
+                    order_date: '2025-12-02',
+                    expected_delivery_date: '2025-12-15',
+                    items: [{ product_id: 5, quantity: 100, unit_cost: 45.00 }]
+                },
+                response: {
+                    status: true,
+                    message: 'Purchase order created successfully',
+                    data: { id: 1, po_number: 'PO-1733131375000-123' }
+                }
+            }
+        ]
     },
 
 
@@ -156,7 +246,20 @@ router.routesMeta = [
                     created_at: '2025-12-03T05:00:00.000Z'
                 }
             ]
-        }
+        },
+        examples: [
+            {
+                title: 'List Purchase Invoices',
+                description: 'Get all purchase invoices',
+                url: '/api/purchase/orders/invoices?page=1&limit=10',
+                method: 'GET',
+                response: {
+                    success: true,
+                    message: 'Purchase invoices retrieved successfully',
+                    data: [{ id: 1, invoice_number: 'PINV-1733130000000-123' }]
+                }
+            }
+        ]
     },
     {
         path: '/orders/invoices',
@@ -179,7 +282,20 @@ router.routesMeta = [
         sampleResponse: {
             status: true,
             message: 'Purchase invoice created successfully'
-        }
+        },
+        examples: [
+            {
+                title: 'Create Purchase Invoice',
+                description: 'Generate an invoice from a purchase order',
+                url: '/api/purchase/orders/invoices',
+                method: 'POST',
+                request: { purchase_order_id: 1, due_date: '2025-12-31' },
+                response: {
+                    status: true,
+                    message: 'Purchase invoice created successfully'
+                }
+            }
+        ]
     },
     {
         path: '/orders/invoices/:id',
@@ -221,7 +337,19 @@ router.routesMeta = [
                     status: 'approved'
                 }
             }
-        }
+        },
+        examples: [
+            {
+                title: 'Get Purchase Invoice',
+                description: 'Get invoice details by ID',
+                url: '/api/purchase/orders/invoices/1',
+                method: 'GET',
+                response: {
+                    status: true,
+                    data: { id: 1, invoice_number: 'PINV-1733130000000-123' }
+                }
+            }
+        ]
     },
     {
         path: '/orders/invoices/:id',
@@ -248,7 +376,20 @@ router.routesMeta = [
                 status: 'paid',
                 total_amount: 4500.00
             }
-        }
+        },
+        examples: [
+            {
+                title: 'Update Purchase Invoice',
+                description: 'Update invoice status',
+                url: '/api/purchase/orders/invoices/1',
+                method: 'PATCH',
+                request: { status: 'paid' },
+                response: {
+                    status: true,
+                    message: 'Purchase invoice updated successfully'
+                }
+            }
+        ]
     },
 
     // --- Purchase Payments ---
@@ -310,7 +451,20 @@ router.routesMeta = [
                     }
                 }
             ]
-        }
+        },
+        examples: [
+            {
+                title: 'List Purchase Payments',
+                description: 'Get list of payments made',
+                url: '/api/purchase/orders/payments?page=1&limit=10',
+                method: 'GET',
+                response: {
+                    success: true,
+                    message: 'Purchase payments retrieved successfully',
+                    data: [{ id: 1, amount: 4500.00, payment_method: 'bank_transfer' }]
+                }
+            }
+        ]
     },
     {
         path: '/orders/payments',
@@ -337,7 +491,20 @@ router.routesMeta = [
         sampleResponse: {
             status: true,
             message: 'Purchase payment recorded successfully'
-        }
+        },
+        examples: [
+            {
+                title: 'Record Payment',
+                description: 'Record a payment for a purchase order',
+                url: '/api/purchase/orders/payments',
+                method: 'POST',
+                request: { purchase_order_id: 1, amount: 4500.00, payment_method: 'bank_transfer' },
+                response: {
+                    status: true,
+                    message: 'Purchase payment recorded successfully'
+                }
+            }
+        ]
     },
     {
         path: '/orders/payments/:id',
@@ -379,7 +546,19 @@ router.routesMeta = [
                     invoice_number: 'PINV-1733130000000-123'
                 }
             }
-        }
+        },
+        examples: [
+            {
+                title: 'Get Payment',
+                description: 'Get payment details by ID',
+                url: '/api/purchase/orders/payments/1',
+                method: 'GET',
+                response: {
+                    status: true,
+                    data: { id: 1, amount: 4500.00 }
+                }
+            }
+        ]
     },
 
 
@@ -448,7 +627,19 @@ router.routesMeta = [
                 invoice: null,
                 payments: []
             }
-        }
+        },
+        examples: [
+            {
+                title: 'Get Purchase Order',
+                description: 'Get detailed purchase order info',
+                url: '/api/purchase/orders/1',
+                method: 'GET',
+                response: {
+                    status: true,
+                    data: { id: 1, po_number: 'PO-123', supplier: { name: 'ABC Supplies' } }
+                }
+            }
+        ]
     },
     {
         path: '/orders/:id',
@@ -469,7 +660,20 @@ router.routesMeta = [
         sampleResponse: {
             status: true,
             message: 'Purchase order updated successfully'
-        }
+        },
+        examples: [
+            {
+                title: 'Update Purchase Order',
+                description: 'Update status or details of a PO',
+                url: '/api/purchase/orders/1',
+                method: 'PUT',
+                request: { status: 'approved' },
+                response: {
+                    status: true,
+                    message: 'Purchase order updated successfully'
+                }
+            }
+        ]
     },
     {
         path: '/orders/:id',
@@ -485,7 +689,19 @@ router.routesMeta = [
         sampleResponse: {
             status: true,
             message: 'Purchase order deleted successfully'
-        }
+        },
+        examples: [
+            {
+                title: 'Delete Purchase Order',
+                description: 'Remove a purchase order',
+                url: '/api/purchase/orders/1',
+                method: 'DELETE',
+                response: {
+                    status: true,
+                    message: 'Purchase order deleted successfully'
+                }
+            }
+        ]
     },
     {
         path: '/orders/:id/receive',
@@ -518,7 +734,24 @@ router.routesMeta = [
         sampleResponse: {
             status: true,
             message: 'Purchase receipt recorded successfully'
-        }
+        },
+        examples: [
+            {
+                title: 'Receive Goods',
+                description: 'Record goods receipt for a PO',
+                url: '/api/purchase/orders/1/receive',
+                method: 'POST',
+                request: {
+                    status: 'completed',
+                    receipt_date: '2025-12-09',
+                    notes: 'Items received'
+                },
+                response: {
+                    status: true,
+                    message: 'Purchase receipt recorded successfully'
+                }
+            }
+        ]
     },
 
     // --- Map Locations ---
@@ -567,7 +800,22 @@ router.routesMeta = [
                     }
                 ]
             }
-        }
+        },
+        examples: [
+            {
+                title: 'Purchase Order Map',
+                description: 'Get supplier locations for purchase orders',
+                url: '/api/purchase/maps',
+                method: 'GET',
+                response: {
+                    status: true,
+                    data: {
+                        total: 5,
+                        locations: [{ id: 1, po_number: 'PO-123', coordinates: { lat: 40.7, lng: -74.0 } }]
+                    }
+                }
+            }
+        ]
     }
 ];
 

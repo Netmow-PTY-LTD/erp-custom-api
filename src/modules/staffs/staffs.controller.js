@@ -8,6 +8,7 @@ class StaffController {
             const limit = parseInt(req.query.limit) || 10;
             const filters = {
                 department_id: req.query.department_id,
+                role_id: req.query.role_id,
                 status: req.query.status,
                 search: req.query.search
             };
@@ -56,6 +57,27 @@ class StaffController {
             return success(res, 'Staff deleted successfully', null);
         } catch (err) {
             return error(res, err.message, 404);
+        }
+    }
+
+    async getStaffRoutes(req, res) {
+        try {
+            const page = parseInt(req.query.page) || 1;
+            const limit = parseInt(req.query.limit) || 10;
+            const filters = {
+                search: req.query.search
+            };
+
+            const result = await StaffService.getStaffsWithRoutes(filters, page, limit);
+
+            // Return with standard pagination wrapper
+            return successWithPagination(res, 'Staff routes retrieved successfully', result.data, {
+                total: result.total,
+                page,
+                limit
+            });
+        } catch (err) {
+            return error(res, err.message, 500);
         }
     }
 }

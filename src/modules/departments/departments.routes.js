@@ -52,7 +52,21 @@ router.routesMeta = [
                     status: 'active'
                 }
             ]
-        }
+        },
+        examples: [
+            {
+                title: 'List Departments',
+                description: 'Retrieve a paginated list of departments.',
+                url: '/api/departments?page=1&limit=10',
+                method: 'GET',
+                response: {
+                    success: true,
+                    message: 'Departments retrieved successfully',
+                    pagination: { total: 5, page: '1', limit: '10', totalPage: 1 },
+                    data: [{ id: 1, name: 'IT', status: 'active' }]
+                }
+            }
+        ]
     },
     {
         path: '/',
@@ -78,7 +92,26 @@ router.routesMeta = [
                 id: 1,
                 name: 'Human Resources'
             }
-        }
+        },
+        examples: [
+            {
+                title: 'Create Department',
+                description: 'Add a new department to the organization.',
+                url: '/api/departments',
+                method: 'POST',
+                request: {
+                    name: 'Human Resources',
+                    description: 'Manages HR operations and staff',
+                    head_id: 2,
+                    status: 'active'
+                },
+                response: {
+                    status: true,
+                    message: 'Department created successfully',
+                    data: { id: 2, name: 'Human Resources' }
+                }
+            }
+        ]
     },
     {
         path: '/:id',
@@ -105,7 +138,19 @@ router.routesMeta = [
                     last_name: 'Doe'
                 }
             }
-        }
+        },
+        examples: [
+            {
+                title: 'Get Department',
+                description: 'Retrieve detailed information about a specific department.',
+                url: '/api/departments/1',
+                method: 'GET',
+                response: {
+                    status: true,
+                    data: { id: 1, name: 'IT', head: { first_name: 'John', last_name: 'Doe' } }
+                }
+            }
+        ]
     },
     {
         path: '/:id',
@@ -127,7 +172,24 @@ router.routesMeta = [
         sampleResponse: {
             status: true,
             message: 'Department updated successfully'
-        }
+        },
+        examples: [
+            {
+                title: 'Update Department',
+                description: 'Update the details of an existing department.',
+                url: '/api/departments/1',
+                method: 'PUT',
+                request: {
+                    name: 'Information Technology',
+                    description: 'IT Department',
+                    status: 'active'
+                },
+                response: {
+                    status: true,
+                    message: 'Department updated successfully'
+                }
+            }
+        ]
     },
     {
         path: '/:id',
@@ -143,7 +205,19 @@ router.routesMeta = [
         sampleResponse: {
             status: true,
             message: 'Department deleted successfully'
-        }
+        },
+        examples: [
+            {
+                title: 'Delete Department',
+                description: 'Remove a department from the organization.',
+                url: '/api/departments/2',
+                method: 'DELETE',
+                response: {
+                    status: true,
+                    message: 'Department deleted successfully'
+                }
+            }
+        ]
     }
 ];
 

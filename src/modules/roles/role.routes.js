@@ -58,7 +58,40 @@ router.routesMeta = [
           custom: { theme: 'dark' }
         }
       }
-    }
+    },
+    examples: [
+      {
+        title: 'Create new role',
+        description: 'Create a new role with specific permissions and menu settings',
+        url: '/api/roles/add',
+        method: 'POST',
+        request: {
+          name: 'Regional Manager',
+          display_name: 'Regional Sales Manager',
+          description: 'Oversees regional sales operations',
+          status: 'active',
+          permissions: ['sales.view', 'sales.create', 'reports.view'],
+          menu: ['sales', 'dashboard', 'reports'],
+          dashboard: ['overview', 'regional_stats'],
+          custom: { region: 'North' }
+        },
+        response: {
+          status: true,
+          message: 'created',
+          data: {
+            id: 10,
+            role: 'Regional Manager',
+            display_name: 'Regional Sales Manager',
+            status: 'active',
+            settings: {
+              menu: ['sales', 'dashboard', 'reports'],
+              dashboard: ['overview', 'regional_stats'],
+              custom: { region: 'North' }
+            }
+          }
+        }
+      }
+    ]
   },
   {
     path: '/update/:id',
@@ -95,7 +128,32 @@ router.routesMeta = [
           custom: { theme: 'light' }
         }
       }
-    }
+    },
+    examples: [
+      {
+        title: 'Update role settings',
+        description: 'Update permissions and dashboard settings for a role',
+        url: '/api/roles/update/10',
+        method: 'PUT',
+        request: {
+          display_name: 'Senior Regional Manager',
+          permissions: ['sales.view', 'sales.create', 'reports.view', 'reports.export'],
+          dashboard: ['overview', 'regional_stats', 'performance']
+        },
+        response: {
+          status: true,
+          message: 'updated',
+          data: {
+            id: 10,
+            name: 'Regional Manager',
+            display_name: 'Senior Regional Manager',
+            settings: {
+              dashboard: ['overview', 'regional_stats', 'performance']
+            }
+          }
+        }
+      }
+    ]
   },
   {
     path: '/list',
@@ -139,7 +197,34 @@ router.routesMeta = [
           }
         }
       ]
-    }
+    },
+    examples: [
+      {
+        title: 'List all roles',
+        description: 'Retrieve a paginated list of all system roles',
+        url: '/api/roles/list?page=1&limit=10',
+        method: 'GET',
+        response: {
+          success: true,
+          message: 'Roles retrieved successfully',
+          pagination: { total: 5, page: '1', limit: '10', totalPage: 1 },
+          data: [
+            {
+              id: 1,
+              role: 'Admin',
+              display_name: 'Administrator',
+              status: 'active'
+            },
+            {
+              id: 2,
+              role: 'User',
+              display_name: 'Standard User',
+              status: 'active'
+            }
+          ]
+        }
+      }
+    ]
   },
   {
     path: '/get/:id',
@@ -170,7 +255,30 @@ router.routesMeta = [
           custom: {}
         }
       }
-    }
+    },
+    examples: [
+      {
+        title: 'Get role details',
+        description: 'Retrieve detailed information for a specific role',
+        url: '/api/roles/get/1',
+        method: 'GET',
+        response: {
+          status: true,
+          message: 'Role retrieved successfully',
+          data: {
+            id: 1,
+            name: 'Admin',
+            display_name: 'Administrator',
+            permissions: ['*'],
+            settings: {
+              menu: ['all'],
+              dashboard: ['main'],
+              custom: {}
+            }
+          }
+        }
+      }
+    ]
   },
   {
     path: '/delete/:id',
@@ -190,7 +298,20 @@ router.routesMeta = [
       status: true,
       message: 'deleted',
       data: null
-    }
+    },
+    examples: [
+      {
+        title: 'Delete role',
+        description: 'Remove a role from the system',
+        url: '/api/roles/delete/10',
+        method: 'DELETE',
+        response: {
+          status: true,
+          message: 'deleted',
+          data: null
+        }
+      }
+    ]
   },
   // --- Role Menus ---
   {
@@ -217,7 +338,22 @@ router.routesMeta = [
           children: []
         }
       ]
-    }
+    },
+    examples: [
+      {
+        title: 'List all menu items',
+        description: 'Get a hierarchical list of all menu items',
+        url: '/api/roles/menus',
+        method: 'GET',
+        response: {
+          success: true,
+          data: [
+            { id: 1, title: 'Dashboard', path: '/dashboard', icon: 'home', children: [] },
+            { id: 2, title: 'Sales', path: '/sales', icon: 'shopping-cart', children: [] }
+          ]
+        }
+      }
+    ]
   },
   {
     path: '/menus',
@@ -241,7 +377,25 @@ router.routesMeta = [
     sampleResponse: {
       status: true,
       message: 'Menu item created successfully'
-    }
+    },
+    examples: [
+      {
+        title: 'Create menu item',
+        description: 'Add a new item to the navigation menu',
+        url: '/api/roles/menus',
+        method: 'POST',
+        request: {
+          title: 'Reports',
+          path: '/reports',
+          icon: 'bar-chart',
+          sort_order: 3
+        },
+        response: {
+          status: true,
+          message: 'Menu item created successfully'
+        }
+      }
+    ]
   },
   {
     path: '/menus/:id',
@@ -259,7 +413,19 @@ router.routesMeta = [
         id: 1,
         title: 'Sales'
       }
-    }
+    },
+    examples: [
+      {
+        title: 'Get menu item',
+        description: 'Retrieve details of a specific menu item',
+        url: '/api/roles/menus/1',
+        method: 'GET',
+        response: {
+          success: true,
+          data: { id: 1, title: 'Dashboard', path: '/dashboard', icon: 'home' }
+        }
+      }
+    ]
   },
   {
     path: '/menus/:id',
@@ -278,7 +444,20 @@ router.routesMeta = [
     sampleResponse: {
       status: true,
       message: 'Menu item updated successfully'
-    }
+    },
+    examples: [
+      {
+        title: 'Update menu item',
+        description: 'Modify an existing menu item',
+        url: '/api/roles/menus/1',
+        method: 'PUT',
+        request: { title: 'Main Dashboard', icon: 'activity' },
+        response: {
+          status: true,
+          message: 'Menu item updated successfully'
+        }
+      }
+    ]
   },
   {
     path: '/menus/:id',
@@ -294,7 +473,19 @@ router.routesMeta = [
     sampleResponse: {
       status: true,
       message: 'Menu item deleted successfully'
-    }
+    },
+    examples: [
+      {
+        title: 'Delete menu item',
+        description: 'Remove a menu item',
+        url: '/api/roles/menus/3',
+        method: 'DELETE',
+        response: {
+          status: true,
+          message: 'Menu item deleted successfully'
+        }
+      }
+    ]
   },
   // --- Role Dashboards ---
   {
@@ -321,7 +512,21 @@ router.routesMeta = [
           size: '1x1'
         }
       ]
-    }
+    },
+    examples: [
+      {
+        title: 'List dashboard widgets',
+        description: 'Get all available dashboard widgets',
+        url: '/api/roles/dashboards',
+        method: 'GET',
+        response: {
+          success: true,
+          data: [
+            { id: 1, name: 'Sales Overview', slug: 'sales-overview', type: 'chart' }
+          ]
+        }
+      }
+    ]
   },
   {
     path: '/dashboards',
@@ -345,7 +550,25 @@ router.routesMeta = [
     sampleResponse: {
       status: true,
       message: 'Dashboard widget created successfully'
-    }
+    },
+    examples: [
+      {
+        title: 'Create dashboard widget',
+        description: 'Register a new dashboard widget',
+        url: '/api/roles/dashboards',
+        method: 'POST',
+        request: {
+          name: 'New Customers',
+          slug: 'new-customers-stat',
+          type: 'stat',
+          size: '1x1'
+        },
+        response: {
+          status: true,
+          message: 'Dashboard widget created successfully'
+        }
+      }
+    ]
   },
   {
     path: '/dashboards/:id',
@@ -363,7 +586,19 @@ router.routesMeta = [
         id: 1,
         name: 'Total Revenue'
       }
-    }
+    },
+    examples: [
+      {
+        title: 'Get widget details',
+        description: 'Retrieve details of a specific widget',
+        url: '/api/roles/dashboards/1',
+        method: 'GET',
+        response: {
+          success: true,
+          data: { id: 1, name: 'Sales Overview', slug: 'sales-overview' }
+        }
+      }
+    ]
   },
   {
     path: '/dashboards/:id',
@@ -382,7 +617,20 @@ router.routesMeta = [
     sampleResponse: {
       status: true,
       message: 'Dashboard widget updated successfully'
-    }
+    },
+    examples: [
+      {
+        title: 'Update widget',
+        description: 'Modify a dashboard widget',
+        url: '/api/roles/dashboards/1',
+        method: 'PUT',
+        request: { size: '2x1' },
+        response: {
+          status: true,
+          message: 'Dashboard widget updated successfully'
+        }
+      }
+    ]
   },
   {
     path: '/dashboards/:id',
@@ -397,9 +645,22 @@ router.routesMeta = [
     sampleResponse: {
       status: true,
       message: 'Dashboard widget deleted successfully'
-    }
+    },
+    examples: [
+      {
+        title: 'Delete widget',
+        description: 'Remove a dashboard widget',
+        url: '/api/roles/dashboards/2',
+        method: 'DELETE',
+        response: {
+          status: true,
+          message: 'Dashboard widget deleted successfully'
+        }
+      }
+    ]
   }
 ];
+
 // Register routes from metadata
 router.routesMeta.forEach(r => {
   router[r.method.toLowerCase()](r.path, ...r.middlewares, r.handler);

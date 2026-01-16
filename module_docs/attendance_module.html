@@ -146,15 +146,12 @@
                 <h3><span class="route-method method-get">GET</span><span class="route-path">/api/attendance</span></h3>
                 <p class="route-desc">List attendance records with pagination.</p>
             </div>
+
             <div class="route-item">
-                <h3><span class="route-method method-post">POST</span><span class="route-path">/api/attendance</span>
+                <h3><span class="route-method method-get">GET</span><span
+                        class="route-path">/api/attendance/staff/:id</span>
                 </h3>
-                <p class="route-desc">Record new attendance (check-in/check-out).</p>
-            </div>
-            <div class="route-item">
-                <h3><span class="route-method method-get">GET</span><span class="route-path">/api/attendance/:id</span>
-                </h3>
-                <p class="route-desc">Get attendance record details.</p>
+                <p class="route-desc">Get attendance records for a staff member.</p>
             </div>
             <div class="route-item">
                 <h3><span class="route-method method-put">PUT</span><span class="route-path">/api/attendance/:id</span>
@@ -177,6 +174,7 @@
                 date date
                 time check_in
                 time check_out
+                decimal total_hours
                 enum status
                 text notes
                 int created_by FK

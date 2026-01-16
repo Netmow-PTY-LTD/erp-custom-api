@@ -1,8 +1,9 @@
 const PayrollRepository = require('./payroll.repository');
-const { Staff } = require('../staffs/staffs.model');
+const AccountingRepository = require('../accounting/accounting.repository');
+const { User: Staff } = require('../users/user.model');
 
 class PayrollService {
-    async getAllPayrolls(filters = {}, page = 1, limit = 10) {
+    async getAllRuns(filters = {}, page = 1, limit = 10) {
         const offset = (page - 1) * limit;
         const result = await PayrollRepository.findAll(filters, limit, offset);
         return {
@@ -11,81 +12,171 @@ class PayrollService {
         };
     }
 
-    async getPayrollById(id) {
-        const payroll = await PayrollRepository.findById(id);
-        if (!payroll) {
-            throw new Error('Payroll record not found');
+    async getRunById(id) {
+        const run = await PayrollRepository.findById(id);
+        if (!run) {
+            throw new Error('Payroll run not found');
         }
-        return payroll;
+        return run;
     }
 
-    async createPayroll(data, userId) {
-        // Verify staff exists
-        const staff = await Staff.findByPk(data.staff_id);
-        if (!staff) {
-            throw new Error('Staff member not found');
+    async generateRun(month, createdBy) {
+        // 1. Check if run already exists for this month
+        const existing = await PayrollRepository.findAll({ month });
+        if (existing.count > 0) {
+            throw new Error(`Payroll run for month ${month} already exists`);
         }
 
-        // Calculate net salary
-        // Net = Basic + Allowances - Deductions
-        const basic = parseFloat(data.basic_salary) || 0;
-
-        let totalAllowances = 0;
-        if (data.allowances) {
-            Object.values(data.allowances).forEach(val => {
-                totalAllowances += parseFloat(val) || 0;
-            });
+        // 2. Fetch all active staff
+        const staffs = await Staff.findAll({ where: { status: 'active' } });
+        if (staffs.length === 0) {
+            throw new Error('No active staff found to generate payroll');
         }
 
-        let totalDeductions = 0;
-        if (data.deductions) {
-            Object.values(data.deductions).forEach(val => {
-                totalDeductions += parseFloat(val) || 0;
-            });
-        }
+        // 3. Calculate payroll items
+        let totalGross = 0;
+        let totalNet = 0;
 
-        const netSalary = basic + totalAllowances - totalDeductions;
+        const items = await Promise.all(staffs.map(async (staff) => {
+            const structure = await PayrollRepository.getStructure(staff.id);
 
-        const payrollData = {
-            ...data,
-            net_salary: netSalary,
-            created_by: userId
+            const basic = structure ? parseFloat(structure.basic_salary) : (parseFloat(staff.salary) || 0);
+
+            let allowanceTotal = 0;
+            const allowances = structure?.allowances || [];
+            if (Array.isArray(allowances)) {
+                allowanceTotal = allowances.reduce((acc, curr) => acc + (parseFloat(curr.amount) || 0), 0);
+            }
+
+            let deductionTotal = 0;
+            const deductions = structure?.deductions || [];
+            if (Array.isArray(deductions)) {
+                deductionTotal = deductions.reduce((acc, curr) => acc + (parseFloat(curr.amount) || 0), 0);
+            }
+
+            const gross = basic + allowanceTotal;
+            const net = gross - deductionTotal;
+
+            totalGross += gross;
+            totalNet += net;
+
+            return {
+                staff_id: staff.id,
+                basic_salary: basic,
+                allowances: allowances,
+                deductions: deductions,
+                gross_pay: gross,
+                net_pay: net
+            };
+        }));
+
+        const runData = {
+            month,
+            total_gross: totalGross,
+            total_net: totalNet,
+            status: 'pending',
+            created_by: createdBy
         };
 
-        return await PayrollRepository.create(payrollData);
+        return await PayrollRepository.createRun(runData, items);
     }
 
-    async updatePayroll(id, data) {
-        // Recalculate net salary if financial fields change
-        if (data.basic_salary || data.allowances || data.deductions) {
-            const current = await this.getPayrollById(id);
-
-            const basic = parseFloat(data.basic_salary !== undefined ? data.basic_salary : current.basic_salary);
-
-            const allowances = data.allowances || current.allowances || {};
-            let totalAllowances = 0;
-            Object.values(allowances).forEach(val => totalAllowances += parseFloat(val) || 0);
-
-            const deductions = data.deductions || current.deductions || {};
-            let totalDeductions = 0;
-            Object.values(deductions).forEach(val => totalDeductions += parseFloat(val) || 0);
-
-            data.net_salary = basic + totalAllowances - totalDeductions;
+    async approveRun(id) {
+        const run = await this.getRunById(id);
+        if (run.status !== 'pending') {
+            throw new Error('Only pending runs can be approved');
         }
-
-        const payroll = await PayrollRepository.update(id, data);
-        if (!payroll) {
-            throw new Error('Payroll record not found');
-        }
-        return payroll;
+        return await PayrollRepository.updateStatus(id, 'approved');
     }
 
-    async deletePayroll(id) {
-        const payroll = await PayrollRepository.delete(id);
-        if (!payroll) {
-            throw new Error('Payroll record not found');
+    async payRun(id) {
+        const run = await this.getRunById(id);
+        if (run.status === 'paid') {
+            throw new Error('Payroll run is already paid');
         }
-        return payroll;
+        if (run.status !== 'approved') {
+            throw new Error('Payroll run must be approved before payment');
+        }
+
+        // 1. Mark as Paid
+        const paymentDate = new Date();
+        const updatedRun = await PayrollRepository.updateStatus(id, 'paid', paymentDate);
+
+        // 2. Create Accounting Expense
+        // We need a Debit Head ID for "Salaries & Wages". 
+        // For now, we'll try to find one or create it if not exists, or just use a placeholder logic.
+        // Ideally, we fetch the head by code 'SALARY'.
+        let salaryHead = null;
+        try {
+            const heads = await AccountingRepository.findAllDebitHeads({ search: 'Salary' });
+            if (heads.rows.length > 0) {
+                salaryHead = heads.rows[0];
+            } else {
+                salaryHead = await AccountingRepository.createDebitHead({
+                    name: 'Salaries & Wages',
+                    code: 'SALARY',
+                    description: 'Staff Salaries'
+                });
+            }
+        } catch (e) {
+            console.warn('Could not fetch/create salary head:', e);
+        }
+
+        await AccountingRepository.createExpense({
+            title: `Payroll Payment - ${run.month}`,
+            amount: run.total_net,
+            expense_date: paymentDate,
+            category: 'Payroll',
+            debit_head_id: salaryHead ? salaryHead.id : null,
+            description: `Auto-generated payroll payment for ${run.month}`,
+            status: 'paid',
+            created_by: run.created_by
+        });
+
+        return updatedRun;
+    }
+
+    async deleteRun(id) {
+        const run = await this.getRunById(id);
+        if (run.status === 'paid') {
+            throw new Error('Cannot delete a paid payroll run');
+        }
+        return await PayrollRepository.delete(id);
+    }
+
+    async getStructure(staffId) {
+        const structure = await PayrollRepository.getStructure(staffId);
+        if (!structure) return null;
+
+        // Compute net
+        const basic = parseFloat(structure.basic_salary) || 0;
+        const allowances = Array.isArray(structure.allowances) ? structure.allowances : [];
+        const deductions = Array.isArray(structure.deductions) ? structure.deductions : [];
+
+        const totalAllowance = allowances.reduce((acc, curr) => acc + (parseFloat(curr.amount) || 0), 0);
+        const totalDeduction = deductions.reduce((acc, curr) => acc + (parseFloat(curr.amount) || 0), 0);
+
+        const net = basic + totalAllowance - totalDeduction;
+
+        // Return plain object with Net
+        return {
+            ...structure.toJSON(),
+            net_salary: net
+        };
+    }
+
+    async upsertStructure(staffId, data) {
+        const structure = await PayrollRepository.upsertStructure(staffId, data);
+
+        // Sync basic_salary to Staff (User) table's salary field
+        if (data.basic_salary) {
+            await Staff.update(
+                { salary: data.basic_salary },
+                { where: { id: staffId } }
+            );
+        }
+
+        return structure;
     }
 }
 

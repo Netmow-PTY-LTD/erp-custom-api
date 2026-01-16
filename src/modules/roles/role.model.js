@@ -36,6 +36,10 @@ const Role = sequelize.define('Role', {
       this.setDataValue('permissions', JSON.stringify(val));
     },
   },
+  created_by: {
+    type: DataTypes.INTEGER,
+    allowNull: true
+  },
   created_at: {
     type: DataTypes.DATE,
     defaultValue: DataTypes.NOW,

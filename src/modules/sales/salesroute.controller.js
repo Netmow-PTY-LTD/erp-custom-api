@@ -57,6 +57,29 @@ class SalesRouteController {
             return error(res, err.message, 404);
         }
     }
+
+    async assignStaff(req, res) {
+        try {
+            const { staff_ids } = req.body;
+            const route = await SalesRouteService.assignStaff(
+                req.params.id,
+                staff_ids,
+                req.user.id
+            );
+            return success(res, 'Staff assigned to sales route successfully', route);
+        } catch (err) {
+            return error(res, err.message, 400);
+        }
+    }
+
+    async getAssignedStaff(req, res) {
+        try {
+            const route = await SalesRouteService.getAssignedStaff(req.params.id);
+            return success(res, 'Assigned staff retrieved successfully', route);
+        } catch (err) {
+            return error(res, err.message, 404);
+        }
+    }
 }
 
 module.exports = new SalesRouteController();

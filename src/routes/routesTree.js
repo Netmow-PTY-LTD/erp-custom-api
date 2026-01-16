@@ -38,10 +38,11 @@ router.get('/', (req, res) => {
           auth,
           fields: routeFields || null,
           description: routeMeta?.description || null,
-          sampleRequest: routeMeta?.sampleRequest || null,
+          sampleRequest: routeMeta?.sampleRequest || routeMeta?.request || null,
           sampleResponse: routeMeta?.sampleResponse || null,
           queryParams: routeMeta?.queryParams || null,
           database: routeMeta?.database || null,
+          examples: routeMeta?.examples || null,
         });
 
       } else if (layer.name === 'router' && layer.handle.stack) {
@@ -340,6 +341,50 @@ router.get('/', (req, res) => {
                 </ul>
               </div>
               ` : ''}
+            </div>
+            ` : ''}
+            
+            ${(route.examples && route.examples.length > 0) || route.sampleResponse ? `
+            <div style="background: #e7f3ff; border-left: 4px solid #2196F3; padding: 15px; margin: 15px 0; border-radius: 4px;">
+              <h4 style="margin: 0 0 15px 0; color: #1565C0; font-size: 14px;">✅ Sample Request URLs & Responses</h4>
+              
+              ${(route.examples || [{
+            title: 'Default Response',
+            description: 'Standard successful response for this endpoint',
+            method: route.methods[0],
+            url: route.path,
+            response: route.sampleResponse
+          }]).map((example, idx) => `
+                <details style="margin-bottom: 15px; background: white; padding: 12px; border-radius: 4px; border: 1px solid #90CAF9;" ${idx === 0 ? 'open' : ''}>
+                  <summary style="cursor: pointer; font-weight: 600; color: #1565C0; font-size: 13px;">
+                    ${example.title || `Example ${idx + 1}`}
+                  </summary>
+                  <div style="margin-top: 10px; padding-left: 10px;">
+                    ${example.description ? `<p style="color: #666; font-size: 12px; margin-bottom: 10px;">${example.description}</p>` : ''}
+                    
+                    <div style="margin-bottom: 10px;">
+                      <strong style="font-size: 12px; color: #1565C0;">Request:</strong>
+                      <div style="background: #f5f5f5; padding: 8px; border-radius: 4px; margin-top: 5px; font-family: monospace; font-size: 11px; overflow-x: auto;">
+                        <span style="color: #2E7D32; font-weight: bold;">${example.method || 'GET'}</span> ${example.url}
+                      </div>
+                    </div>
+                    
+                    ${example.request ? `
+                    <div style="margin-bottom: 10px;">
+                      <strong style="font-size: 12px; color: #1565C0;">Request Body:</strong>
+                      <pre style="background: #f5f5f5; color: #333; padding: 8px; border-radius: 4px; margin-top: 5px; font-size: 11px; overflow-x: auto; max-height: 200px;">${JSON.stringify(example.request, null, 2)}</pre>
+                    </div>
+                    ` : ''}
+                    
+                    ${example.response ? `
+                    <div>
+                      <strong style="font-size: 12px; color: #1565C0;">Sample Response:</strong>
+                      <pre style="background: #263238; color: #ADBAC7; padding: 12px; border-radius: 4px; margin-top: 5px; font-size: 11px; overflow-x: auto; max-height: 400px;">${JSON.stringify(example.response, null, 2)}</pre>
+                    </div>
+                    ` : ''}
+                  </div>
+                </details>
+              `).join('')}
             </div>
             ` : ''}
             

@@ -77,7 +77,7 @@ class ProductController {
 
     async createCategory(req, res) {
         try {
-            const category = await ProductService.createCategory(req.body);
+            const category = await ProductService.createCategory(req.body, req.user.id);
             return success(res, 'Category created successfully', category, 201);
         } catch (err) {
             return error(res, err.message, 400);
@@ -131,7 +131,7 @@ class ProductController {
 
     async createUnit(req, res) {
         try {
-            const unit = await ProductService.createUnit(req.body);
+            const unit = await ProductService.createUnit(req.body, req.user.id);
             return success(res, 'Unit created successfully', unit, 201);
         } catch (err) {
             return error(res, err.message, 400);
@@ -255,6 +255,15 @@ class ProductController {
             });
         } catch (err) {
             return error(res, err.message, 404);
+        }
+    }
+
+    async getProductStats(req, res) {
+        try {
+            const stats = await ProductService.getProductStats();
+            return success(res, 'Product stats retrieved successfully', stats);
+        } catch (err) {
+            return error(res, err.message, 500);
         }
     }
 }

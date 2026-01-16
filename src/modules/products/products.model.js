@@ -20,6 +20,11 @@ const Product = sequelize.define('Product', {
         type: DataTypes.TEXT,
         allowNull: true
     },
+    product_type: {
+        type: DataTypes.ENUM('standard', 'raw_material', 'finished_good', 'service'),
+        defaultValue: 'standard',
+        allowNull: false
+    },
     category_id: {
         type: DataTypes.INTEGER,
         allowNull: true
@@ -132,6 +137,10 @@ const Product = sequelize.define('Product', {
         type: DataTypes.BOOLEAN,
         defaultValue: true
     },
+    created_by: {
+        type: DataTypes.INTEGER,
+        allowNull: true
+    },
     created_at: {
         type: DataTypes.DATE,
         defaultValue: DataTypes.NOW
@@ -169,6 +178,10 @@ const Category = sequelize.define('Category', {
         type: DataTypes.BOOLEAN,
         defaultValue: true
     },
+    created_by: {
+        type: DataTypes.INTEGER,
+        allowNull: true
+    },
     created_at: {
         type: DataTypes.DATE,
         defaultValue: DataTypes.NOW
@@ -201,6 +214,10 @@ const Unit = sequelize.define('Unit', {
     is_active: {
         type: DataTypes.BOOLEAN,
         defaultValue: true
+    },
+    created_by: {
+        type: DataTypes.INTEGER,
+        allowNull: true
     },
     created_at: {
         type: DataTypes.DATE,

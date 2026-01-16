@@ -60,6 +60,98 @@ class SalesController {
         }
     }
 
+    async getDummyOrders(req, res) {
+        try {
+            const page = parseInt(req.query.page) || 1;
+            const limit = parseInt(req.query.limit) || 10;
+            // Dummy orders are basically pending orders waiting for approval
+            const filters = {
+                status: 'pending',
+                customer_id: req.query.customer_id,
+                search: req.query.search
+            };
+
+            const result = await SalesService.getAllOrders(filters, page, limit);
+            return successWithPagination(res, 'Dummy (Pending) orders retrieved successfully', result.data, {
+                total: result.total,
+                page,
+                limit
+            });
+        } catch (err) {
+            return error(res, err.message, 500);
+        }
+    }
+
+    async getApprovedOrders(req, res) {
+        try {
+            const page = parseInt(req.query.page) || 1;
+            const limit = parseInt(req.query.limit) || 10;
+            const filters = {
+                status: 'confirmed',
+                customer_id: req.query.customer_id,
+                search: req.query.search
+            };
+
+            const result = await SalesService.getAllOrders(filters, page, limit);
+            return successWithPagination(res, 'Approved (Confirmed) orders retrieved successfully', result.data, {
+                total: result.total,
+                page,
+                limit
+            });
+        } catch (err) {
+            return error(res, err.message, 500);
+        }
+    }
+
+    async approveOrder(req, res) {
+        try {
+            const order = await SalesService.reviewOrder(req.params.id, 'approve', req.user.id);
+            return success(res, 'Order approved successfully', order);
+        } catch (err) {
+            return error(res, err.message, 400);
+        }
+    }
+
+    async cancelOrder(req, res) {
+        try {
+            const order = await SalesService.reviewOrder(req.params.id, 'cancel', req.user.id);
+            return success(res, 'Order cancelled successfully', order);
+        } catch (err) {
+            return error(res, err.message, 400);
+        }
+    }
+
+    async getOrderStats(req, res) {
+        try {
+            const stats = await SalesService.getOrderStats();
+            return success(res, 'Order stats retrieved successfully', stats);
+        } catch (err) {
+            return error(res, err.message, 500);
+        }
+    }
+
+    async getOrdersBySalesRoute(req, res) {
+        try {
+            const page = parseInt(req.query.page) || 1;
+            const limit = parseInt(req.query.limit) || 10;
+            const filters = {
+                sales_route_id: req.query.sales_route_id || req.params.routeId,
+                status: req.query.status,
+                search: req.query.search,
+                date: req.query.date
+            };
+
+            const result = await SalesService.getOrdersBySalesRoute(filters, page, limit);
+            return successWithPagination(res, 'Route-wise orders retrieved successfully', result.data, {
+                total: result.total,
+                page,
+                limit
+            });
+        } catch (err) {
+            return error(res, err.message, 500);
+        }
+    }
+
     // Invoices
     async getAllInvoices(req, res) {
         try {
@@ -263,6 +355,139 @@ class SalesController {
             return success(res, 'Sales route created successfully', route, 201);
         } catch (err) {
             return error(res, err.message, 400);
+        }
+    }
+
+    async getSalesRouteById(req, res) {
+        try {
+            const route = await SalesService.getSalesRouteById(req.params.id);
+            return success(res, 'Sales route retrieved successfully', route);
+        } catch (err) {
+            return error(res, err.message, 404);
+        }
+    }
+
+    async updateSalesRoute(req, res) {
+        try {
+            const route = await SalesService.updateSalesRoute(req.params.id, req.body, req.user.id);
+            return success(res, 'Sales route updated successfully', route);
+        } catch (err) {
+            return error(res, err.message, 400);
+        }
+    }
+
+    async deleteSalesRoute(req, res) {
+        try {
+            await SalesService.deleteSalesRoute(req.params.id);
+            return success(res, 'Sales route deleted successfully', null);
+        } catch (err) {
+            return error(res, err.message, 404);
+        }
+    }
+
+    async assignSalesRoute(req, res) {
+        try {
+            const { staff_id, staff_ids } = req.body;
+
+            // Prioritize staff_ids, fallback to staff_id
+            const idsToAssign = staff_ids || (staff_id ? [staff_id] : null);
+
+            if (!idsToAssign) {
+                return error(res, 'staff_ids (array) or staff_id is required', 400);
+            }
+
+            const route = await SalesService.assignSalesRoute(req.params.id, idsToAssign, req.user.id);
+            return success(res, 'Sales route assigned successfully', route);
+        } catch (err) {
+            return error(res, err.message, 400);
+        }
+    }
+
+    async getSalesRouteAssignment(req, res) {
+        try {
+            const assignment = await SalesService.getSalesRouteAssignment(req.params.id);
+            return success(res, 'Sales route assignment retrieved successfully', assignment);
+        } catch (err) {
+            return error(res, err.message, 404);
+        }
+    }
+
+    async getStaffRoutes(req, res) {
+        try {
+            const page = parseInt(req.query.page) || 1;
+            const limit = parseInt(req.query.limit) || 10;
+            const filters = { search: req.query.search };
+
+            const result = await SalesService.getStaffRoutes(filters, page, limit);
+
+            return successWithPagination(res, 'Staff routes retrieved successfully', result.data, {
+                total: result.total,
+                page,
+                limit
+            });
+        } catch (err) {
+            return error(res, err.message, 500);
+        }
+    }
+
+    // Order Staff Assignment
+    async assignStaffToOrder(req, res) {
+        try {
+            const { staff_ids } = req.body;
+
+            // Better error message with request body info
+            if (!staff_ids || !Array.isArray(staff_ids)) {
+                console.log('Request body received:', req.body);
+                return error(res, 'staff_ids array is required in request body. Example: {"staff_ids": [1, 2, 3]}', 400);
+            }
+
+            if (staff_ids.length === 0) {
+                return error(res, 'staff_ids array cannot be empty', 400);
+            }
+
+            // Support both numeric ID and order number
+            let orderId = req.params.id;
+
+            // If it's an order number (starts with ORD-), look it up
+            if (isNaN(orderId) && orderId.startsWith('ORD-')) {
+                const { Order } = require('./sales.models');
+                const order = await Order.findOne({ where: { order_number: orderId } });
+                if (!order) {
+                    return error(res, `Order with number ${orderId} not found`, 404);
+                }
+                orderId = order.id;
+            }
+
+            const result = await SalesService.assignStaffToOrder(
+                orderId,
+                staff_ids,
+                req.user.id
+            );
+
+            return success(res, 'Staff assigned to order successfully', result);
+        } catch (err) {
+            return error(res, err.message, 400);
+        }
+    }
+
+    async getOrdersWithStaff(req, res) {
+        try {
+            const page = parseInt(req.query.page) || 1;
+            const limit = parseInt(req.query.limit) || 10;
+            const filters = {
+                status: req.query.status,
+                search: req.query.search
+            };
+
+            const result = await SalesService.getOrdersWithStaff(filters, page, limit);
+
+            return successWithPagination(res, 'Orders with staff retrieved successfully', result.data, {
+                total: result.total,
+                page,
+                limit
+            });
+        } catch (err) {
+            return error(res, err.message, 500);
         }
     }
 

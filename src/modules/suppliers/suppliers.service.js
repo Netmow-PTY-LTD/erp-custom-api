@@ -19,10 +19,28 @@ class SupplierService {
         if (!supplier) {
             throw new Error('Supplier not found');
         }
-        return supplier;
+
+        const supplierData = supplier.toJSON ? supplier.toJSON() : supplier;
+
+        if (supplierData.latitude) {
+            supplierData.latitude = parseFloat(supplierData.latitude);
+        }
+        if (supplierData.longitude) {
+            supplierData.longitude = parseFloat(supplierData.longitude);
+        }
+
+        return supplierData;
     }
 
     async createSupplier(data, userId) {
+        // Check if code already exists
+        if (data.code) {
+            const existing = await SupplierRepository.findByCode(data.code);
+            if (existing) {
+                throw new Error('Supplier with this code already exists');
+            }
+        }
+
         // Check if email already exists (if provided)
         if (data.email) {
             const existing = await SupplierRepository.findByEmail(data.email);
@@ -35,6 +53,14 @@ class SupplierService {
     }
 
     async updateSupplier(id, data) {
+        // If code is being updated, check for duplicates
+        if (data.code) {
+            const existing = await SupplierRepository.findByCode(data.code);
+            if (existing && existing.id !== parseInt(id)) {
+                throw new Error('Supplier with this code already exists');
+            }
+        }
+
         // If email is being updated, check for duplicates
         if (data.email) {
             const existing = await SupplierRepository.findByEmail(data.email);

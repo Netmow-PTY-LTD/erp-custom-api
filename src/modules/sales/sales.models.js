@@ -34,6 +34,10 @@ const Warehouse = sequelize.define('Warehouse', {
         type: DataTypes.BOOLEAN,
         defaultValue: true
     },
+    created_by: {
+        type: DataTypes.INTEGER,
+        allowNull: true
+    },
     created_at: {
         type: DataTypes.DATE,
         defaultValue: DataTypes.NOW
@@ -104,6 +108,30 @@ const SalesRoute = sequelize.define('SalesRoute', {
         type: DataTypes.FLOAT,
         allowNull: true
     },
+    end_lat: {
+        type: DataTypes.FLOAT,
+        allowNull: true
+    },
+    end_lng: {
+        type: DataTypes.FLOAT,
+        allowNull: true
+    },
+    end_city: {
+        type: DataTypes.STRING(100),
+        allowNull: true
+    },
+    end_state: {
+        type: DataTypes.STRING(100),
+        allowNull: true
+    },
+    end_country: {
+        type: DataTypes.STRING(100),
+        allowNull: true
+    },
+    end_postal_code: {
+        type: DataTypes.STRING(20),
+        allowNull: true
+    },
     coverage_radius: {
         type: DataTypes.FLOAT,
         allowNull: true
@@ -111,6 +139,10 @@ const SalesRoute = sequelize.define('SalesRoute', {
     is_active: {
         type: DataTypes.BOOLEAN,
         defaultValue: true
+    },
+    created_by: {
+        type: DataTypes.INTEGER,
+        allowNull: true
     },
     created_at: {
         type: DataTypes.DATE,
@@ -148,7 +180,7 @@ const Order = sequelize.define('Order', {
         defaultValue: DataTypes.NOW
     },
     status: {
-        type: DataTypes.ENUM('pending', 'confirmed', 'processing', 'shipped', 'delivered', 'cancelled'),
+        type: DataTypes.ENUM('pending', 'confirmed', 'processing', 'shipped', 'in_transit', 'delivered', 'cancelled'),
         defaultValue: 'pending'
     },
     total_amount: {
@@ -493,8 +525,118 @@ const Delivery = sequelize.define('Delivery', {
     updatedAt: 'updated_at'
 });
 
+// SalesRouteStaff Junction Table (for many-to-many relationship)
+const SalesRouteStaff = sequelize.define('SalesRouteStaff', {
+    id: {
+        type: DataTypes.INTEGER,
+        primaryKey: true,
+        autoIncrement: true
+    },
+    sales_route_id: {
+        type: DataTypes.INTEGER,
+        allowNull: false,
+        references: {
+            model: 'sales_routes',
+            key: 'id'
+        }
+    },
+    staff_id: {
+        type: DataTypes.INTEGER,
+        allowNull: false,
+        references: {
+            model: 'staffs',
+            key: 'id'
+        }
+    },
+    assigned_at: {
+        type: DataTypes.DATE,
+        defaultValue: DataTypes.NOW
+    },
+    assigned_by: {
+        type: DataTypes.INTEGER,
+        allowNull: true
+    },
+    created_at: {
+        type: DataTypes.DATE,
+        defaultValue: DataTypes.NOW
+    },
+    updated_at: {
+        type: DataTypes.DATE,
+        defaultValue: DataTypes.NOW
+    }
+}, {
+    tableName: 'sales_route_staff',
+    timestamps: true,
+    createdAt: 'created_at',
+    updatedAt: 'updated_at',
+    indexes: [
+        {
+            unique: true,
+            fields: ['sales_route_id', 'staff_id']
+        }
+    ]
+});
+
+
+// OrderStaff Junction Table (for many-to-many relationship)
+const OrderStaff = sequelize.define('OrderStaff', {
+    id: {
+        type: DataTypes.INTEGER,
+        primaryKey: true,
+        autoIncrement: true
+    },
+    order_id: {
+        type: DataTypes.INTEGER,
+        allowNull: false,
+        references: {
+            model: 'orders',
+            key: 'id'
+        }
+    },
+    staff_id: {
+        type: DataTypes.INTEGER,
+        allowNull: false,
+        references: {
+            model: 'staffs',
+            key: 'id'
+        }
+    },
+    assigned_at: {
+        type: DataTypes.DATE,
+        defaultValue: DataTypes.NOW
+    },
+    assigned_by: {
+        type: DataTypes.INTEGER,
+        allowNull: true
+    },
+    role: { // e.g., 'primary', 'support', 'driver'
+        type: DataTypes.STRING(50),
+        allowNull: true
+    },
+    created_at: {
+        type: DataTypes.DATE,
+        defaultValue: DataTypes.NOW
+    },
+    updated_at: {
+        type: DataTypes.DATE,
+        defaultValue: DataTypes.NOW
+    }
+}, {
+    tableName: 'order_staff',
+    timestamps: true,
+    createdAt: 'created_at',
+    updatedAt: 'updated_at',
+    indexes: [
+        {
+            unique: true,
+            fields: ['order_id', 'staff_id']
+        }
+    ]
+});
+
 // Associations
 Order.belongsTo(Customer, { foreignKey: 'customer_id', as: 'customer' });
+const { Staff } = require('../staffs/staffs.model');
 
 Order.hasMany(OrderItem, { foreignKey: 'order_id', as: 'items' });
 OrderItem.belongsTo(Order, { foreignKey: 'order_id' });
@@ -512,10 +654,18 @@ Payment.belongsTo(Invoice, { foreignKey: 'invoice_id', as: 'invoice' });
 Order.hasMany(Delivery, { foreignKey: 'order_id', as: 'deliveries' });
 Delivery.belongsTo(Order, { foreignKey: 'order_id' });
 
+// Order Staff Assignments
+Order.belongsToMany(Staff, { through: OrderStaff, as: 'assignedStaff', foreignKey: 'order_id' });
+Staff.belongsToMany(Order, { through: OrderStaff, as: 'assignedOrders', foreignKey: 'staff_id' });
+
+
+
 module.exports = {
     Warehouse,
     SalesRoute,
+    SalesRouteStaff,
     Order,
+    OrderStaff,
     OrderItem,
     Invoice,
     Payment,

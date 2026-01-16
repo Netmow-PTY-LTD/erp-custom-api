@@ -20,7 +20,13 @@ fs.readdirSync(modulesPath).forEach((moduleName) => {
     } else {
       if (fileOrFolder.endsWith('.routes.js')) {
         const routePath = path.join(moduleDir, fileOrFolder);
-        const mountPath = '/' + moduleName;
+
+        // Custom mapping for module names to route paths
+        const moduleMappings = {
+          'attendance': 'staff-attendance'
+        };
+
+        const mountPath = '/' + (moduleMappings[moduleName] || moduleName);
         router.use(mountPath, require(routePath));
       }
     }

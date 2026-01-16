@@ -24,6 +24,26 @@ class PurchaseController {
         }
     }
 
+    async getApprovedPurchaseOrders(req, res) {
+        try {
+            const page = parseInt(req.query.page) || 1;
+            const limit = parseInt(req.query.limit) || 10;
+            const filters = {
+                status: 'approved',
+                search: req.query.search
+            };
+
+            const result = await PurchaseService.getAllPurchaseOrders(filters, page, limit);
+            return successWithPagination(res, 'Approved purchase orders retrieved successfully', result.data, {
+                total: result.total,
+                page,
+                limit
+            });
+        } catch (err) {
+            return error(res, err.message, 500);
+        }
+    }
+
     async getPurchaseOrderById(req, res) {
         try {
             const po = await PurchaseService.getPurchaseOrderById(req.params.id);

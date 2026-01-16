@@ -16,6 +16,10 @@ const Department = sequelize.define('Department', {
         type: DataTypes.TEXT,
         allowNull: true
     },
+    created_by: {
+        type: DataTypes.INTEGER,
+        allowNull: true
+    },
     created_at: {
         type: DataTypes.DATE,
         defaultValue: DataTypes.NOW

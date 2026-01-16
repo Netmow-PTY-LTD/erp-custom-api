@@ -33,7 +33,56 @@ router.routesMeta = [
                 revenue: 81643.10,
                 activeStaff: 15
             }
-        }
+        },
+        examples: [
+            {
+                title: 'Get Dashboard Stats',
+                description: 'Retrieve aggregated statistics for the dashboard',
+                url: '/api/dashboard',
+                method: 'GET',
+                response: {
+                    success: true,
+                    data: {
+                        totalOrders: 22,
+                        pendingOrders: 12,
+                        activeCustomers: 10,
+                        lowStock: 2,
+                        revenue: 81643.10,
+                        activeStaff: 15
+                    }
+                }
+            }
+        ]
+    },
+    {
+        path: '/charts',
+        method: 'GET',
+        middlewares: [],
+        handler: (req, res) => dashboardController.getChartsData(req, res),
+        description: 'Get monthly sales chart data for the previous year.',
+        database: {
+            tables: ['orders'],
+            mainTable: 'orders',
+            fields: {
+                calculated: ['total']
+            }
+        },
+        sampleResponse: [
+            { name: "Jan", total: 1500 },
+            { name: "Feb", total: 2300 }
+        ],
+        examples: [
+            {
+                title: 'Get Dashboard Charts',
+                description: 'Retrieve monthly sales data for charts',
+                url: '/api/dashboard/charts',
+                method: 'GET',
+                response: [
+                    { name: "Jan", total: 1500 },
+                    { name: "Feb", total: 2300 }
+                ]
+            }
+        ]
     }
 ];
 
