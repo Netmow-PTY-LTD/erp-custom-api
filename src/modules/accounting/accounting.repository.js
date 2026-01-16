@@ -264,10 +264,13 @@ class AccountingRepository {
     }
 
     // Re-implemented Overview for Dashboard using new tables
-    async getFinancialOverview() {
-        // Simple Totals for now based on Account Types
-        // Income = Total Credit of INCOME accounts
-        // Expense = Total Debit of EXPENSE accounts
+    async getTotalsByDateRange(startDate, endDate) {
+        const whereDate = {};
+        if (startDate && endDate) {
+            whereDate.date = { [Op.between]: [startDate, endDate] };
+        } else if (startDate) {
+            whereDate.date = { [Op.gte]: startDate };
+        }
 
         const getSumByType = async (type) => {
             const accounts = await Account.findAll({ where: { type } });
@@ -275,19 +278,64 @@ class AccountingRepository {
 
             if (accountIds.length === 0) return 0;
 
-            const sum = await JournalLine.sum(type === 'INCOME' ? 'credit' : 'debit', {
-                where: { account_id: { [Op.in]: accountIds } }
+            // We need to join with Journal to filter by date
+            const result = await JournalLine.findAll({
+                attributes: [[sequelize.fn('SUM', sequelize.col(type === 'INCOME' ? 'credit' : 'debit')), 'total']],
+                where: { account_id: { [Op.in]: accountIds } },
+                include: [{
+                    model: Journal,
+                    attributes: [],
+                    where: whereDate
+                }],
+                raw: true
             });
-            return sum || 0;
+
+            // Result is [{ total: 1234 }]
+            return result[0].total ? parseFloat(result[0].total) : 0;
         };
 
         const totalIncome = await getSumByType('INCOME');
         const totalExpense = await getSumByType('EXPENSE');
 
+        // For Income: Credit - Debit (Logic used in P&L, though getSumByType only took credit. 
+        // If we want Net Income for that account, we should do Credit - Debit. 
+        // But for simplicity/speed in overview, usually Income accounts just have Credit and Expense just have Debit.
+        // Let's refine for accuracy: Income = Sum(Credit) - Sum(Debit)
+
+        const getNetSumByType = async (type) => {
+            const accounts = await Account.findAll({ where: { type } });
+            const accountIds = accounts.map(a => a.id);
+            if (accountIds.length === 0) return 0;
+
+            const result = await JournalLine.findAll({
+                attributes: [
+                    [sequelize.fn('SUM', sequelize.col('debit')), 'totalDebit'],
+                    [sequelize.fn('SUM', sequelize.col('credit')), 'totalCredit']
+                ],
+                where: { account_id: { [Op.in]: accountIds } },
+                include: [{
+                    model: Journal,
+                    attributes: [],
+                    where: whereDate
+                }],
+                raw: true
+            });
+
+            const debit = result[0].totalDebit ? parseFloat(result[0].totalDebit) : 0;
+            const credit = result[0].totalCredit ? parseFloat(result[0].totalCredit) : 0;
+
+            if (type === 'INCOME') return credit - debit;
+            if (type === 'EXPENSE') return debit - credit;
+            return 0;
+        }
+
+        const netIncome = await getNetSumByType('INCOME');
+        const netExpense = await getNetSumByType('EXPENSE');
+
         return {
-            total_income: totalIncome,
-            total_expense: totalExpense,
-            net_profit: totalIncome - totalExpense
+            income: netIncome,
+            expense: netExpense,
+            net: netIncome - netExpense
         };
     }
 

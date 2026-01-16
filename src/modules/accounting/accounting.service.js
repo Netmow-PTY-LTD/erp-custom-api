@@ -590,7 +590,87 @@ class AccountingService {
     }
 
     async getOverview() {
-        return await AccountingRepository.getFinancialOverview();
+        const formatDate = (date) => date.toISOString().split('T')[0];
+
+        const now = new Date();
+        const today = formatDate(now);
+
+        // Start of Week (assuming Monday)
+        const dayOfWeek = now.getDay(); // 0 is Sunday
+        const diff = now.getDate() - dayOfWeek + (dayOfWeek === 0 ? -6 : 1); // Adjust when day is Sunday
+        const startOfWeekDate = new Date(now);
+        startOfWeekDate.setDate(diff);
+        const startOfWeek = formatDate(startOfWeekDate);
+
+        // Start of Month
+        const startOfMonth = formatDate(new Date(now.getFullYear(), now.getMonth(), 1));
+
+        // Start of Year
+        const startOfYear = formatDate(new Date(now.getFullYear(), 0, 1));
+
+        const [todayStats, weekStats, monthStats, yearStats] = await Promise.all([
+            AccountingRepository.getTotalsByDateRange(today, today),
+            AccountingRepository.getTotalsByDateRange(startOfWeek, today), // Up to today
+            AccountingRepository.getTotalsByDateRange(startOfMonth, today),
+            AccountingRepository.getTotalsByDateRange(startOfYear, today)
+        ]);
+
+        return {
+            today: todayStats,
+            this_week: weekStats,
+            this_month: monthStats,
+            this_year: yearStats
+        };
+    }
+
+    async getRecentActivity() {
+        // Fetch last 5 transactions
+        const { rows } = await AccountingRepository.findAllTransactions({}, 5, 0);
+
+        const formatCurrency = (amount) => {
+            return 'RM ' + parseFloat(amount).toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 2 });
+        };
+
+        const formatDate = (dateString) => {
+            const date = new Date(dateString);
+            // Format: January 16th, 2026
+            // Using Intl.DateTimeFormat for "Month Day, Year" then adding 'th' manually or simple approach
+            const options = { month: 'long', day: 'numeric', year: 'numeric' };
+            const part = date.toLocaleDateString('en-US', options);
+            // part is "January 16, 2026". We need "16th".
+            // Let's split and reconstruct or use a helper
+
+            const day = date.getDate();
+            const suffix = (day) => {
+                if (day > 3 && day < 21) return 'th';
+                switch (day % 10) {
+                    case 1: return "st";
+                    case 2: return "nd";
+                    case 3: return "rd";
+                    default: return "th";
+                }
+            };
+
+            const month = date.toLocaleDateString('en-US', { month: 'long' });
+            const year = date.getFullYear();
+
+            return `${month} ${day}${suffix(day)}, ${year}`;
+        };
+
+        return rows.map(tx => {
+            const isIncome = ['INCOME', 'SALES', 'OTHER_INCOME', 'PAYMENT_IN'].includes(tx.type);
+            const isExpense = ['EXPENSE', 'PURCHASE', 'PAYMENT_OUT', 'SURGEON_FEE', 'SALES_RETURN'].includes(tx.type);
+
+            let amountStr = formatCurrency(tx.amount);
+            if (isIncome) amountStr = '+ ' + amountStr;
+            else if (isExpense) amountStr = '- ' + amountStr;
+
+            return {
+                title: tx.description || tx.type,
+                date: formatDate(tx.date),
+                amount: amountStr
+            };
+        });
     }
 }
 
