@@ -194,21 +194,23 @@ class AccountingService {
 
         // Transform to add running balance
         let currentBalance = openingBalance;
-        const account = await AccountingRepository.findAccountByCode(filters.code); // Assuming we identify debit nature
+        const account = await AccountingRepository.findAccountById(accountId);
+        if (!account) throw new Error('Account not found');
         // Actually we need to fetch account details if we didn't pass it. 
         // Repo already handled account finding internally? No, Repo takes ID.
         // Let's assume we know nature for now.
 
-        // We need account type to know direction of balance
-        // If we don't have it easily, assume Debit increases Balance
+        const isDebitNature = ['ASSET', 'EXPENSE'].includes(account.type);
 
         const enhancedLines = lines.map(line => {
             const dr = parseFloat(line.debit);
             const cr = parseFloat(line.credit);
-            // Standard Logic: Asset/Exp/Drawings: Dr +, Cr -
-            // Liab/Eq/Rev: Cr +, Dr -
-            // For simple display, usually Dr is + and Cr is -
-            currentBalance += (dr - cr);
+
+            if (isDebitNature) {
+                currentBalance += (dr - cr);
+            } else {
+                currentBalance += (cr - dr);
+            }
 
             return {
                 date: line.Journal.date,
@@ -587,6 +589,18 @@ class AccountingService {
 
     async getProfitAndLoss(filters) {
         return await AccountingRepository.getProfitAndLoss(filters);
+    }
+
+    async getProductProfitLoss(filters) {
+        return await AccountingRepository.getProductProfitLoss(filters);
+    }
+
+    async getIncomeExpenseTrend(days = 30) {
+        return await AccountingRepository.getIncomeExpenseTrend(days);
+    }
+
+    async getExpenseBreakdown(filters) {
+        return await AccountingRepository.getExpenseBreakdown(filters);
     }
 
     async getOverview() {

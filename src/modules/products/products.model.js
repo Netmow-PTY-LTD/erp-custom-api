@@ -20,6 +20,10 @@ const Product = sequelize.define('Product', {
         type: DataTypes.TEXT,
         allowNull: true
     },
+    specification: {
+        type: DataTypes.TEXT,
+        allowNull: true
+    },
     product_type: {
         type: DataTypes.ENUM('standard', 'raw_material', 'finished_good', 'service'),
         defaultValue: 'standard',

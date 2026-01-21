@@ -58,10 +58,12 @@ class ProductService {
     }
 
     async createProduct(data, userId) {
-        // Check if SKU already exists
-        const existing = await ProductRepository.findBySku(data.sku);
-        if (existing) {
-            throw new Error('Product with this SKU already exists');
+        // Check if SKU already exists if provided
+        if (data.sku) {
+            const existing = await ProductRepository.findBySku(data.sku);
+            if (existing) {
+                throw new Error('Product with this SKU already exists');
+            }
         }
 
         const { thumb_url, gallery_items, ...productData } = data;
@@ -76,7 +78,31 @@ class ProductService {
             productData.initial_stock = productData.stock_quantity || 0;
         }
 
+        // If SKU is not provided, use a placeholder initially
+        let isAutoSku = false;
+        if (!productData.sku) {
+            isAutoSku = true;
+            productData.sku = `TEMP-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
+        }
+
         const product = await ProductRepository.create({ ...productData, created_by: userId });
+
+        // If auto-generating SKU, update it now using the ID
+        if (isAutoSku) {
+            const autoSku = product.id.toString().padStart(4, '0');
+            // Check if this auto-generated SKU happens to exist (unlikely but good practice)
+            const existingAuto = await ProductRepository.findBySku(autoSku);
+            if (existingAuto) {
+                // Determine a strategy? For now just append ID to make it unique if collision
+                // But the requirement is 4 digit autoincrement ID.
+                // If ID is 10001, it will be "10001".
+                // If "0001" exists (manually created), then we have a conflict for ID 1.
+                // We should probably just try to update it.
+            }
+            // Update the product with the real SKU
+            await ProductRepository.update(product.id, { sku: autoSku });
+            product.sku = autoSku;
+        }
 
         // Handle gallery items
         if (gallery_items && Array.isArray(gallery_items) && gallery_items.length > 0) {

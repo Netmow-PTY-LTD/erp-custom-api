@@ -2,8 +2,9 @@ const { z } = require('zod');
 
 const createProduct = z.object({
     name: z.string().min(1, 'Product name is required').max(255),
-    sku: z.string().min(1, 'SKU is required').max(100),
+    sku: z.string().max(100).optional(),
     description: z.string().nullable().optional(),
+    specification: z.string().nullable().optional(),
     category_id: z.number().int().positive().nullable().optional(),
     unit_id: z.number().int().positive().nullable().optional(),
     price: z.number().min(0, 'Price must be non-negative'),
@@ -30,6 +31,7 @@ const updateProduct = z.object({
     name: z.string().min(1).max(255).optional(),
     sku: z.string().min(1).max(100).optional(),
     description: z.string().nullable().optional(),
+    specification: z.string().nullable().optional(),
     category_id: z.number().int().positive().nullable().optional(),
     unit_id: z.number().int().positive().nullable().optional(),
     price: z.number().min(0).optional(),
