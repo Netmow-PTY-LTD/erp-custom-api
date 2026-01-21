@@ -32,9 +32,7 @@ const allowedOrigins = [
   'http://192.168.0.176:5000',
   'https://carwash.inleadsit.com',
   'https://lawfirm.inleadsit.com',
-  '*',
-  'https://*.netlify.app',
-  'https://lawfirminleads.netlify.app'
+  'https://lawfirminleads.netlify.app',
 ];
 
 
