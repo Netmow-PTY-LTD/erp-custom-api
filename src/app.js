@@ -34,7 +34,7 @@ const allowedOrigins = [
   'https://lawfirm.inleadsit.com',
   '*',
   'https://*.netlify.app',
-
+  'https://lawfirminleads.netlify.app'
 ];
 
 
