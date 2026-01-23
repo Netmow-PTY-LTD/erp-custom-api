@@ -677,9 +677,10 @@ Delivery.belongsTo(Order, { foreignKey: 'order_id' });
 
 // Order Staff Assignments
 Order.belongsToMany(Staff, { through: OrderStaff, as: 'assignedStaff', foreignKey: 'order_id' });
+
 Staff.belongsToMany(Order, { through: OrderStaff, as: 'assignedOrders', foreignKey: 'staff_id' });
 
-
+// SalesRoute Associations
 
 module.exports = {
     Warehouse,

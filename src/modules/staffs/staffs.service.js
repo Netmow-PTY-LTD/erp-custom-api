@@ -124,6 +124,7 @@ class StaffService {
                 role: staff.position || 'Staff',
                 email: staff.email,
                 phone: staff.phone,
+                thumb_url: staff.thumb_url || null,
                 active: staff.status === 'active',
                 routes: formattedRoutes,
                 stats: {

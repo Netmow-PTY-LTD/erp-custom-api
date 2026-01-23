@@ -94,7 +94,10 @@ class AttendanceController {
             const filters = {
                 staff_id: staffId,
                 date: req.query.date,
-                status: req.query.status
+                status: req.query.status,
+                month: req.query.month,
+                start_date: req.query.start_date,
+                end_date: req.query.end_date
             };
 
             const result = await AttendanceService.getAllAttendances(filters, page, limit);
@@ -123,6 +126,18 @@ class AttendanceController {
             return success(res, 'Attendance deleted successfully');
         } catch (err) {
             return error(res, err.message, 404);
+        }
+    }
+
+    async getStaffAttendanceStats(req, res) {
+        try {
+            const filters = {
+                month: req.query.month
+            };
+            const stats = await AttendanceService.getStaffAttendanceStats(req.params.id, filters);
+            return success(res, 'Attendance stats retrieved successfully', stats);
+        } catch (err) {
+            return error(res, err.message, 500);
         }
     }
 }

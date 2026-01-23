@@ -276,6 +276,45 @@ router.routesMeta = [
     },
 
     {
+        path: '/staff/:id/stats',
+        method: 'GET',
+        middlewares: [],
+        handler: (req, res) => attendanceController.getStaffAttendanceStats(req, res),
+        description: 'Get aggregated attendance statistics for a staff member',
+        database: {
+            tables: ['attendance'],
+            mainTable: 'attendance',
+            fields: {
+                attendance: ['status']
+            }
+        },
+        sampleResponse: {
+            status: true,
+            message: 'Attendance stats retrieved successfully',
+            data: {
+                total: 211,
+                present: 180,
+                late: 10,
+                absent: 5,
+                on_leave: 16
+            }
+        },
+        examples: [
+            {
+                title: 'Get Staff Stats',
+                description: 'Retrieve grouped attendance statistics for a specific staff member',
+                url: '/api/attendance/staff/5/stats',
+                method: 'GET',
+                response: {
+                    status: true,
+                    message: 'Attendance stats retrieved successfully',
+                    data: { total: 10, present: 8, late: 1, absent: 0, on_leave: 1 }
+                }
+            }
+        ]
+    },
+
+    {
         path: '/staff/:id',
         method: 'GET',
         middlewares: [],

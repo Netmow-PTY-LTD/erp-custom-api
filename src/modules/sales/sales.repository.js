@@ -57,7 +57,7 @@ class OrderRepository {
                 {
                     model: Staff,
                     as: 'assignedStaff',
-                    attributes: ['id', 'first_name', 'last_name', 'email', 'position'],
+                    attributes: ['id', 'first_name', 'last_name', 'email', 'position', 'thumb_url'],
                     through: { attributes: ['assigned_at', 'role'] }
                 }
             ],
@@ -93,7 +93,7 @@ class OrderRepository {
                 {
                     model: Staff,
                     as: 'assignedStaff',
-                    attributes: ['id', 'first_name', 'last_name', 'email', 'position'],
+                    attributes: ['id', 'first_name', 'last_name', 'email', 'position', 'thumb_url'],
                     through: { attributes: ['assigned_at', 'role'] }
                 }
             ]
@@ -269,7 +269,7 @@ class OrderRepository {
                 {
                     model: Staff,
                     as: 'assignedStaff',
-                    attributes: ['id', 'first_name', 'last_name', 'email', 'position'],
+                    attributes: ['id', 'first_name', 'last_name', 'email', 'position', 'thumb_url'],
                     through: { attributes: ['assigned_at', 'role'] }
                 }
             ],

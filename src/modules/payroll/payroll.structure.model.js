@@ -3,7 +3,7 @@ const { sequelize } = require('../../core/database/sequelize');
 const { User } = require('../users/user.model');
 
 const PayrollStructure = sequelize.define('PayrollStructure', {
-    staff_id: {
+    user_id: {
         type: DataTypes.INTEGER,
         allowNull: false,
         unique: true,
@@ -45,7 +45,7 @@ const PayrollStructure = sequelize.define('PayrollStructure', {
 });
 
 // Association
-User.hasOne(PayrollStructure, { foreignKey: 'staff_id', as: 'payrollStructure' });
-PayrollStructure.belongsTo(User, { foreignKey: 'staff_id', as: 'staff' });
+User.hasOne(PayrollStructure, { foreignKey: 'user_id', as: 'payrollStructure' });
+PayrollStructure.belongsTo(User, { foreignKey: 'user_id', as: 'user' });
 
 module.exports = { PayrollStructure };
