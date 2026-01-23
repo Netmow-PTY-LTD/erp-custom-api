@@ -2,21 +2,23 @@ const { StaffCheckIn } = require('./checkin.model');
 const { User: Staff } = require('../../modules/users/user.model');
 const { Customer } = require('../../modules/customers/customers.model');
 const { SalesRoute } = require('../../modules/sales/sales.models');
+const { Op } = require('sequelize');
 
 class CheckInRepository {
     async findAll(filters = {}, limit = 10, offset = 0) {
-        // ... (existing code, not shown in replacement chunk but preserved in file via tool context) ...
         const where = {};
         if (filters.staff_id) where.staff_id = filters.staff_id;
         if (filters.customer_id) where.customer_id = filters.customer_id;
         if (filters.date) {
             const startOfDay = new Date(filters.date);
-            startOfDay.setHours(0, 0, 0, 0);
-            const endOfDay = new Date(filters.date);
-            endOfDay.setHours(23, 59, 59, 999);
-            where.check_in_time = {
-                [require('sequelize').Op.between]: [startOfDay, endOfDay]
-            };
+            if (!isNaN(startOfDay)) {
+                startOfDay.setHours(0, 0, 0, 0);
+                const endOfDay = new Date(filters.date);
+                endOfDay.setHours(23, 59, 59, 999);
+                where.check_in_time = {
+                    [Op.between]: [startOfDay, endOfDay]
+                };
+            }
         }
 
         return await StaffCheckIn.findAndCountAll({
@@ -75,6 +77,9 @@ class CheckInRepository {
 
     async findCustomersWithCheckIns(date, limit = 10, offset = 0) {
         const startOfDay = new Date(date);
+        if (isNaN(startOfDay)) {
+            throw new Error('Invalid date format');
+        }
         startOfDay.setHours(0, 0, 0, 0);
         const endOfDay = new Date(date);
         endOfDay.setHours(23, 59, 59, 999);
@@ -90,13 +95,13 @@ class CheckInRepository {
                     required: false,
                     where: {
                         check_in_time: {
-                            [require('sequelize').Op.between]: [startOfDay, endOfDay]
+                            [Op.between]: [startOfDay, endOfDay]
                         }
                     },
                     include: [{
                         model: Staff,
                         as: 'staff',
-                        attributes: ['id', 'first_name', 'last_name', 'email', 'position']
+                        attributes: ['id', 'first_name', 'last_name', 'email', 'position', 'thumb_url']
                     }]
                 },
                 {
