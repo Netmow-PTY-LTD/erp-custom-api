@@ -57,7 +57,7 @@ class OrderRepository {
                 {
                     model: Staff,
                     as: 'assignedStaff',
-                    attributes: ['id', 'first_name', 'last_name', 'email', 'position'],
+                    attributes: ['id', 'first_name', 'last_name', 'email', 'position', 'thumb_url'],
                     through: { attributes: ['assigned_at', 'role'] }
                 }
             ],
@@ -93,7 +93,7 @@ class OrderRepository {
                 {
                     model: Staff,
                     as: 'assignedStaff',
-                    attributes: ['id', 'first_name', 'last_name', 'email', 'position'],
+                    attributes: ['id', 'first_name', 'last_name', 'email', 'position', 'thumb_url'],
                     through: { attributes: ['assigned_at', 'role'] }
                 }
             ]
@@ -140,7 +140,10 @@ class OrderRepository {
     async update(id, data) {
         const order = await Order.findByPk(id);
         if (!order) return null;
-        return await order.update(data);
+        await order.update(data);
+
+        // Fetch the complete order with all relationships to return updated data
+        return await this.findById(id);
     }
 
     async delete(id) {
@@ -266,7 +269,7 @@ class OrderRepository {
                 {
                     model: Staff,
                     as: 'assignedStaff',
-                    attributes: ['id', 'first_name', 'last_name', 'email', 'position'],
+                    attributes: ['id', 'first_name', 'last_name', 'email', 'position', 'thumb_url'],
                     through: { attributes: ['assigned_at', 'role'] }
                 }
             ],

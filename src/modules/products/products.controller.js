@@ -266,6 +266,26 @@ class ProductController {
             return error(res, err.message, 500);
         }
     }
+
+    async getProductOrders(req, res) {
+        try {
+            const page = parseInt(req.query.page) || 1;
+            const limit = parseInt(req.query.limit) || 10;
+            const filters = {
+                status: req.query.status,
+                start_date: req.query.start_date,
+                end_date: req.query.end_date
+            };
+            const result = await ProductService.getProductOrders(req.params.id, filters, page, limit);
+            return successWithPagination(res, 'Product orders retrieved successfully', result.data, {
+                total: result.total,
+                page,
+                limit
+            });
+        } catch (err) {
+            return error(res, err.message, err.message === 'Product not found' ? 404 : 500);
+        }
+    }
 }
 
 module.exports = new ProductController();

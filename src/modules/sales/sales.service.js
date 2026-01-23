@@ -44,7 +44,9 @@ class SalesService {
                         customer.orders.forEach(order => {
                             allOrders.push({
                                 id: order.id,
+                                order_number: order.order_number,
                                 customer: customer.name || customer.company,
+                                customer_image: customer.image_url || null,
                                 amount: parseFloat(order.total_amount),
                                 status: order.status, // e.g., 'pending', 'delivered'
                                 date: order.order_date ? new Date(order.order_date).toISOString().split('T')[0] : null // Format date YYYY-MM-DD
@@ -643,12 +645,8 @@ class SalesService {
         const delivery = await DeliveryRepository.create(deliveryData);
 
         // Update Order status based on delivery status
-        if (data.status === 'delivered') {
-            await OrderRepository.update(orderId, { status: 'delivered' });
-        } else if (data.status === 'in_transit') {
-            await OrderRepository.update(orderId, { status: 'in_transit' });
-        } else if (data.status === 'confirmed') {
-            await OrderRepository.update(orderId, { status: 'confirmed' });
+        if (['delivered', 'in_transit', 'confirmed', 'returned', 'failed'].includes(data.status)) {
+            await OrderRepository.update(orderId, { status: data.status });
         }
 
         return delivery;

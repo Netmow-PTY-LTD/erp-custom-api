@@ -264,10 +264,13 @@ class AccountingRepository {
     }
 
     // Re-implemented Overview for Dashboard using new tables
-    async getFinancialOverview() {
-        // Simple Totals for now based on Account Types
-        // Income = Total Credit of INCOME accounts
-        // Expense = Total Debit of EXPENSE accounts
+    async getTotalsByDateRange(startDate, endDate) {
+        const whereDate = {};
+        if (startDate && endDate) {
+            whereDate.date = { [Op.between]: [startDate, endDate] };
+        } else if (startDate) {
+            whereDate.date = { [Op.gte]: startDate };
+        }
 
         const getSumByType = async (type) => {
             const accounts = await Account.findAll({ where: { type } });
@@ -275,20 +278,131 @@ class AccountingRepository {
 
             if (accountIds.length === 0) return 0;
 
-            const sum = await JournalLine.sum(type === 'INCOME' ? 'credit' : 'debit', {
-                where: { account_id: { [Op.in]: accountIds } }
+            // We need to join with Journal to filter by date
+            const result = await JournalLine.findAll({
+                attributes: [[sequelize.fn('SUM', sequelize.col(type === 'INCOME' ? 'credit' : 'debit')), 'total']],
+                where: { account_id: { [Op.in]: accountIds } },
+                include: [{
+                    model: Journal,
+                    attributes: [],
+                    where: whereDate
+                }],
+                raw: true
             });
-            return sum || 0;
+
+            // Result is [{ total: 1234 }]
+            return result[0].total ? parseFloat(result[0].total) : 0;
         };
 
         const totalIncome = await getSumByType('INCOME');
         const totalExpense = await getSumByType('EXPENSE');
 
+        // For Income: Credit - Debit (Logic used in P&L, though getSumByType only took credit. 
+        // If we want Net Income for that account, we should do Credit - Debit. 
+        // But for simplicity/speed in overview, usually Income accounts just have Credit and Expense just have Debit.
+        // Let's refine for accuracy: Income = Sum(Credit) - Sum(Debit)
+
+        const getNetSumByType = async (type) => {
+            const accounts = await Account.findAll({ where: { type } });
+            const accountIds = accounts.map(a => a.id);
+            if (accountIds.length === 0) return 0;
+
+            const result = await JournalLine.findAll({
+                attributes: [
+                    [sequelize.fn('SUM', sequelize.col('debit')), 'totalDebit'],
+                    [sequelize.fn('SUM', sequelize.col('credit')), 'totalCredit']
+                ],
+                where: { account_id: { [Op.in]: accountIds } },
+                include: [{
+                    model: Journal,
+                    attributes: [],
+                    where: whereDate
+                }],
+                raw: true
+            });
+
+            const debit = result[0].totalDebit ? parseFloat(result[0].totalDebit) : 0;
+            const credit = result[0].totalCredit ? parseFloat(result[0].totalCredit) : 0;
+
+            if (type === 'INCOME') return credit - debit;
+            if (type === 'EXPENSE') return debit - credit;
+            return 0;
+        }
+
+        const netIncome = await getNetSumByType('INCOME');
+        const netExpense = await getNetSumByType('EXPENSE');
+
         return {
-            total_income: totalIncome,
-            total_expense: totalExpense,
-            net_profit: totalIncome - totalExpense
+            income: netIncome,
+            expense: netExpense,
+            net: netIncome - netExpense
         };
+    }
+
+    async getProductProfitLoss(filters = {}) {
+        const { Order, OrderItem } = require('../sales/sales.models');
+        const { Product } = require('../products/products.model');
+
+        const where = {};
+        if (filters.from && filters.to) {
+            where.order_date = { [Op.between]: [filters.from, filters.to] };
+        }
+        // Exclude cancelled/pending if desired, but let's stick to simple first or what user wants.
+        // Usually P&L implies realized gains.
+        where.status = { [Op.notIn]: ['cancelled', 'pending'] };
+
+        const results = await OrderItem.findAll({
+            attributes: [
+                'product_id',
+                [sequelize.fn('SUM', sequelize.col('line_total')), 'revenue'],
+                [sequelize.fn('SUM', sequelize.literal('quantity * purchase_cost')), 'cost'],
+                [sequelize.fn('SUM', sequelize.col('quantity')), 'quantity_sold']
+            ],
+            include: [
+                {
+                    model: Order,
+                    where,
+                    attributes: []
+                },
+                {
+                    model: Product,
+                    as: 'product',
+                    attributes: ['name', 'sku']
+                }
+            ],
+            group: ['product_id', 'product.id', 'product.name', 'product.sku'],
+            order: [[sequelize.literal('revenue'), 'DESC']],
+            raw: true,
+            nest: true
+        });
+
+        // Post-process to calculate profit and match requested format
+        return results.map(row => {
+            const revenue = parseFloat(row.revenue || 0);
+            const cost = parseFloat(row.cost || 0);
+            const qty = parseFloat(row.quantity_sold || 0);
+
+            const profit = revenue - cost;
+
+            // Avoid division by zero
+            const salesPrice = qty ? revenue / qty : 0;
+            const costPrice = qty ? cost / qty : 0;
+            const profitPrice = qty ? profit / qty : 0;
+            const profitRatio = revenue ? (profit / revenue) * 100 : 0;
+
+            return {
+                sku: row.product.sku,
+                name: row.product.name,
+                qty: parseFloat(qty.toFixed(2)),
+                salesPrice: parseFloat(salesPrice.toFixed(2)),
+                salesAmount: parseFloat(revenue.toFixed(2)),
+                costPrice: parseFloat(costPrice.toFixed(2)),
+                costAmount: parseFloat(cost.toFixed(2)),
+                profitPrice: parseFloat(profitPrice.toFixed(2)),
+                profitAmount: parseFloat(profit.toFixed(2)),
+                profitRatio: Math.round(profitRatio) + '%'
+            };
+        });
     }
 
     async getProfitAndLoss(filters = {}) {
@@ -348,6 +462,113 @@ class AccountingRepository {
 
         report.net_profit = report.total_income - report.total_expense;
         return report;
+    }
+
+    async getIncomeExpenseTrend(days = 30) {
+        const startDate = new Date();
+        startDate.setDate(startDate.getDate() - days + 1);
+        const formattedStartDate = startDate.toISOString().split('T')[0];
+
+        const results = await JournalLine.findAll({
+            attributes: [
+                [sequelize.col('Journal.date'), 'date'],
+                [sequelize.col('account.type'), 'type'],
+                [sequelize.fn('SUM', sequelize.col('debit')), 'totalDebit'],
+                [sequelize.fn('SUM', sequelize.col('credit')), 'totalCredit']
+            ],
+            include: [
+                {
+                    model: Journal,
+                    where: {
+                        date: { [Op.gte]: formattedStartDate }
+                    },
+                    attributes: []
+                },
+                {
+                    model: Account,
+                    as: 'account',
+                    where: {
+                        type: { [Op.in]: ['INCOME', 'EXPENSE'] }
+                    },
+                    attributes: []
+                }
+            ],
+            group: [sequelize.col('Journal.date'), sequelize.col('account.type')],
+            order: [[sequelize.col('Journal.date'), 'ASC']],
+            raw: true
+        });
+
+        const trendMap = {};
+        const currentDate = new Date(startDate);
+        const today = new Date();
+        while (currentDate <= today) {
+            const dStr = currentDate.toISOString().split('T')[0];
+            trendMap[dStr] = { date: dStr, income: 0, expense: 0 };
+            currentDate.setDate(currentDate.getDate() + 1);
+        }
+
+        results.forEach(row => {
+            const date = row.date;
+            const type = row.type;
+            const debit = parseFloat(row.totalDebit || 0);
+            const credit = parseFloat(row.totalCredit || 0);
+
+            if (trendMap[date]) {
+                if (type === 'INCOME') {
+                    trendMap[date].income += (credit - debit);
+                } else if (type === 'EXPENSE') {
+                    trendMap[date].expense += (debit - credit);
+                }
+            }
+        });
+
+        return Object.values(trendMap);
+    }
+
+    async getExpenseBreakdown(filters = {}) {
+        const where = {};
+        if (filters.from && filters.to) {
+            where.date = { [Op.between]: [filters.from, filters.to] };
+        }
+
+        const accounts = await Account.findAll({
+            where: {
+                type: 'EXPENSE'
+            },
+            include: [{
+                model: JournalLine,
+                include: [{
+                    model: Journal,
+                    where,
+                    attributes: []
+                }],
+                attributes: ['debit', 'credit']
+            }]
+        });
+
+        const breakdown = [];
+
+        accounts.forEach(acc => {
+            let balance = 0;
+            acc.JournalLines.forEach(line => {
+                const debit = parseFloat(line.debit) || 0;
+                const credit = parseFloat(line.credit) || 0;
+                // Expense: Debit +, Credit -
+                balance += (debit - credit);
+            });
+
+            if (balance > 0) {
+                breakdown.push({
+                    name: acc.name,
+                    value: parseFloat(balance.toFixed(2))
+                });
+            }
+        });
+
+        // Sort by value descending
+        breakdown.sort((a, b) => b.value - a.value);
+
+        return breakdown;
     }
 }
 

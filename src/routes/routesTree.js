@@ -42,6 +42,8 @@ router.get('/', (req, res) => {
           sampleResponse: routeMeta?.sampleResponse || null,
           queryParams: routeMeta?.queryParams || null,
           database: routeMeta?.database || null,
+          calculation: routeMeta?.calculation || null,
+          actions: routeMeta?.actions || null,
           examples: routeMeta?.examples || null,
         });
 
@@ -343,6 +345,26 @@ router.get('/', (req, res) => {
               ` : ''}
             </div>
             ` : ''}
+
+            ${route.calculation ? `
+            <div style="background: #e8f5e9; border-left: 4px solid #4caf50; padding: 15px; margin: 15px 0; border-radius: 4px;">
+              <h4 style="margin: 0 0 10px 0; color: #2e7d32; font-size: 14px;">🧮 Calculation Logic</h4>
+              <p style="font-size: 13px; color: #333; white-space: pre-wrap;">${route.calculation}</p>
+            </div>
+            ` : ''}
+
+            ${route.actions ? `
+            <div style="background: #e3f2fd; border-left: 4px solid #2196f3; padding: 15px; margin: 15px 0; border-radius: 4px;">
+              <h4 style="margin: 0 0 10px 0; color: #1565c0; font-size: 14px;">⚡ Available Actions</h4>
+              <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+                ${route.actions.map(action => `
+                  <span style="background: #2196f3; color: white; padding: 4px 12px; border-radius: 16px; font-size: 12px; font-weight: 600;">
+                    ${action}
+                  </span>
+                `).join('')}
+              </div>
+            </div>
+            ` : ''}
             
             ${(route.examples && route.examples.length > 0) || route.sampleResponse ? `
             <div style="background: #e7f3ff; border-left: 4px solid #2196F3; padding: 15px; margin: 15px 0; border-radius: 4px;">
@@ -389,61 +411,61 @@ router.get('/', (req, res) => {
             ` : ''}
             
             <div class="test-panel">
-              <div class="tabs">
-                <div class="tab active" onclick="switchTab('${routeId}', 'params')">Params</div>
-                <div class="tab" onclick="switchTab('${routeId}', 'body')">Body</div>
-                <div class="tab" onclick="switchTab('${routeId}', 'auth')">Auth</div>
-              </div>
+      <div class="tabs">
+        <div class="tab active" onclick="switchTab('${routeId}', 'params')">Params</div>
+        <div class="tab" onclick="switchTab('${routeId}', 'body')">Body</div>
+        <div class="tab" onclick="switchTab('${routeId}', 'auth')">Auth</div>
+      </div>
 
-              <div class="tab-content" id="${routeId}-params">
-                <div class="form-group">
-                  <label>URL Parameters (e.g. :id)</label>
-                  <div id="${routeId}-url-params"></div>
-                </div>
-                <!-- Query Params could go here -->
-              </div>
-
-              <div class="tab-content" id="${routeId}-body" style="display:none">
-                <div class="form-group">
-                  <label>Request Body (JSON)</label>
-                  <textarea class="form-control" id="${routeId}-request-body">${defaultBody}</textarea>
-                </div>
-              </div>
-
-              <div class="tab-content" id="${routeId}-auth" style="display:none">
-                <div class="form-group">
-                  <label>Authorization Header</label>
-                  <input type="text" class="form-control" id="${routeId}-auth-header" value="${isProtected ? 'Bearer <TOKEN>' : ''}" readonly>
-                  <small style="color: #666">Token is automatically added from login</small>
-                </div>
-              </div>
-
-              <button class="btn btn-primary" onclick="executeRequest('${routeId}', '${route.methods[0]}', '${route.path}')">Send Request 🚀</button>
-
-              <div class="response-area" id="${routeId}-response">
-                <div class="status-line">
-                  <span id="${routeId}-status"></span>
-                  <span id="${routeId}-time"></span>
-                </div>
-                <pre id="${routeId}-response-body"></pre>
-              </div>
-            </div>
-          </div>
+      <div class="tab-content" id="${routeId}-params">
+        <div class="form-group">
+          <label>URL Parameters (e.g. :id)</label>
+          <div id="${routeId}-url-params"></div>
         </div>
-      `;
+        <!-- Query Params could go here -->
+      </div>
+
+      <div class="tab-content" id="${routeId}-body" style="display:none">
+        <div class="form-group">
+          <label>Request Body (JSON)</label>
+          <textarea class="form-control" id="${routeId}-request-body">${defaultBody}</textarea>
+        </div>
+      </div>
+
+      <div class="tab-content" id="${routeId}-auth" style="display:none">
+        <div class="form-group">
+          <label>Authorization Header</label>
+          <input type="text" class="form-control" id="${routeId}-auth-header" value="${isProtected ? 'Bearer <TOKEN>' : ''}" readonly>
+            <small style="color: #666">Token is automatically added from login</small>
+        </div>
+      </div>
+
+      <button class="btn btn-primary" onclick="executeRequest('${routeId}', '${route.methods[0]}', '${route.path}')">Send Request 🚀</button>
+
+      <div class="response-area" id="${routeId}-response">
+        <div class="status-line">
+          <span id="${routeId}-status"></span>
+          <span id="${routeId}-time"></span>
+        </div>
+        <pre id="${routeId}-response-body"></pre>
+      </div>
+    </div>
+          </div >
+        </div >
+    `;
     });
 
     html += `
-        </div>
-      </div>
+        </div >
+      </div >
     `;
   });
 
   html += `
-      </div>
-    </div>
+      </div >
+    </div >
 
-    <!-- Login Modal -->
+    < !--Login Modal-- >
     <div class="login-modal" id="loginModal">
       <div class="login-box">
         <h3>Login to ERP</h3>
@@ -656,9 +678,9 @@ router.get('/', (req, res) => {
       // Start
       init();
     </script>
-  </body>
-  </html>
-  `;
+  </body >
+  </html >
+    `;
 
   res.send(html);
 });

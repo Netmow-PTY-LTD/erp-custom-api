@@ -17,12 +17,15 @@ const createOrder = z.object({
     billing_address: z.string().optional(),
     notes: z.string().optional(),
     due_date: z.string().optional(),
+    delivery_date: z.string().optional(),
     items: z.array(z.object({
         product_id: z.number().int().positive(),
         quantity: z.number().int().positive(),
         unit_price: z.number().positive(),
         discount: z.number().min(0).optional(),
-        line_total: z.number().min(0).optional()
+        line_total: z.number().min(0).optional(),
+        notes: z.string().optional(),
+        remark: z.string().optional()
     })).min(1, 'At least one item is required')
 });
 

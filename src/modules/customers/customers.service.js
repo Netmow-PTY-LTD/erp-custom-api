@@ -12,7 +12,10 @@ class CustomerService {
             credit_limit: customerData.credit_limit ? parseFloat(customerData.credit_limit) : 0,
             outstanding_balance: customerData.outstanding_balance ? parseFloat(customerData.outstanding_balance) : 0,
             latitude: customerData.latitude ? parseFloat(customerData.latitude) : null,
-            longitude: customerData.longitude ? parseFloat(customerData.longitude) : null
+            longitude: customerData.longitude ? parseFloat(customerData.longitude) : null,
+            purchase_amount: customerData.purchase_amount ? parseFloat(customerData.purchase_amount) : 0,
+            paid_amount: customerData.paid_amount ? parseFloat(customerData.paid_amount) : 0,
+            due_amount: customerData.due_amount ? parseFloat(customerData.due_amount) : 0
         };
 
         // Remove image_url from response

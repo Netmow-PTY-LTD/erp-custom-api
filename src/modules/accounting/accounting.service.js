@@ -194,21 +194,23 @@ class AccountingService {
 
         // Transform to add running balance
         let currentBalance = openingBalance;
-        const account = await AccountingRepository.findAccountByCode(filters.code); // Assuming we identify debit nature
+        const account = await AccountingRepository.findAccountById(accountId);
+        if (!account) throw new Error('Account not found');
         // Actually we need to fetch account details if we didn't pass it. 
         // Repo already handled account finding internally? No, Repo takes ID.
         // Let's assume we know nature for now.
 
-        // We need account type to know direction of balance
-        // If we don't have it easily, assume Debit increases Balance
+        const isDebitNature = ['ASSET', 'EXPENSE'].includes(account.type);
 
         const enhancedLines = lines.map(line => {
             const dr = parseFloat(line.debit);
             const cr = parseFloat(line.credit);
-            // Standard Logic: Asset/Exp/Drawings: Dr +, Cr -
-            // Liab/Eq/Rev: Cr +, Dr -
-            // For simple display, usually Dr is + and Cr is -
-            currentBalance += (dr - cr);
+
+            if (isDebitNature) {
+                currentBalance += (dr - cr);
+            } else {
+                currentBalance += (cr - dr);
+            }
 
             return {
                 date: line.Journal.date,
@@ -242,8 +244,7 @@ class AccountingService {
         };
     }
 
-    async getAccounts(query = {}) {
-        // Fetch all accounts to build the tree
+    async getFormattedAccountList() {
         const { rows: allAccounts } = await AccountingRepository.findAllAccounts({}, null, null);
 
         // 1. Build Map and standardise objects
@@ -254,6 +255,7 @@ class AccountingService {
                 id: acc.id,
                 code: acc.code,
                 name: acc.name,
+                label: acc.name,
                 type: type,
                 parent: acc.parent_id,
                 children: [] // Init children
@@ -263,9 +265,6 @@ class AccountingService {
 
         // 2. Build Tree and Calculate Levels
         const rootAccounts = [];
-
-        // Helper for level (though in tree level is implicit depth, explicit is nice)
-        // We can calc level during traversal or just use the map parent pointers
 
         // Single pass to link parents
         accountMap.forEach(acc => {
@@ -300,8 +299,13 @@ class AccountingService {
         };
         processNode(rootAccounts, 0);
 
+        return flatList;
+    }
+
+    async getAccounts(query = {}) {
+        let result = await this.getFormattedAccountList();
+
         // 4. In-memory Search (if applied)
-        let result = flatList;
         if (query.search) {
             const searchLower = query.search.toLowerCase();
             result = result.filter(acc =>
@@ -352,11 +356,13 @@ class AccountingService {
     }
 
     async getIncomeHeads() {
-        return await AccountingRepository.findAccountsByTypes(['INCOME']);
+        const accounts = await this.getFormattedAccountList();
+        return accounts.filter(acc => acc.type === 'Income');
     }
 
     async getExpenseHeads() {
-        return await AccountingRepository.findAccountsByTypes(['EXPENSE']);
+        const accounts = await this.getFormattedAccountList();
+        return accounts.filter(acc => acc.type === 'Expense');
     }
 
     async createIncomeHead(data) {
@@ -421,6 +427,108 @@ class AccountingService {
         return await this.getAccountDetails(account.id);
     }
 
+    async createHeadWiseExpense(data) {
+        // 1. Verify Debit Head (Expense Account)
+        const debitHead = await AccountingRepository.findAccountById(data.debit_head_id);
+        if (!debitHead) {
+            throw new Error(`Debit Head (Expense Account) not found with ID: ${data.debit_head_id}`);
+        }
+
+        // 2. Verify Credit Head (Payment Method - Asset Account)
+        let responseCreditHead;
+        if (typeof data.payment_method === 'number') {
+            responseCreditHead = await AccountingRepository.findAccountById(data.payment_method);
+        } else {
+            responseCreditHead = await AccountingRepository.findAccountByName(data.payment_method);
+        }
+
+        if (!responseCreditHead) {
+            // Try lenient search if exact match fails?
+            // Optional: responseCreditHead = await AccountingRepository.findOne({ where: { name: { [Op.like]: `%${data.payment_method}%` } } });
+            throw new Error(`Payment account '${data.payment_method}' not found. Please verify the account name or create it first.`);
+        }
+
+        return await sequelize.transaction(async (t) => {
+            // Create Transaction Record
+            const transactionData = {
+                type: 'EXPENSE',
+                amount: data.amount,
+                payment_mode: responseCreditHead.name.toLowerCase().includes('bank') ? 'BANK' : 'CASH',
+                date: data.expense_date,
+                description: data.title + (data.description ? ` - ${data.description}` : ''),
+            };
+
+            const transaction = await AccountingRepository.createTransaction(transactionData, t);
+
+            // Create Journal Entry
+            const journalData = {
+                date: data.expense_date,
+                reference_type: 'TRANSACTION',
+                reference_id: transaction.id,
+                narration: data.title + (data.description ? ` - ${data.description}` : '') + (data.reference_number ? ` (Ref: ${data.reference_number})` : '')
+            };
+
+            const linesData = [
+                { account_id: debitHead.id, debit: data.amount, credit: 0 }, // Dr Expenses
+                { account_id: responseCreditHead.id, debit: 0, credit: data.amount } // Cr Asset (Bank/Cash)
+            ];
+
+            const journal = await AccountingRepository.createJournalEntry(journalData, linesData, t);
+
+            return { transaction, journal };
+        });
+    }
+
+    async createHeadWiseIncome(data) {
+        // 1. Verify Credit Head (Income Account)
+        const creditHead = await AccountingRepository.findAccountById(data.income_head_id);
+        if (!creditHead) {
+            throw new Error(`Income Head (Income Account) not found with ID: ${data.income_head_id}`);
+        }
+
+        // 2. Verify Debit Head (Received In - Asset Account)
+        let responseDebitHead;
+        if (typeof data.payment_method === 'number') {
+            responseDebitHead = await AccountingRepository.findAccountById(data.payment_method);
+        } else {
+            responseDebitHead = await AccountingRepository.findAccountByName(data.payment_method);
+        }
+
+        if (!responseDebitHead) {
+            throw new Error(`Payment account '${data.payment_method}' not found. Please verify the account name or create it first.`);
+        }
+
+        return await sequelize.transaction(async (t) => {
+            // Create Transaction Record
+            const transactionData = {
+                type: 'INCOME',
+                amount: data.amount,
+                payment_mode: responseDebitHead.name.toLowerCase().includes('bank') ? 'BANK' : 'CASH',
+                date: data.income_date,
+                description: data.title + (data.description ? ` - ${data.description}` : ''),
+            };
+
+            const transaction = await AccountingRepository.createTransaction(transactionData, t);
+
+            // Create Journal Entry
+            const journalData = {
+                date: data.income_date,
+                reference_type: 'TRANSACTION',
+                reference_id: transaction.id,
+                narration: data.title + (data.description ? ` - ${data.description}` : '') + (data.reference_number ? ` (Ref: ${data.reference_number})` : '')
+            };
+
+            const linesData = [
+                { account_id: responseDebitHead.id, debit: data.amount, credit: 0 }, // Dr Asset (Bank/Cash)
+                { account_id: creditHead.id, debit: 0, credit: data.amount } // Cr Income
+            ];
+
+            const journal = await AccountingRepository.createJournalEntry(journalData, linesData, t);
+
+            return { transaction, journal };
+        });
+    }
+
     async createAccount(data) {
         const account = await AccountingRepository.createAccount(data);
         return await this.getAccountDetails(account.id);
@@ -483,8 +591,100 @@ class AccountingService {
         return await AccountingRepository.getProfitAndLoss(filters);
     }
 
+    async getProductProfitLoss(filters) {
+        return await AccountingRepository.getProductProfitLoss(filters);
+    }
+
+    async getIncomeExpenseTrend(days = 30) {
+        return await AccountingRepository.getIncomeExpenseTrend(days);
+    }
+
+    async getExpenseBreakdown(filters) {
+        return await AccountingRepository.getExpenseBreakdown(filters);
+    }
+
     async getOverview() {
-        return await AccountingRepository.getFinancialOverview();
+        const formatDate = (date) => date.toISOString().split('T')[0];
+
+        const now = new Date();
+        const today = formatDate(now);
+
+        // Start of Week (assuming Monday)
+        const dayOfWeek = now.getDay(); // 0 is Sunday
+        const diff = now.getDate() - dayOfWeek + (dayOfWeek === 0 ? -6 : 1); // Adjust when day is Sunday
+        const startOfWeekDate = new Date(now);
+        startOfWeekDate.setDate(diff);
+        const startOfWeek = formatDate(startOfWeekDate);
+
+        // Start of Month
+        const startOfMonth = formatDate(new Date(now.getFullYear(), now.getMonth(), 1));
+
+        // Start of Year
+        const startOfYear = formatDate(new Date(now.getFullYear(), 0, 1));
+
+        const [todayStats, weekStats, monthStats, yearStats] = await Promise.all([
+            AccountingRepository.getTotalsByDateRange(today, today),
+            AccountingRepository.getTotalsByDateRange(startOfWeek, today), // Up to today
+            AccountingRepository.getTotalsByDateRange(startOfMonth, today),
+            AccountingRepository.getTotalsByDateRange(startOfYear, today)
+        ]);
+
+        return {
+            today: todayStats,
+            this_week: weekStats,
+            this_month: monthStats,
+            this_year: yearStats
+        };
+    }
+
+    async getRecentActivity() {
+        // Fetch last 5 transactions
+        const { rows } = await AccountingRepository.findAllTransactions({}, 5, 0);
+
+        const formatCurrency = (amount) => {
+            return 'RM ' + parseFloat(amount).toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 2 });
+        };
+
+        const formatDate = (dateString) => {
+            const date = new Date(dateString);
+            // Format: January 16th, 2026
+            // Using Intl.DateTimeFormat for "Month Day, Year" then adding 'th' manually or simple approach
+            const options = { month: 'long', day: 'numeric', year: 'numeric' };
+            const part = date.toLocaleDateString('en-US', options);
+            // part is "January 16, 2026". We need "16th".
+            // Let's split and reconstruct or use a helper
+
+            const day = date.getDate();
+            const suffix = (day) => {
+                if (day > 3 && day < 21) return 'th';
+                switch (day % 10) {
+                    case 1: return "st";
+                    case 2: return "nd";
+                    case 3: return "rd";
+                    default: return "th";
+                }
+            };
+
+            const month = date.toLocaleDateString('en-US', { month: 'long' });
+            const year = date.getFullYear();
+
+            return `${month} ${day}${suffix(day)}, ${year}`;
+        };
+
+        return rows.map(tx => {
+            const isIncome = ['INCOME', 'SALES', 'OTHER_INCOME', 'PAYMENT_IN'].includes(tx.type);
+            const isExpense = ['EXPENSE', 'PURCHASE', 'PAYMENT_OUT', 'SURGEON_FEE', 'SALES_RETURN'].includes(tx.type);
+
+            let amountStr = formatCurrency(tx.amount);
+            if (isIncome) amountStr = '+ ' + amountStr;
+            else if (isExpense) amountStr = '- ' + amountStr;
+
+            return {
+                title: tx.description || tx.type,
+                date: formatDate(tx.date),
+                amount: amountStr
+            };
+        });
     }
 }
 

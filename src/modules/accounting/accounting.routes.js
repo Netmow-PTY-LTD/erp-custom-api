@@ -5,7 +5,7 @@ const { verifyToken } = require('../../core/middleware/auth');
 const { moduleCheck } = require('../../core/middleware/moduleCheck');
 const { handlerWithFields } = require('../../core/utils/zodTypeView');
 const validate = require('../../core/middleware/validate');
-const { createAccount, updateAccount, createJournal } = require('./accounting.validation');
+const { createAccount, updateAccount, createJournal, createHeadWiseExpense, createHeadWiseIncome } = require('./accounting.validation');
 
 // Module name for routes-tree grouping
 router.moduleName = 'Accounting';
@@ -114,6 +114,7 @@ router.routesMeta = [
                 transactions: ['id', 'type', 'amount', 'date', 'description', 'payment_mode']
             }
         },
+        calculation: 'No complex calculation.\nReturns raw transaction records which are the source for auto-generated Journal Entries.',
         queryParams: {
             page: 'Page number (default 1)',
             limit: 'Items per page (default 20)',
@@ -205,6 +206,7 @@ router.routesMeta = [
             },
             relationships: ['journals.id -> journal_lines.journal_id', 'journal_lines.account_id -> accounts.id']
         },
+        calculation: 'Aggregation: Groups Journal Lines by Journal ID.\nValidation: Sum(Debit) must equal Sum(Credit) for each Journal Entry.',
         queryParams: {
             from: 'Start Date (YYYY-MM-DD)',
             to: 'End Date (YYYY-MM-DD)'
@@ -246,6 +248,7 @@ router.routesMeta = [
                 journals: ['date', 'narration']
             }
         },
+        calculation: 'Running Balance Strategy:\n1. Asset/Expense Types: Balance = Prev Balance + Debit - Credit\n2. Liability/Equity/Income: Balance = Prev Balance + Credit - Debit',
         queryParams: {
             from: 'Start Date',
             to: 'End Date'
@@ -286,6 +289,7 @@ router.routesMeta = [
             },
             sideEffects: ['Aggregates all debits and credits per account']
         },
+        calculation: '1. Account Total Debit = SUM(JournalLines.debit)\n2. Account Total Credit = SUM(JournalLines.credit)\n3. Validation: Total System Debits must equal Total System Credits',
         queryParams: {
             date: 'As of Date (YYYY-MM-DD)'
         },
@@ -326,6 +330,7 @@ router.routesMeta = [
             },
             sideEffects: ['Aggregates Income and Expense accounts']
         },
+        calculation: '1. Net Income (Income Accounts) = SUM(Credit) - SUM(Debit)\n2. Net Expense (Expense Accounts) = SUM(Debit) - SUM(Credit)\n3. Net Profit = Total Net Income - Total Net Expense',
         queryParams: {
             from: 'Start Date (YYYY-MM-DD)',
             to: 'End Date (YYYY-MM-DD)'
@@ -351,6 +356,120 @@ router.routesMeta = [
         ]
     },
     {
+        path: '/reports/product-profit-loss',
+        method: 'GET',
+        middlewares: [],
+        handler: (req, res) => accountingController.getProductProfitLoss(req, res),
+        description: 'Get Product Item Wise Profit and Loss',
+        database: {
+            tables: ['order_items', 'orders', 'products'],
+            mainTable: 'order_items',
+            fields: {
+                order_items: ['line_total', 'quantity', 'purchase_cost'],
+                products: ['name', 'sku']
+            },
+            sideEffects: ['Aggregates sales revenue and cost']
+        },
+        calculation: '1. Revenue = SUM(line_total)\n2. Cost = SUM(quantity * purchase_cost)\n3. Profit = Revenue - Cost',
+        queryParams: {
+            from: 'Start Date (YYYY-MM-DD)',
+            to: 'End Date (YYYY-MM-DD)'
+        },
+        examples: [
+            {
+                title: 'Get Product P&L',
+                description: 'View profit per product',
+                url: '/api/accounting/reports/product-profit-loss?from=2026-01-01&to=2026-01-31',
+                method: 'GET',
+                response: {
+                    status: true,
+                    message: 'Product Profit and Loss report retrieved successfully',
+                    data: [
+                        {
+                            sku: 'WID-001',
+                            name: 'Premium Widget',
+                            qty: 10.00,
+                            salesPrice: 100.00,
+                            salesAmount: 1000.00,
+                            costPrice: 50.00,
+                            costAmount: 500.00,
+                            profitPrice: 50.00,
+                            profitAmount: 500.00,
+                            profitRatio: '50%'
+                        }
+                    ]
+                }
+            }
+        ]
+    },
+    {
+        path: '/reports/income-expense-trend',
+        method: 'GET',
+        middlewares: [],
+        handler: (req, res) => accountingController.getIncomeExpenseTrend(req, res),
+        description: 'Get Daily Income vs Expense trend for Last X days',
+        database: {
+            tables: ['journals', 'journal_lines', 'accounts'],
+            sideEffects: ['Sums Income and Expense account balances per day']
+        },
+        queryParams: {
+            days: 'Number of days to look back (default 30)'
+        },
+        examples: [
+            {
+                title: 'Get 30 Day Trend',
+                description: 'View daily income vs expense for the last 30 days',
+                url: '/api/accounting/reports/income-expense-trend?days=30',
+                method: 'GET',
+                response: {
+                    status: true,
+                    message: 'Income vs Expense trend retrieved successfully',
+                    data: [
+                        { date: '2026-01-01', income: 500, expense: 200 },
+                        { date: '2026-01-02', income: 700, expense: 300 }
+                    ]
+                }
+            }
+        ]
+    },
+    {
+        path: '/reports/expense-breakdown',
+        method: 'GET',
+        middlewares: [],
+        handler: (req, res) => accountingController.getExpenseBreakdown(req, res),
+        description: 'Get Expense Breakdown by Account (for Pie Chart)',
+        database: {
+            tables: ['accounts', 'journal_lines', 'journals'],
+            mainTable: 'accounts',
+            sideEffects: ['Aggregates expense account balances']
+        },
+        calculation: 'For each EXPENSE account: Balance = SUM(Debit) - SUM(Credit)',
+        queryParams: {
+            from: 'Start Date (YYYY-MM-DD)',
+            to: 'End Date (YYYY-MM-DD)'
+        },
+        examples: [
+            {
+                title: 'Get Expense Breakdown',
+                description: 'View expense distribution by account for pie chart',
+                url: '/api/accounting/reports/expense-breakdown?from=2026-01-01&to=2026-01-31',
+                method: 'GET',
+                response: {
+                    status: true,
+                    message: 'Expense breakdown retrieved successfully',
+                    data: [
+                        { name: 'Salaries', value: 4500 },
+                        { name: 'Rent', value: 2000 },
+                        { name: 'Utilities', value: 800 },
+                        { name: 'Marketing', value: 1200 },
+                        { name: 'Staff Training', value: 500 },
+                        { name: 'Office Supplies', value: 300 }
+                    ]
+                }
+            }
+        ]
+    },
+    {
         path: '/overview',
         method: 'GET',
         middlewares: [],
@@ -360,6 +479,7 @@ router.routesMeta = [
             tables: ['accounts', 'journal_lines'],
             sideEffects: ['Sums Income and Expense account balances']
         },
+        calculation: 'Time-Period Aggregation (Today, Week, Month, Year):\n1. Income = SUM(Income Accounts Credit) - SUM(Income Accounts Debit)\n2. Expense = SUM(Expense Accounts Debit) - SUM(Expense Accounts Credit)\n3. Net = Income - Expense',
         examples: [
             {
                 title: 'Get Financial Dashboard',
@@ -370,10 +490,47 @@ router.routesMeta = [
                     status: true,
                     message: 'Financial overview retrieved successfully',
                     data: {
-                        total_income: 50000,
-                        total_expense: 20000,
-                        net_profit: 30000
+                        today: { income: 500, expense: 100, net: 400 },
+                        this_week: { income: 2500, expense: 500, net: 2000 },
+                        this_month: { income: 10000, expense: 2000, net: 8000 },
+                        this_year: { income: 50000, expense: 20000, net: 30000 }
                     }
+                }
+            }
+        ]
+    },
+    {
+        path: '/recent-activity',
+        method: 'GET',
+        middlewares: [],
+        handler: (req, res) => accountingController.getRecentActivity(req, res),
+        description: 'Get Recent Activity (formatted list)',
+        database: {
+            tables: ['transactions'],
+            sideEffects: ['Fetches last 5 transactions']
+        },
+        calculation: '1. Fetches latest 5 records from Transaction table.\n2. Formats Amount: Income types (+), Expense types (-).\n3. Formats Date to human readable string.',
+        examples: [
+            {
+                title: 'Get Recent Activity',
+                description: 'Dashboard widget data',
+                url: '/api/accounting/recent-activity',
+                method: 'GET',
+                response: {
+                    status: true,
+                    message: 'Recent activity retrieved successfully',
+                    data: [
+                        {
+                            title: "Consulting Fee Received",
+                            date: "January 16th, 2026",
+                            amount: "+ RM 1,500"
+                        },
+                        {
+                            title: "Office Rent Payment",
+                            date: "January 16th, 2026",
+                            amount: "- RM 2,000"
+                        }
+                    ]
                 }
             }
         ]
@@ -393,6 +550,7 @@ router.routesMeta = [
                 accounts: ['id', 'code', 'name', 'type', 'parent_id']
             },
         },
+        calculation: 'Hierarchy Building:\n1. Fetches flat list of accounts.\n2. Maps Parent IDs to build a Tree structure.\n3. Calculates "Level" (depth) for indentation.\n4. Flattens tree back to list for UI display (DFS order).',
         queryParams: {
             page: 'Page number (default: 1)',
             limit: 'Items per page (default: 10)',
@@ -414,9 +572,9 @@ router.routesMeta = [
                         totalPage: 5
                     },
                     data: [
-                        { id: 1, code: "1000", name: "Assets", type: "Asset", parent: null, level: 0 },
-                        { id: 2, code: "1001", name: "Current Assets", type: "Asset", parent: 1, level: 1 },
-                        { id: 3, code: "1002", name: "Cash in Hand", type: "Asset", parent: 2, level: 2 }
+                        { id: 1, code: "1000", name: "Assets", label: "Assets", type: "Asset", parent: null, level: 0 },
+                        { id: 2, code: "1001", name: "Current Assets", label: "Current Assets", type: "Asset", parent: 1, level: 1 },
+                        { id: 3, code: "1002", name: "Cash in Hand", label: "Cash in Hand", type: "Asset", parent: 2, level: 2 }
                     ]
                 }
             }
@@ -435,6 +593,7 @@ router.routesMeta = [
                 accounts: ['id', 'code', 'name', 'type']
             }
         },
+        calculation: 'Filters the Chart of Accounts for Type = "Income".',
         examples: [
             {
                 title: 'List Income Heads',
@@ -445,7 +604,7 @@ router.routesMeta = [
                     status: true,
                     message: 'Income Heads retrieved successfully',
                     data: [
-                        { id: 2, code: '4000', name: 'Sales', type: 'INCOME' }
+                        { id: 2, code: '4000', name: 'Sales', label: 'Sales', type: 'Income', parent: null, level: 0 }
                     ]
                 }
             }
@@ -464,6 +623,7 @@ router.routesMeta = [
                 accounts: ['id', 'code', 'name', 'type']
             }
         },
+        calculation: 'Filters the Chart of Accounts for Type = "Expense".',
         examples: [
             {
                 title: 'List Expense Heads',
@@ -474,7 +634,7 @@ router.routesMeta = [
                     status: true,
                     message: 'Expense Heads retrieved successfully',
                     data: [
-                        { id: 1, code: '5000', name: 'Purchase', type: 'EXPENSE' }
+                        { id: 1, code: '5000', name: 'Purchase', label: 'Purchase', type: 'Expense', parent: null, level: 0 }
                     ]
                 }
             }
@@ -592,6 +752,96 @@ router.routesMeta = [
                     status: true,
                     message: 'Expense Head updated successfully',
                     data: { id: 106, code: '5500', name: 'Local Travel', type: 'EXPENSE' }
+                }
+            }
+        ]
+    },
+    {
+        path: '/expenses/head-wise',
+        method: 'POST',
+        middlewares: [validate(createHeadWiseExpense)],
+        handler: handlerWithFields((req, res) => accountingController.createHeadWiseExpense(req, res), createHeadWiseExpense),
+        description: 'Create Head-wise Expense',
+        database: {
+            tables: ['transactions', 'journals'],
+            sideEffects: ['Creates Transaction', 'Creates Journal Entry']
+        },
+        request: {
+            title: "test expanse",
+            expense_date: "2026-01-16",
+            debit_head_id: 10,
+            description: "test",
+            amount: 2500,
+            payment_method: "DBBL 2025",
+            reference_number: "wertyu"
+        },
+        examples: [
+            {
+                title: 'Create Head Wise Expense',
+                description: 'Record a specific expense against a head',
+                url: '/api/accounting/expenses/head-wise',
+                method: 'POST',
+                request: {
+                    title: "test expanse",
+                    expense_date: "2026-01-16",
+                    debit_head_id: 10,
+                    description: "test",
+                    amount: 2500,
+                    payment_method: "DBBL 2025",
+                    reference_number: "wertyu"
+                },
+                response: {
+                    status: true,
+                    message: 'Expense recorded successfully',
+                    data: {
+                        transaction: { id: 50, amount: 2500, type: 'EXPENSE' },
+                        journal: { id: 100, narration: 'test expanse - test' }
+                    }
+                }
+            }
+        ]
+    },
+    {
+        path: '/incomes/head-wise',
+        method: 'POST',
+        middlewares: [validate(createHeadWiseIncome)],
+        handler: handlerWithFields((req, res) => accountingController.createHeadWiseIncome(req, res), createHeadWiseIncome),
+        description: 'Create Head-wise Income',
+        database: {
+            tables: ['transactions', 'journals'],
+            sideEffects: ['Creates Transaction', 'Creates Journal Entry']
+        },
+        request: {
+            title: "Project Alpha",
+            income_date: "2026-01-16",
+            income_head_id: 8,
+            description: "Consulting Fee",
+            amount: 5000,
+            payment_method: "Bank",
+            reference_number: "REF123"
+        },
+        examples: [
+            {
+                title: 'Create Head Wise Income',
+                description: 'Record a specific income against a head',
+                url: '/api/accounting/incomes/head-wise',
+                method: 'POST',
+                request: {
+                    title: "Project Alpha",
+                    income_date: "2026-01-16",
+                    income_head_id: 8,
+                    description: "Consulting Fee",
+                    amount: 5000,
+                    payment_method: "Bank",
+                    reference_number: "REF123"
+                },
+                response: {
+                    status: true,
+                    message: 'Income recorded successfully',
+                    data: {
+                        transaction: { id: 51, amount: 5000, type: 'INCOME' },
+                        journal: { id: 101, narration: 'Project Alpha - Consulting Fee' }
+                    }
                 }
             }
         ]

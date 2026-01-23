@@ -50,6 +50,9 @@ router.routesMeta = [
                     tax_id: 'TAX123456',
                     credit_limit: 10000.00,
                     outstanding_balance: 2500.00,
+                    purchase_amount: 5000.00,
+                    paid_amount: 2500.00,
+                    due_amount: 2500.00,
                     customer_type: 'business',
                     is_active: true,
                     created_at: '2025-12-02T10:00:00.000Z'

@@ -56,7 +56,7 @@ class SalesRouteRepository {
                 {
                     model: Staff,
                     as: 'assignedStaffMembers',
-                    attributes: ['id', 'first_name', 'last_name', 'email', 'position'],
+                    attributes: ['id', 'first_name', 'last_name', 'email', 'position', 'thumb_url'],
                     through: {
                         attributes: ['assigned_at', 'assigned_by']
                     }
@@ -144,7 +144,7 @@ class SalesRouteRepository {
                     {
                         model: Staff,
                         as: 'assignedStaffMembers',
-                        attributes: ['id', 'first_name', 'last_name', 'email', 'position'],
+                        attributes: ['id', 'first_name', 'last_name', 'email', 'position', 'thumb_url'],
                         through: {
                             attributes: ['assigned_at', 'assigned_by']
                         }
@@ -170,7 +170,7 @@ class SalesRouteRepository {
                 {
                     model: Staff,
                     as: 'assignedStaffMembers',
-                    attributes: ['id', 'first_name', 'last_name', 'email', 'position'],
+                    attributes: ['id', 'first_name', 'last_name', 'email', 'position', 'thumb_url'],
                     through: {
                         attributes: ['assigned_at', 'assigned_by']
                     }

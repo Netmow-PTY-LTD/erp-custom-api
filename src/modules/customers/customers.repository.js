@@ -35,6 +35,40 @@ class CustomerRepository {
                             AND o.status != 'cancelled'
                         )`),
                         'total_sales'
+                    ],
+                    [
+                        sequelize.literal(`(
+                            SELECT COALESCE(SUM(total_amount), 0)
+                            FROM orders AS o
+                            WHERE o.customer_id = Customer.id
+                            AND o.status != 'cancelled'
+                        )`),
+                        'purchase_amount'
+                    ],
+                    [
+                        sequelize.literal(`(
+                            SELECT COALESCE(SUM(p.amount), 0)
+                            FROM payments AS p
+                            INNER JOIN orders AS o ON p.order_id = o.id
+                            WHERE o.customer_id = Customer.id
+                            AND p.status = 'completed'
+                        )`),
+                        'paid_amount'
+                    ],
+                    [
+                        sequelize.literal(`(
+                            (SELECT COALESCE(SUM(total_amount), 0)
+                            FROM orders AS o
+                            WHERE o.customer_id = Customer.id
+                            AND o.status != 'cancelled')
+                            -
+                            (SELECT COALESCE(SUM(p.amount), 0)
+                            FROM payments AS p
+                            INNER JOIN orders AS o ON p.order_id = o.id
+                            WHERE o.customer_id = Customer.id
+                            AND p.status = 'completed')
+                        )`),
+                        'due_amount'
                     ]
                 ]
             },
@@ -54,6 +88,53 @@ class CustomerRepository {
 
     async findById(id) {
         return await Customer.findByPk(id, {
+            attributes: {
+                include: [
+                    [
+                        sequelize.literal(`(
+                            SELECT COALESCE(SUM(total_amount), 0)
+                            FROM orders AS o
+                            WHERE o.customer_id = Customer.id
+                            AND o.status != 'cancelled'
+                        )`),
+                        'total_sales'
+                    ],
+                    [
+                        sequelize.literal(`(
+                            SELECT COALESCE(SUM(total_amount), 0)
+                            FROM orders AS o
+                            WHERE o.customer_id = Customer.id
+                            AND o.status != 'cancelled'
+                        )`),
+                        'purchase_amount'
+                    ],
+                    [
+                        sequelize.literal(`(
+                            SELECT COALESCE(SUM(p.amount), 0)
+                            FROM payments AS p
+                            INNER JOIN orders AS o ON p.order_id = o.id
+                            WHERE o.customer_id = Customer.id
+                            AND p.status = 'completed'
+                        )`),
+                        'paid_amount'
+                    ],
+                    [
+                        sequelize.literal(`(
+                            (SELECT COALESCE(SUM(total_amount), 0)
+                            FROM orders AS o
+                            WHERE o.customer_id = Customer.id
+                            AND o.status != 'cancelled')
+                            -
+                            (SELECT COALESCE(SUM(p.amount), 0)
+                            FROM payments AS p
+                            INNER JOIN orders AS o ON p.order_id = o.id
+                            WHERE o.customer_id = Customer.id
+                            AND p.status = 'completed')
+                        )`),
+                        'due_amount'
+                    ]
+                ]
+            },
             include: [
                 {
                     model: CustomerImage,

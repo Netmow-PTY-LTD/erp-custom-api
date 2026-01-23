@@ -180,7 +180,7 @@ const Order = sequelize.define('Order', {
         defaultValue: DataTypes.NOW
     },
     status: {
-        type: DataTypes.ENUM('pending', 'confirmed', 'processing', 'shipped', 'in_transit', 'delivered', 'cancelled'),
+        type: DataTypes.ENUM('pending', 'confirmed', 'processing', 'shipped', 'in_transit', 'delivered', 'cancelled', 'returned', 'failed'),
         defaultValue: 'pending'
     },
     total_amount: {
@@ -233,6 +233,10 @@ const Order = sequelize.define('Order', {
         allowNull: true
     },
     due_date: {
+        type: DataTypes.DATE,
+        allowNull: true
+    },
+    delivery_date: {
         type: DataTypes.DATE,
         allowNull: true
     },
@@ -325,6 +329,23 @@ const OrderItem = sequelize.define('OrderItem', {
             const value = this.getDataValue('total_price');
             return value === null ? null : parseFloat(value);
         }
+    },
+    purchase_cost: {
+        type: DataTypes.DECIMAL(10, 2),
+        allowNull: true,
+        defaultValue: 0.00,
+        get() {
+            const value = this.getDataValue('purchase_cost');
+            return value === null ? null : parseFloat(value);
+        }
+    },
+    notes: {
+        type: DataTypes.TEXT,
+        allowNull: true
+    },
+    remark: {
+        type: DataTypes.TEXT,
+        allowNull: true
     },
     created_at: {
         type: DataTypes.DATE,
@@ -656,9 +677,10 @@ Delivery.belongsTo(Order, { foreignKey: 'order_id' });
 
 // Order Staff Assignments
 Order.belongsToMany(Staff, { through: OrderStaff, as: 'assignedStaff', foreignKey: 'order_id' });
+
 Staff.belongsToMany(Order, { through: OrderStaff, as: 'assignedOrders', foreignKey: 'staff_id' });
 
-
+// SalesRoute Associations
 
 module.exports = {
     Warehouse,

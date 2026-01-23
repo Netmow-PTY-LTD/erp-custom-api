@@ -1,6 +1,7 @@
 const { User: Staff } = require('../users/user.model');
 const { Department } = require('../departments/departments.model');
 const { Role } = require('../roles/role.model');
+const { PayrollStructure } = require('../payroll/payroll.structure.model');
 const { Op } = require('sequelize');
 
 class StaffRepository {
@@ -44,6 +45,12 @@ class StaffRepository {
                     model: Role,
                     as: 'role',
                     attributes: ['id', 'name', 'display_name']
+                },
+                {
+                    model: PayrollStructure,
+                    as: 'payrollStructure',
+                    attributes: ['basic_salary', 'allowances', 'deductions', 'bank_details'],
+                    required: false // LEFT JOIN to include staff even without payroll structure
                 }
             ]
         });
@@ -61,6 +68,12 @@ class StaffRepository {
                     model: Role,
                     as: 'role',
                     attributes: ['id', 'name', 'display_name']
+                },
+                {
+                    model: PayrollStructure,
+                    as: 'payrollStructure',
+                    attributes: ['basic_salary', 'allowances', 'deductions', 'bank_details'],
+                    required: false // LEFT JOIN to include staff even without payroll structure
                 }
             ]
         });

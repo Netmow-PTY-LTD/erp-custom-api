@@ -175,6 +175,57 @@ class ProductRepository {
             totalStock: totalStockResult || 0
         };
     }
+
+    async getProductOrders(productId, filters = {}, limit = 10, offset = 0) {
+        const { Order, OrderItem } = require('../sales/sales.models');
+        const { Customer } = require('../customers/customers.model');
+        
+        const where = {};
+        
+        // Add status filter if provided
+        if (filters.status) {
+            where.status = filters.status;
+        }
+        
+        // Add date range filters if provided
+        if (filters.start_date || filters.end_date) {
+            where.order_date = {};
+            if (filters.start_date) {
+                where.order_date[Op.gte] = new Date(filters.start_date);
+            }
+            if (filters.end_date) {
+                where.order_date[Op.lte] = new Date(filters.end_date);
+            }
+        }
+
+        return await Order.findAndCountAll({
+            where,
+            include: [
+                {
+                    model: OrderItem,
+                    as: 'items',
+                    where: { product_id: productId },
+                    required: true,
+                    include: [
+                        {
+                            model: Product,
+                            as: 'product',
+                            attributes: ['id', 'name', 'sku', 'image_url']
+                        }
+                    ]
+                },
+                {
+                    model: Customer,
+                    as: 'customer',
+                    attributes: ['id', 'name', 'email', 'phone', 'company']
+                }
+            ],
+            limit,
+            offset,
+            order: [['order_date', 'DESC']],
+            distinct: true
+        });
+    }
 }
 
 class CategoryRepository {

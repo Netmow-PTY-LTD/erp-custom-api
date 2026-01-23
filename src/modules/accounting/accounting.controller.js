@@ -90,10 +90,52 @@ class AccountingController {
         }
     }
 
+    async getProductProfitLoss(req, res) {
+        try {
+            const { from, to } = req.query;
+            const report = await AccountingService.getProductProfitLoss({ from, to });
+            return success(res, 'Product Profit and Loss report retrieved successfully', report);
+        } catch (err) {
+            return error(res, err.message, 500);
+        }
+    }
+
+    async getIncomeExpenseTrend(req, res) {
+        try {
+            const days = parseInt(req.query.days) || 30;
+            const trend = await AccountingService.getIncomeExpenseTrend(days);
+            return success(res, 'Income vs Expense trend retrieved successfully', trend);
+        } catch (err) {
+            return error(res, err.message, 500);
+        }
+    }
+
+    async getExpenseBreakdown(req, res) {
+        try {
+            const { from, to } = req.query;
+            const breakdown = await AccountingService.getExpenseBreakdown({ from, to });
+            return success(res, 'Expense breakdown retrieved successfully', breakdown);
+        } catch (err) {
+            return error(res, err.message, 500);
+        }
+    }
+
     async getOverview(req, res) {
         try {
             const overview = await AccountingService.getOverview();
             return success(res, 'Financial overview retrieved successfully', overview);
+        } catch (err) {
+            return error(res, err.message, 500);
+        }
+    }
+
+    async getRecentActivity(req, res) {
+        try {
+            const activity = await AccountingService.getRecentActivity();
+            // Just return the array directly as 'data' is standard, but user format requests specific structure?
+            // User requested: "Recent Activity ...". Let's assume they want the JSON array.
+            // The JSON preview showed keys "title", "date", "amount".
+            return success(res, 'Recent activity retrieved successfully', activity);
         } catch (err) {
             return error(res, err.message, 500);
         }
@@ -167,6 +209,26 @@ class AccountingController {
             return success(res, 'Expense Head updated successfully', account);
         } catch (err) {
             return error(res, err.message, 400);
+        }
+    }
+
+    async createHeadWiseExpense(req, res) {
+        try {
+            const result = await AccountingService.createHeadWiseExpense(req.body);
+            return success(res, 'Expense recorded successfully', result, 201);
+        } catch (err) {
+            const message = err.errors ? err.errors.map(e => e.message).join(', ') : err.message;
+            return error(res, message, 400);
+        }
+    }
+
+    async createHeadWiseIncome(req, res) {
+        try {
+            const result = await AccountingService.createHeadWiseIncome(req.body);
+            return success(res, 'Income recorded successfully', result, 201);
+        } catch (err) {
+            const message = err.errors ? err.errors.map(e => e.message).join(', ') : err.message;
+            return error(res, message, 400);
         }
     }
 
