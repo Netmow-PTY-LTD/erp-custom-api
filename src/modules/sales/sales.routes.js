@@ -392,7 +392,9 @@ router.routesMeta = [
                     orders: [
                         {
                             id: 1001,
+                            order_number: 'ORD-1733130000000',
                             customer: 'Customer 1',
+                            customer_image: 'https://example.com/customer1.jpg',
                             amount: 8500,
                             status: 'Delivered',
                             date: '2024-03-20'
@@ -415,7 +417,7 @@ router.routesMeta = [
                             id: 1,
                             name: 'Dhaka North Route',
                             region: 'Dhaka',
-                            orders: [{ id: 1001, customer: 'Customer 1', amount: 8500, status: 'Delivered', date: '2024-03-20' }]
+                            orders: [{ id: 1001, order_number: 'ORD-1733130000000', customer: 'Customer 1', customer_image: 'https://example.com/customer1.jpg', amount: 8500, status: 'Delivered', date: '2024-03-20' }]
                         }
                     ]
                 }

@@ -57,8 +57,9 @@ class ReportController {
             const endDate = req.query.end_date || req.query.endDate;
             const page = parseInt(req.query.page) || 1;
             const limit = parseInt(req.query.limit) || 10;
+            const search = req.query.search || null;
 
-            const result = await ReportService.getSalesByCustomer(startDate, endDate, page, limit);
+            const result = await ReportService.getSalesByCustomer(startDate, endDate, page, limit, search);
 
             return successWithPagination(res, 'Sales by customer retrieved', result.rows, {
                 total: result.total,
@@ -77,8 +78,9 @@ class ReportController {
             const endDate = req.query.end_date || req.query.endDate;
             const page = parseInt(req.query.page) || 1;
             const limit = parseInt(req.query.limit) || 10;
+            const search = req.query.search || null;
 
-            const result = await ReportService.getAccountReceivables(startDate, endDate, page, limit);
+            const result = await ReportService.getAccountReceivables(startDate, endDate, page, limit, search);
 
             return successWithPagination(res, 'Account receivables retrieved', result.rows, {
                 total: result.total,
@@ -86,6 +88,16 @@ class ReportController {
                 limit,
                 totalPage: Math.ceil(result.total / limit)
             });
+        } catch (err) {
+            return error(res, err.message, 500);
+        }
+    }
+
+
+    async getCustomerStatistics(req, res) {
+        try {
+            const data = await ReportService.getCustomerStatistics();
+            return success(res, 'Customer statistics retrieved', data);
         } catch (err) {
             return error(res, err.message, 500);
         }

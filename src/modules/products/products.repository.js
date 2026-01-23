@@ -57,6 +57,34 @@ class ProductRepository {
         });
     }
 
+    async findByIds(ids = []) {
+        if (!Array.isArray(ids) || ids.length === 0) {
+            return [];
+        }
+
+        return Product.findAll({
+            where: {
+                id: {
+                    [Op.in]: ids
+                }
+            },
+            include: [
+                { model: Category, as: 'category' },
+                { model: Unit, as: 'unit' },
+                {
+                    model: ProductImage,
+                    as: 'images',
+                    separate: true, // important for correct ordering
+                    order: [
+                        ['sort_order', 'ASC'],
+                        ['is_primary', 'DESC']
+                    ]
+                }
+            ]
+        });
+    }
+
+
     async findBySku(sku) {
         return await Product.findOne({ where: { sku } });
     }

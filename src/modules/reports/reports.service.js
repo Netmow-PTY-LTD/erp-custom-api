@@ -142,9 +142,15 @@ class ReportService {
         });
     }
 
-    async getSalesByCustomer(startDate, endDate, page = 1, limit = 10) {
+    async getSalesByCustomer(startDate, endDate, page = 1, limit = 10, search = null) {
         const { start, end } = this._getDateRange(startDate, endDate);
         const offset = (page - 1) * limit;
+
+        // Build WHERE clause for search
+        let searchCondition = '';
+        if (search) {
+            searchCondition = `WHERE c.name LIKE :search`;
+        }
 
         const sql = `
             SELECT 
@@ -155,21 +161,35 @@ class ReportService {
             LEFT JOIN orders o ON c.id = o.customer_id 
                 AND DATE(o.order_date) BETWEEN :start AND :end
                 AND o.status != 'cancelled'
+            ${searchCondition}
             GROUP BY c.id, c.name
             ORDER BY sales DESC
             LIMIT :limit OFFSET :offset
         `;
 
         const countSql = `
-            SELECT COUNT(DISTINCT id) as total FROM customers
+            SELECT COUNT(*) as total 
+            FROM customers c
+            ${searchCondition}
         `;
 
+        const replacements = {
+            start,
+            end,
+            limit,
+            offset,
+            ...(search && { search: `%${search}%` })
+        };
+
         const rows = await sequelize.query(sql, {
-            replacements: { start, end, limit, offset },
+            replacements,
             type: QueryTypes.SELECT
         });
 
-        const countResult = await sequelize.query(countSql, { type: QueryTypes.SELECT });
+        const countResult = await sequelize.query(countSql, {
+            replacements: search ? { search: `%${search}%` } : {},
+            type: QueryTypes.SELECT
+        });
 
         return {
             rows,
@@ -177,15 +197,22 @@ class ReportService {
         };
     }
 
-    async getAccountReceivables(startDate, endDate, page = 1, limit = 10) {
+    async getAccountReceivables(startDate, endDate, page = 1, limit = 10, search = null) {
         const { start, end } = this._getDateRange(startDate, endDate);
         const offset = (page - 1) * limit;
 
-        const whereClause = `
-            o.payment_status != 'paid'
-            AND o.status != 'cancelled'
-            AND DATE(o.order_date) BETWEEN :start AND :end
-        `;
+        // Build WHERE clause
+        let whereConditions = [
+            'o.payment_status != \'paid\'',
+            'o.status != \'cancelled\'',
+            'DATE(o.order_date) BETWEEN :start AND :end'
+        ];
+
+        if (search) {
+            whereConditions.push('c.name LIKE :search');
+        }
+
+        const whereClause = whereConditions.join(' AND ');
 
         const sql = `
             SELECT 
@@ -211,6 +238,7 @@ class ReportService {
             SELECT COUNT(*) as total FROM (
                 SELECT o.id
                 FROM orders o
+                JOIN customers c ON o.customer_id = c.id
                 LEFT JOIN payments p ON o.id = p.order_id
                 WHERE ${whereClause}
                 GROUP BY o.id, o.total_amount
@@ -218,13 +246,27 @@ class ReportService {
             ) as count_table
         `;
 
+        const replacements = {
+            start,
+            end,
+            limit,
+            offset,
+            ...(search && { search: `%${search}%` })
+        };
+
         const rows = await sequelize.query(sql, {
-            replacements: { start, end, limit, offset },
+            replacements,
             type: QueryTypes.SELECT
         });
 
+        const countReplacements = {
+            start,
+            end,
+            ...(search && { search: `%${search}%` })
+        };
+
         const countResult = await sequelize.query(countSql, {
-            replacements: { start, end },
+            replacements: countReplacements,
             type: QueryTypes.SELECT
         });
 
@@ -241,6 +283,49 @@ class ReportService {
             total: countResult[0].total
         };
     }
+
+
+
+    async getCustomerStatistics() {
+        // Total customers count
+        const customersSql = `
+            SELECT COUNT(*) as count
+            FROM customers 
+            WHERE is_active = true
+        `;
+        const customerResult = await sequelize.query(customersSql, { type: QueryTypes.SELECT });
+
+        // Total Sales (All time valid orders)
+        const salesSql = `
+            SELECT COALESCE(SUM(total_amount), 0) as total 
+            FROM orders 
+            WHERE status NOT IN ('cancelled', 'returned', 'failed')
+        `;
+        const salesResult = await sequelize.query(salesSql, { type: QueryTypes.SELECT });
+
+        // Total Outstanding Balance - calculated same way as account-receivables
+        // Sum of (order total - payments) for all unpaid orders
+        const outstandingSql = `
+            SELECT COALESCE(SUM(balance), 0) as total_outstanding
+            FROM (
+                SELECT (o.total_amount - COALESCE(SUM(p.amount), 0)) as balance
+                FROM orders o
+                LEFT JOIN payments p ON o.id = p.order_id
+                WHERE o.payment_status != 'paid'
+                AND o.status NOT IN ('cancelled', 'returned', 'failed')
+                GROUP BY o.id, o.total_amount
+                HAVING balance > 0
+            ) as outstanding_orders
+        `;
+        const outstandingResult = await sequelize.query(outstandingSql, { type: QueryTypes.SELECT });
+
+        return {
+            total_customers: parseInt(customerResult[0].count) || 0,
+            total_sales: parseFloat(salesResult[0].total) || 0,
+            total_outstanding_balance: parseFloat(outstandingResult[0].total_outstanding) || 0
+        };
+    }
+
 
     // --- Purchase Reports ---
     async getPurchaseSummary(startDate, endDate) {

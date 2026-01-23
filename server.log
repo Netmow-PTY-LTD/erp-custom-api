@@ -1,0 +1,15 @@
+[dotenv@17.2.3] injecting env (8) from .env -- tip: ⚙️  load multiple .env files with { path: ['.env.local', '.env'] }
+[dotenv@17.2.3] injecting env (0) from .env -- tip: 👥 sync secrets across teammates & machines: https://dotenvx.com/ops
+Sequelize initializing with Host: 127.0.0.1, Port: 8889 (parsed: 8889)
+[dotenv@17.2.3] injecting env (0) from .env -- tip: ✅ audit secrets and track compliance: https://dotenvx.com/ops
+--- Server Starting ---
+Environment: undefined
+DB Config: {
+  host: '127.0.0.1',
+  user: 'root',
+  port: '8889',
+  name: 'erp_minimal',
+  password: '****'
+}
+HMS API listening on http://localhost:5000
+MySQL connected (Sequelize)

@@ -79,14 +79,14 @@ class PayrollRepository {
     }
 
     async getStructure(staffId) {
-        return await PayrollStructure.findOne({ where: { staff_id: staffId } });
+        return await PayrollStructure.findOne({ where: { user_id: staffId } });
     }
 
     async upsertStructure(staffId, data) {
         // Data contains basic_salary, allowances, deductions, bank_details
         const [structure, created] = await PayrollStructure.findOrCreate({
-            where: { staff_id: staffId },
-            defaults: { ...data, staff_id: staffId }
+            where: { user_id: staffId },
+            defaults: { ...data, user_id: staffId }
         });
 
         if (!created) {

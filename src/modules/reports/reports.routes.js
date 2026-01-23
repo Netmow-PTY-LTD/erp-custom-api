@@ -178,6 +178,39 @@ router.routesMeta = [
         ]
     },
     {
+        path: '/customers',
+        method: 'GET',
+        middlewares: [],
+        handler: (req, res) => reportController.getCustomerStatistics(req, res),
+        description: 'Get total customer statistics (count, sales, outstanding)',
+        sampleResponse: {
+            success: true,
+            message: 'Customer statistics retrieved',
+            data: {
+                total_customers: 4,
+                total_sales: 10000,
+                total_outstanding_balance: 5000
+            }
+        },
+        examples: [
+            {
+                title: 'Customer Statistics',
+                description: 'Get overall customer stats',
+                url: '/api/reports/customers',
+                method: 'GET',
+                response: {
+                    success: true,
+                    message: 'Customer statistics retrieved',
+                    data: {
+                        total_customers: 4,
+                        total_sales: 10000,
+                        total_outstanding_balance: 5000
+                    }
+                }
+            }
+        ]
+    },
+    {
         path: '/customers/account-receivables',
         method: 'GET',
         middlewares: [validate(dateRangeSchema, 'query')],

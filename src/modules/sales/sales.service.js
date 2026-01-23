@@ -44,7 +44,9 @@ class SalesService {
                         customer.orders.forEach(order => {
                             allOrders.push({
                                 id: order.id,
+                                order_number: order.order_number,
                                 customer: customer.name || customer.company,
+                                customer_image: customer.image_url || null,
                                 amount: parseFloat(order.total_amount),
                                 status: order.status, // e.g., 'pending', 'delivered'
                                 date: order.order_date ? new Date(order.order_date).toISOString().split('T')[0] : null // Format date YYYY-MM-DD

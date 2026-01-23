@@ -81,6 +81,10 @@ class AttendanceService {
         }
         return attendance;
     }
+
+    async getStaffAttendanceStats(staffId, filters = {}) {
+        return await AttendanceRepository.getStatsByStaffId(staffId, filters);
+    }
 }
 
 module.exports = new AttendanceService();
