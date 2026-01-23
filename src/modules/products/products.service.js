@@ -437,6 +437,22 @@ class ProductService {
             }
         ];
     }
+
+    async getProductOrders(productId, filters = {}, page = 1, limit = 10) {
+        // Verify product exists
+        const product = await ProductRepository.findById(productId);
+        if (!product) {
+            throw new Error('Product not found');
+        }
+
+        const offset = (page - 1) * limit;
+        const result = await ProductRepository.getProductOrders(productId, filters, limit, offset);
+
+        return {
+            data: result.rows,
+            total: result.count
+        };
+    }
 }
 
 module.exports = new ProductService();

@@ -628,6 +628,178 @@ router.routesMeta = [
         ]
     },
     {
+        path: '/:id/orders',
+        method: 'GET',
+        middlewares: [],
+        handler: (req, res) => productsController.getProductOrders(req, res),
+        description: 'Get all orders containing a specific product',
+        database: {
+            tables: ['orders', 'order_items', 'customers', 'products'],
+            mainTable: 'orders',
+            fields: {
+                orders: ['id', 'order_number', 'customer_id', 'order_date', 'status', 'total_amount', 'tax_amount', 'discount_amount', 'payment_status', 'created_at'],
+                order_items: ['id', 'order_id', 'product_id', 'quantity', 'unit_price', 'discount', 'line_total', 'total_price'],
+                customers: ['id', 'name', 'email', 'phone', 'company'],
+                products: ['id', 'name', 'sku', 'image_url']
+            },
+            relationships: [
+                'orders.customer_id -> customers.id (FK)',
+                'order_items.order_id -> orders.id (FK)',
+                'order_items.product_id -> products.id (FK)'
+            ]
+        },
+        queryParams: {
+            page: 'Page number (default: 1)',
+            limit: 'Items per page (default: 10)',
+            status: 'Filter by order status (pending, confirmed, processing, shipped, in_transit, delivered, cancelled)',
+            start_date: 'Filter orders from this date (YYYY-MM-DD)',
+            end_date: 'Filter orders until this date (YYYY-MM-DD)'
+        },
+        sampleResponse: {
+            success: true,
+            message: 'Product orders retrieved successfully',
+            pagination: {
+                total: 25,
+                page: '1',
+                limit: '10',
+                totalPage: 3
+            },
+            data: [
+                {
+                    id: 1,
+                    order_number: 'ORD-1733130000000',
+                    customer_id: 1,
+                    order_date: '2025-12-08T10:00:00.000Z',
+                    status: 'delivered',
+                    total_amount: 150.00,
+                    tax_amount: 15.00,
+                    discount_amount: 0.00,
+                    payment_status: 'paid',
+                    created_at: '2025-12-08T10:00:00.000Z',
+                    customer: {
+                        id: 1,
+                        name: 'John Doe',
+                        email: 'john@example.com',
+                        phone: '555-1234',
+                        company: 'Acme Corp'
+                    },
+                    items: [
+                        {
+                            id: 1,
+                            order_id: 1,
+                            product_id: 1,
+                            quantity: 2,
+                            unit_price: 29.99,
+                            discount: 0.00,
+                            line_total: 59.98,
+                            total_price: 59.98,
+                            product: {
+                                id: 1,
+                                name: 'Wireless Mouse',
+                                sku: 'MOU-001',
+                                image_url: 'http://example.com/mouse.jpg'
+                            }
+                        }
+                    ]
+                },
+                {
+                    id: 2,
+                    order_number: 'ORD-1733140000000',
+                    customer_id: 2,
+                    order_date: '2025-12-09T14:30:00.000Z',
+                    status: 'pending',
+                    total_amount: 89.97,
+                    tax_amount: 8.99,
+                    discount_amount: 5.00,
+                    payment_status: 'unpaid',
+                    created_at: '2025-12-09T14:30:00.000Z',
+                    customer: {
+                        id: 2,
+                        name: 'Jane Smith',
+                        email: 'jane@example.com',
+                        phone: '555-5678',
+                        company: 'Tech Solutions'
+                    },
+                    items: [
+                        {
+                            id: 3,
+                            order_id: 2,
+                            product_id: 1,
+                            quantity: 3,
+                            unit_price: 29.99,
+                            discount: 5.00,
+                            line_total: 84.97,
+                            total_price: 89.97,
+                            product: {
+                                id: 1,
+                                name: 'Wireless Mouse',
+                                sku: 'MOU-001',
+                                image_url: 'http://example.com/mouse.jpg'
+                            }
+                        }
+                    ]
+                }
+            ]
+        },
+        examples: [
+            {
+                title: 'Get All Orders for Product',
+                description: 'Retrieve all orders containing a specific product',
+                url: '/api/products/1/orders',
+                method: 'GET',
+                response: {
+                    success: true,
+                    message: 'Product orders retrieved successfully',
+                    pagination: { total: 25, page: '1', limit: '10', totalPage: 3 },
+                    data: [
+                        {
+                            id: 1,
+                            order_number: 'ORD-1733130000000',
+                            status: 'delivered',
+                            customer: { id: 1, name: 'John Doe' }
+                        }
+                    ]
+                }
+            },
+            {
+                title: 'Filter Orders by Status',
+                description: 'Get only delivered orders containing the product',
+                url: '/api/products/1/orders?status=delivered',
+                method: 'GET',
+                response: {
+                    success: true,
+                    message: 'Product orders retrieved successfully',
+                    pagination: { total: 10, page: '1', limit: '10', totalPage: 1 },
+                    data: [
+                        {
+                            id: 1,
+                            order_number: 'ORD-1733130000000',
+                            status: 'delivered'
+                        }
+                    ]
+                }
+            },
+            {
+                title: 'Filter Orders by Date Range',
+                description: 'Get orders containing the product within a specific date range',
+                url: '/api/products/1/orders?start_date=2025-12-01&end_date=2025-12-31',
+                method: 'GET',
+                response: {
+                    success: true,
+                    message: 'Product orders retrieved successfully',
+                    pagination: { total: 15, page: '1', limit: '10', totalPage: 2 },
+                    data: [
+                        {
+                            id: 1,
+                            order_number: 'ORD-1733130000000',
+                            order_date: '2025-12-08T10:00:00.000Z'
+                        }
+                    ]
+                }
+            }
+        ]
+    },
+    {
         path: '/:id',
         method: 'DELETE',
         middlewares: [],

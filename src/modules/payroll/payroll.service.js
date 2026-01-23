@@ -20,15 +20,28 @@ class PayrollService {
         return run;
     }
 
-    async generateRun(month, createdBy) {
+    async generateRun(month, createdBy, staffIds = null) {
         // 1. Check if run already exists for this month
         const existing = await PayrollRepository.findAll({ month });
         if (existing.count > 0) {
             throw new Error(`Payroll run for month ${month} already exists`);
         }
 
-        // 2. Fetch all active staff
-        const staffs = await Staff.findAll({ where: { status: 'active' } });
+        // 2. Fetch staff - either specific staff or all active staff
+        let staffs;
+        if (staffIds && Array.isArray(staffIds) && staffIds.length > 0) {
+            // Fetch specific staff by IDs
+            staffs = await Staff.findAll({
+                where: {
+                    id: staffIds,
+                    status: 'active'
+                }
+            });
+        } else {
+            // Fetch all active staff
+            staffs = await Staff.findAll({ where: { status: 'active' } });
+        }
+
         if (staffs.length === 0) {
             throw new Error('No active staff found to generate payroll');
         }
