@@ -33,7 +33,9 @@ const allowedOrigins = [
   'https://carwash.inleadsit.com',
   'https://lawfirm.inleadsit.com',
   'https://lawfirminleads.netlify.app',
+  'https://apikaosar.inleadsit.com',
 ];
+
 
 
 app.use(cors({

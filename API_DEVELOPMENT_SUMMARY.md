@@ -87,6 +87,25 @@ async update(id, data) {
 
 ---
 
+### 3. ✅ Fixed Delivery Status Propagation
+Resolved issue where recording a 'returned' delivery didn't update the Order status.
+
+#### Problem
+When calling `POST /api/sales/orders/:id/deliver` with `status: "returned"`, the Delivery was created but the Order status remained unchanged.
+
+#### Solution
+- Added `'returned'` and `'failed'` to **Order** model `status` ENUM.
+- Updated `SalesService.createDelivery` to propagate `'returned'` and `'failed'` statuses to the Order.
+
+#### Files Modified
+- **sales.models.js** - updated Order ENUM
+- **sales.service.js** - updated createDelivery logic
+
+#### Documentation
+- **DELIVERY_STATUS_FIX.md** - Complete fix documentation
+
+---
+
 ## 📊 Response Structure Improvements
 
 ### Product Orders Response

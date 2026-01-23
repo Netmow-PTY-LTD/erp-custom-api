@@ -643,12 +643,8 @@ class SalesService {
         const delivery = await DeliveryRepository.create(deliveryData);
 
         // Update Order status based on delivery status
-        if (data.status === 'delivered') {
-            await OrderRepository.update(orderId, { status: 'delivered' });
-        } else if (data.status === 'in_transit') {
-            await OrderRepository.update(orderId, { status: 'in_transit' });
-        } else if (data.status === 'confirmed') {
-            await OrderRepository.update(orderId, { status: 'confirmed' });
+        if (['delivered', 'in_transit', 'confirmed', 'returned', 'failed'].includes(data.status)) {
+            await OrderRepository.update(orderId, { status: data.status });
         }
 
         return delivery;

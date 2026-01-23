@@ -1251,8 +1251,10 @@ router.routesMeta = [
             relationships: ['deliveries.order_id -> orders.id (FK)'],
             sideEffects: [
                 'Updates orders.status to delivered (if status=delivered)',
-                'Updates orders.status to shipped (if status=in_transit)',
+                'Updates orders.status to in_transit (if status=in_transit)',
                 'Updates orders.status to confirmed (if status=confirmed)',
+                'Updates orders.status to returned (if status=returned)',
+                'Updates orders.status to failed (if status=failed)',
                 'Sets deliveries.delivered_at timestamp when status is delivered',
                 'Allowed status values: pending, confirmed, in_transit, delivered, failed, returned'
             ]
