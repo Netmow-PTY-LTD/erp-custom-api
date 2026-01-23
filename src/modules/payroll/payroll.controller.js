@@ -4,8 +4,8 @@ const { success, error, successWithPagination } = require('../../core/utils/resp
 class PayrollController {
     async generateRun(req, res) {
         try {
-            const { month } = req.body;
-            const run = await PayrollService.generateRun(month, req.user.id);
+            const { month, staff_ids } = req.body;
+            const run = await PayrollService.generateRun(month, req.user.id, staff_ids);
             return success(res, 'Payroll run generated successfully', run, 201);
         } catch (err) {
             return error(res, err.message, 400);
