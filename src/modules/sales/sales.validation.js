@@ -51,7 +51,7 @@ const createDelivery = z.object({
     delivery_person_name: z.string().optional(),
     delivery_person_phone: z.string().optional(),
     tracking_number: z.string().optional(),
-    status: z.enum(['pending', 'confirmed', 'in_transit', 'delivered', 'failed', 'returned']).default('delivered'),
+    status: z.enum(['pending', 'confirmed', 'in_transit', 'delivered', 'cancelled', 'failed', 'returned']).default('delivered'),
     notes: z.string().optional()
 });
 

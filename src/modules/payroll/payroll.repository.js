@@ -1,10 +1,75 @@
-const { PayrollRun, PayrollItem } = require('./payroll.models');
+const { PayrollRun, PayrollItem, PayrollAdvance, PayrollAdvanceReturn, PayrollPayment } = require('./payroll.models');
 const { PayrollStructure } = require('./payroll.structure.model');
 const { User: Staff } = require('../users/user.model');
 const { Op } = require('sequelize');
 const { sequelize } = require('../../core/database/sequelize');
 
 class PayrollRepository {
+    // ... (existing methods)
+
+    async createAdvance(data) {
+        return await PayrollAdvance.create(data);
+    }
+
+    async createAdvanceReturn(data) {
+        return await PayrollAdvanceReturn.create(data);
+    }
+
+    async findAdvances(filters = {}, limit = 10, offset = 0) {
+        const where = {};
+        if (filters.staff_id) where.staff_id = filters.staff_id;
+        if (filters.status) where.status = filters.status;
+        if (filters.month) {
+            // Filter by month of advance_date
+            where.advance_date = {
+                [Op.like]: `${filters.month}%`
+            };
+        }
+
+        return await PayrollAdvance.findAndCountAll({
+            where,
+            include: [
+                {
+                    model: Staff,
+                    as: 'staff',
+                    attributes: ['id', 'first_name', 'last_name', 'email']
+                },
+                {
+                    model: PayrollAdvanceReturn,
+                    as: 'returns'
+                }
+            ],
+            limit,
+            offset,
+            order: [['advance_date', 'DESC']]
+        });
+    }
+
+    async findAdvanceById(id) {
+        return await PayrollAdvance.findByPk(id, {
+            include: [
+                {
+                    model: Staff,
+                    as: 'staff',
+                    attributes: ['id', 'first_name', 'last_name', 'email']
+                },
+                {
+                    model: PayrollAdvanceReturn,
+                    as: 'returns'
+                }
+            ]
+        });
+    }
+
+    async updateAdvance(id, data) {
+        const advance = await PayrollAdvance.findByPk(id);
+        if (!advance) return null;
+        return await advance.update(data);
+    }
+
+    async deleteAdvance(id) {
+        return await PayrollAdvance.destroy({ where: { id } });
+    }
     async createRun(runData, itemsData) {
         const transaction = await sequelize.transaction();
         try {
@@ -32,6 +97,14 @@ class PayrollRepository {
 
         return await PayrollRun.findAndCountAll({
             where,
+            include: [{
+                model: PayrollItem,
+                as: 'items',
+                include: [{
+                    model: PayrollPayment,
+                    as: 'payments'
+                }]
+            }],
             limit,
             offset,
             order: [['month', 'DESC']]
@@ -93,6 +166,19 @@ class PayrollRepository {
             return await structure.update(data);
         }
         return structure;
+    }
+
+    async createPayment(data) {
+        return await PayrollPayment.create(data);
+    }
+
+    async findItemById(id) {
+        return await PayrollItem.findByPk(id, {
+            include: [{
+                model: PayrollPayment,
+                as: 'payments'
+            }]
+        });
     }
 }
 

@@ -74,6 +74,24 @@ class SettingsController {
       return error(res, err.message, 400);
     }
   }
+
+  async getLayoutSettings(req, res) {
+    try {
+      const settings = await this.settingsService.getLayoutSettings();
+      return success(res, 'Settings retrieved successfully', settings);
+    } catch (err) {
+      return error(res, err.message, 500);
+    }
+  }
+
+  async updateLayoutSettings(req, res) {
+    try {
+      const settings = await this.settingsService.updateLayoutSettings(req.body);
+      return success(res, 'Settings updated successfully', settings);
+    } catch (err) {
+      return error(res, err.message, 400);
+    }
+  }
 }
 
 module.exports = SettingsController;

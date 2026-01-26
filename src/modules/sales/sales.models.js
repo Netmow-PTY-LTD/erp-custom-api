@@ -512,7 +512,7 @@ const Delivery = sequelize.define('Delivery', {
         allowNull: true
     },
     status: {
-        type: DataTypes.ENUM('pending', 'confirmed', 'in_transit', 'delivered', 'failed', 'returned'),
+        type: DataTypes.ENUM('pending', 'confirmed', 'in_transit', 'delivered', 'cancelled', 'failed', 'returned'),
         defaultValue: 'pending'
     },
     notes: {

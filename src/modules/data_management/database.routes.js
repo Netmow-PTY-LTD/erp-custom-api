@@ -45,6 +45,20 @@ router.routesMeta = [
             id: 'Record ID (required)',
             '...fields': 'Fields to update'
         }
+    },
+    {
+        path: '/delete-all-data',
+        method: 'GET',
+        middlewares: [verifyToken],
+        handler: (req, res) => databaseController.deleteAllData(req, res),
+        description: 'Delete all data from all tables (Truncate)',
+    },
+    {
+        path: '/reset-system',
+        method: 'GET',
+        middlewares: [], // Public for now as requested or for convenience
+        handler: (req, res) => databaseController.seedFoundation(req, res),
+        description: 'Delete all data and seed foundational accounts and superadmin',
     }
 ];
 

@@ -3,7 +3,7 @@ const router = express.Router();
 const payrollController = require('./payroll.controller');
 const { verifyToken } = require('../../core/middleware/auth');
 const validate = require('../../core/middleware/validate');
-const { generateRun } = require('./payroll.validation');
+const { generateRun, addPayment } = require('./payroll.validation');
 const { handlerWithFields } = require('../../core/utils/zodTypeView');
 
 // Module name for routes-tree grouping
@@ -56,6 +56,155 @@ router.routesMeta = [
             }
         ]
     },
+    {
+        path: '/structure/:staffId',
+        method: 'GET',
+        middlewares: [],
+        handler: (req, res) => payrollController.getStructure(req, res),
+        description: 'Get payroll structure for a staff',
+        database: { tables: ['payroll_structures'] },
+        sampleResponse: {
+            status: true,
+            message: 'Payroll structure retrieved',
+            data: {
+                staff_id: 101,
+                basic_salary: 5000.00,
+                allowances: [{ title: 'Rent', amount: 1000, type: 'fixed' }],
+                deductions: [{ title: 'Tax', amount: 200, type: 'fixed' }],
+                bank_details: { bank_name: 'Chase', account_number: '123' },
+                net_salary: 5800.00
+            }
+        },
+        examples: [
+            {
+                title: 'Get Structure',
+                description: 'Get salary configuration for staff 101',
+                url: '/api/payroll/structure/101',
+                method: 'GET',
+                response: {
+                    status: true,
+                    data: { staff_id: 101, net_salary: 5800.00 }
+                }
+            }
+        ]
+    },
+    {
+        path: '/structure/:staffId',
+        method: 'POST',
+        middlewares: [],
+        handler: (req, res) => payrollController.saveStructure(req, res),
+        description: 'Save/Update payroll structure for a staff',
+        database: {
+            tables: ['payroll_structures'],
+            requiredFields: ['basic_salary']
+        },
+        sampleRequest: {
+            basic_salary: 5000.00,
+            allowances: [{ title: 'Rent', amount: 1000, type: 'fixed' }],
+            deductions: [{ title: 'Tax', amount: 200, type: 'fixed' }],
+            bank_details: { bank_name: 'Chase', account_number: '123456789' }
+        },
+        sampleResponse: {
+            status: true,
+            message: 'Payroll structure saved',
+            data: {
+                id: 5,
+                staff_id: 101,
+                basic_salary: 5000.00,
+                updated_at: '2026-01-15T12:00:00Z'
+            }
+        },
+        examples: [
+            {
+                title: 'Update Structure',
+                description: 'Update salary details for staff 101',
+                url: '/api/payroll/structure/101',
+                method: 'POST',
+                request: {
+                    basic_salary: 6000.00,
+                    allowances: []
+                },
+                response: {
+                    status: true,
+                    message: 'Payroll structure saved',
+                    data: { staff_id: 101, basic_salary: 6000.00 }
+                }
+            }
+        ]
+    },
+    {
+        path: '/advances',
+        method: 'GET',
+        middlewares: [],
+        handler: (req, res) => payrollController.getAdvances(req, res),
+        description: 'Get all payroll advances',
+        database: {
+            tables: ['payroll_advances', 'users'],
+            mainTable: 'payroll_advances'
+        },
+        queryParams: {
+            page: 'Page number',
+            limit: 'Items per page',
+            staff_id: 'Filter by staff ID',
+            status: 'Filter by status',
+            month: 'Filter by month (YYYY-MM)'
+        }
+    },
+    {
+        path: '/advances/:id',
+        method: 'GET',
+        middlewares: [],
+        handler: (req, res) => payrollController.getAdvanceById(req, res),
+        description: 'Get payroll advance details'
+    },
+    {
+        path: '/advances',
+        method: 'POST',
+        middlewares: [],
+        handler: (req, res) => payrollController.createAdvance(req, res),
+        description: 'Create a new payroll advance',
+        database: {
+            tables: ['payroll_advances'],
+            requiredFields: ['staff_id', 'amount', 'advance_date']
+        }
+    },
+    {
+        path: '/advances/:id',
+        method: 'PATCH',
+        middlewares: [],
+        handler: (req, res) => payrollController.updateAdvance(req, res),
+        description: 'Update a payroll advance'
+    },
+    {
+        path: '/advances/:id',
+        method: 'DELETE',
+        middlewares: [],
+        handler: (req, res) => payrollController.deleteAdvance(req, res),
+        description: 'Delete a payroll advance'
+    },
+    {
+        path: '/advances/:id/return',
+        method: 'POST',
+        middlewares: [],
+        handler: (req, res) => payrollController.returnAdvance(req, res),
+        description: 'Record a partial or full return of an advance',
+        database: {
+            tables: ['payroll_advances', 'payroll_advance_returns'],
+            requiredFields: ['amount', 'return_date']
+        }
+    },
+    {
+        path: '/items/:itemId/pay',
+        method: 'POST',
+        middlewares: [validate(addPayment)],
+        handler: handlerWithFields((req, res) => payrollController.addPayment(req, res), addPayment),
+        description: 'Record a partial payment for a specific payroll item (payslip)',
+        database: {
+            tables: ['payroll_items', 'payroll_payments', 'expenses'],
+            requiredFields: ['amount', 'payment_date']
+        }
+    },
+
     {
         path: '/',
         method: 'GET',
@@ -142,83 +291,9 @@ router.routesMeta = [
             sideEffects: ['Deletes associated payroll items']
         }
     },
-    {
-        path: '/structure/:staffId',
-        method: 'GET',
-        middlewares: [],
-        handler: (req, res) => payrollController.getStructure(req, res),
-        description: 'Get payroll structure for a staff',
-        database: { tables: ['payroll_structures'] },
-        sampleResponse: {
-            status: true,
-            message: 'Payroll structure retrieved',
-            data: {
-                staff_id: 101,
-                basic_salary: 5000.00,
-                allowances: [{ title: 'Rent', amount: 1000, type: 'fixed' }],
-                deductions: [{ title: 'Tax', amount: 200, type: 'fixed' }],
-                bank_details: { bank_name: 'Chase', account_number: '123' },
-                net_salary: 5800.00
-            }
-        },
-        examples: [
-            {
-                title: 'Get Structure',
-                description: 'Get salary configuration for staff 101',
-                url: '/api/payroll/structure/101',
-                method: 'GET',
-                response: {
-                    status: true,
-                    data: { staff_id: 101, net_salary: 5800.00 }
-                }
-            }
-        ]
-    },
-    {
-        path: '/structure/:staffId',
-        method: 'POST',
-        middlewares: [],
-        handler: (req, res) => payrollController.saveStructure(req, res),
-        description: 'Save/Update payroll structure for a staff',
-        database: {
-            tables: ['payroll_structures'],
-            requiredFields: ['basic_salary']
-        },
-        sampleRequest: {
-            basic_salary: 5000.00,
-            allowances: [{ title: 'Rent', amount: 1000, type: 'fixed' }],
-            deductions: [{ title: 'Tax', amount: 200, type: 'fixed' }],
-            bank_details: { bank_name: 'Chase', account_number: '123456789' }
-        },
-        sampleResponse: {
-            status: true,
-            message: 'Payroll structure saved',
-            data: {
-                id: 5,
-                staff_id: 101,
-                basic_salary: 5000.00,
-                updated_at: '2026-01-15T12:00:00Z'
-            }
-        },
-        examples: [
-            {
-                title: 'Update Structure',
-                description: 'Update salary details for staff 101',
-                url: '/api/payroll/structure/101',
-                method: 'POST',
-                request: {
-                    basic_salary: 6000.00,
-                    allowances: []
-                },
-                response: {
-                    status: true,
-                    message: 'Payroll structure saved',
-                    data: { staff_id: 101, basic_salary: 6000.00 }
-                }
-            }
-        ]
-    }
 ];
+
+
 
 // Register routes from metadata
 router.routesMeta.forEach(r => {
