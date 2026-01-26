@@ -174,85 +174,84 @@ class PurchaseService {
     async createPurchaseOrder(data, userId) {
         let { items, ...orderInfo } = data;
 
-    if (!Array.isArray(items) || items.length === 0) {
-        throw new Error('Purchase order must contain at least one item');
-    }
-
-    const { ProductRepository } = require('../products/products.repository');
-    const { PurchaseOrderRepository } = require('./purchaseOrder.repository');
-
-    // Strong PO number (collision-safe)
-    const po_number = `PO-${Date.now()}-${Math.random().toString(36).substring(2, 8).toUpperCase()}`;
-
-    let total_amount = 0;
-    let discount_amount = 0;
-    let tax_amount = 0;
-
-    /* ----------------------------------
-       Fetch all products in one query
-    -----------------------------------*/
-    const productIds = items.map(i => i.product_id);
-    const products = await ProductRepository.findByIds(productIds);
-
-    const productMap = new Map(
-        products.map(p => [String(p._id), p])
-    );
-
-    /* ----------------------------------
-       Process items
-    -----------------------------------*/
-    const processedItems = items.map(item => {
-        const quantity = Number(item.quantity) || 0;
-        const unit_cost = Number(item.unit_cost) || 0;
-        const discount = Number(item.discount) || 0;
-
-        if (quantity <= 0 || unit_cost < 0) {
-            throw new Error('Invalid quantity or unit cost');
+        if (!Array.isArray(items) || items.length === 0) {
+            throw new Error('Purchase order must contain at least one item');
         }
 
-        const product = productMap.get(String(item.product_id));
-        if (!product) {
-            throw new Error(`Product not found: ${item.product_id}`);
-        }
+        const { ProductRepository } = require('../products/products.repository');
 
-        const purchase_tax_percent = Number(product.purchase_tax) || 0;
+        // Strong PO number (collision-safe)
+        const po_number = `PO-${Date.now()}-${Math.random().toString(36).substring(2, 8).toUpperCase()}`;
 
-        const subtotal = quantity * unit_cost;
-        const line_total = Math.max(subtotal - discount, 0);
-        const item_tax_amount = (line_total * purchase_tax_percent) / 100;
+        let total_amount = 0;
+        let discount_amount = 0;
+        let tax_amount = 0;
 
-        discount_amount += discount;
-        total_amount += line_total;
-        tax_amount += item_tax_amount;
+        /* ----------------------------------
+           Fetch all products in one query
+        -----------------------------------*/
+        const productIds = items.map(i => i.product_id);
+        const products = await ProductRepository.findByIds(productIds);
 
-        return {
-            ...item,
-            quantity,
-            unit_cost,
-            discount,
-            tax_amount: item_tax_amount,
-            purchase_tax_percent
+        const productMap = new Map(
+            products.map(p => [String(p.id), p])
+        );
+
+        /* ----------------------------------
+           Process items
+        -----------------------------------*/
+        const processedItems = items.map(item => {
+            const quantity = Number(item.quantity) || 0;
+            const unit_cost = Number(item.unit_cost) || 0;
+            const discount = Number(item.discount) || 0;
+
+            if (quantity <= 0 || unit_cost < 0) {
+                throw new Error('Invalid quantity or unit cost');
+            }
+
+            const product = productMap.get(String(item.product_id));
+            if (!product) {
+                throw new Error(`Product not found: ${item.product_id}`);
+            }
+
+            const purchase_tax_percent = Number(product.purchase_tax) || 0;
+
+            const subtotal = quantity * unit_cost;
+            const line_total = Math.max(subtotal - discount, 0);
+            const item_tax_amount = (line_total * purchase_tax_percent) / 100;
+
+            discount_amount += discount;
+            total_amount += line_total;
+            tax_amount += item_tax_amount;
+
+            return {
+                ...item,
+                quantity,
+                unit_cost,
+                discount,
+                tax_amount: item_tax_amount,
+                purchase_tax_percent
+            };
+        });
+
+        /* ----------------------------------
+           Prepare order data
+        -----------------------------------*/
+        const orderData = {
+            ...orderInfo,
+            po_number,
+            total_amount,
+            discount_amount,
+            tax_amount,
+            grand_total: total_amount + tax_amount,
+            created_by: userId
         };
-    });
 
-    /* ----------------------------------
-       Prepare order data
-    -----------------------------------*/
-    const orderData = {
-        ...orderInfo,
-        po_number,
-        total_amount,
-        discount_amount,
-        tax_amount,
-        grand_total: total_amount + tax_amount,
-        created_by: userId
-    };
-
-    /* ----------------------------------
-       Persist (transaction ready)
-    -----------------------------------*/
-    return PurchaseOrderRepository.create(orderData, processedItems);
-}
+        /* ----------------------------------
+           Persist (transaction ready)
+        -----------------------------------*/
+        return PurchaseOrderRepository.create(orderData, processedItems);
+    }
 
 
     async updatePurchaseOrder(id, data) {
