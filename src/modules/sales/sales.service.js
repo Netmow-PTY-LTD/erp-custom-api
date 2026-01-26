@@ -253,41 +253,70 @@ class SalesService {
             }
             return await OrderRepository.update(id, { status: 'confirmed' });
         } else if (action === 'reject' || action === 'cancel') {
-            // If order was not already cancelled, we might need to restore stock
-            // Current createOrder ALWAYS deducts stock. So any cancellation should restore it.
-            if (order.status === 'cancelled') {
-                throw new Error('Order is already cancelled');
+            const status = action === 'reject' ? 'failed' : 'cancelled';
+
+            // Only handle if not already in a terminal state
+            if (!['cancelled', 'returned', 'failed'].includes(order.status)) {
+                await this._handleOrderStatusChange(order, status, userId);
             }
 
-            // Restore stock
-            const { ProductRepository } = require('../products/products.repository');
-            const StockMovement = require('../products/stock-movement.model');
-
-            // Iterate items and restore
-            if (order.items && order.items.length > 0) {
-                for (const item of order.items) {
-                    const product = await ProductRepository.findById(item.product_id);
-                    if (product) {
-                        const newStock = product.stock_quantity + item.quantity;
-                        await ProductRepository.update(item.product_id, { stock_quantity: newStock });
-
-                        // Log movement
-                        await StockMovement.create({
-                            product_id: item.product_id,
-                            movement_type: 'adjustment', // or 'return'? Using adjustment for now or 'sale_return' if available
-                            quantity: item.quantity,
-                            reference_type: 'order',
-                            reference_id: order.id,
-                            notes: `Stock restored due to order ${action}`,
-                            created_by: userId
-                        });
-                    }
-                }
-            }
-
-            return await OrderRepository.update(id, { status: 'cancelled' });
+            return await OrderRepository.update(id, { status });
         } else {
             throw new Error('Invalid action');
+        }
+    }
+
+    /**
+     * Helper to handle stock restoration and accounting reversal when an order is returned, cancelled or failed
+     */
+    async _handleOrderStatusChange(order, newStatus, userId) {
+        if (!['returned', 'failed', 'cancelled'].includes(newStatus)) return;
+
+        // 1. Restore stock
+        const { ProductRepository } = require('../products/products.repository');
+        const StockMovement = require('../products/stock-movement.model');
+
+        if (order.items && order.items.length > 0) {
+            for (const item of order.items) {
+                const product = await ProductRepository.findById(item.product_id);
+                if (product) {
+                    const newStock = product.stock_quantity + item.quantity;
+                    await ProductRepository.update(item.product_id, { stock_quantity: newStock });
+
+                    // Log movement
+                    await StockMovement.create({
+                        product_id: item.product_id,
+                        movement_type: 'return',
+                        quantity: item.quantity,
+                        reference_type: 'order',
+                        reference_id: order.id,
+                        notes: `Stock restored due to order status change to ${newStatus}`,
+                        created_by: userId
+                    });
+                }
+            }
+        }
+
+        // 2. Accounting reversal if invoiced
+        const invoice = await InvoiceRepository.findByOrderId(order.id);
+        if (invoice) {
+            try {
+                // Determine if this is a "SALES_RETURN" (for returns) or generic reversal
+                const transactionType = 'SALES_RETURN';
+
+                await AccountingService.processTransaction({
+                    type: transactionType,
+                    amount: invoice.total_amount,
+                    payment_mode: 'DUE', // Affect AR
+                    date: new Date(),
+                    description: `Sales Return for Invoice ${invoice.invoice_number} (Order ${order.order_number})`
+                });
+
+                // Also mark invoice as cancelled
+                await InvoiceRepository.update(invoice.id, { status: 'cancelled' });
+            } catch (err) {
+                console.error('Accounting Return Error:', err.message);
+            }
         }
     }
 
@@ -645,7 +674,12 @@ class SalesService {
         const delivery = await DeliveryRepository.create(deliveryData);
 
         // Update Order status based on delivery status
-        if (['delivered', 'in_transit', 'confirmed', 'returned', 'failed'].includes(data.status)) {
+        if (['delivered', 'in_transit', 'confirmed', 'returned', 'failed', 'cancelled'].includes(data.status)) {
+            // If transitioning to a return/failed/cancel status, handle stock and accounting
+            if (['returned', 'failed', 'cancelled'].includes(data.status) && !['returned', 'failed', 'cancelled'].includes(order.status)) {
+                await this._handleOrderStatusChange(order, data.status, userId);
+            }
+
             await OrderRepository.update(orderId, { status: data.status });
         }
 

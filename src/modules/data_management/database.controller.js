@@ -174,6 +174,68 @@ class DatabaseController {
       return error(res, err.message, 500);
     }
   }
+
+  async seedFoundation(req, res) {
+    try {
+      const tables = await sequelize.getQueryInterface().showAllTables();
+      const skipTables = ['SequelizeMeta', 'migrations'];
+
+      await sequelize.query('SET FOREIGN_KEY_CHECKS = 0');
+
+      for (const table of tables) {
+        if (!skipTables.includes(table)) {
+          // Truncate table
+          await sequelize.query(`TRUNCATE TABLE \`${table}\``);
+        }
+      }
+
+      await sequelize.query('SET FOREIGN_KEY_CHECKS = 1');
+
+      // 1. Seed Accounting Essentials
+      await AccountingService.seedAccounts();
+
+      // 2. Seed Superadmin Role
+      const [superRole] = await Role.findOrCreate({
+        where: { name: 'Superadmin' },
+        defaults: {
+          display_name: 'Super Administrator',
+          description: 'Full system access',
+          status: 'active',
+          permissions: ['*']
+        }
+      });
+
+      // 3. Seed Role Settings
+      await RoleSettings.findOrCreate({
+        where: { role_id: superRole.id },
+        defaults: {
+          role_id: superRole.id,
+          menu: JSON.stringify(['all']),
+          dashboard: JSON.stringify(['all']),
+          custom: JSON.stringify({ theme: 'system' })
+        }
+      });
+
+      // 4. Seed Super Admin User
+      const hashedPassword = await bcrypt.hash('password123', 10);
+      await User.findOrCreate({
+        where: { email: 'admin@gmail.com' },
+        defaults: {
+          name: 'Super Admin',
+          email: 'admin@gmail.com',
+          password: hashedPassword,
+          role_id: superRole.id,
+          status: 'active'
+        }
+      });
+
+      return success(res, 'Database reset successfully. Essential accounts and Superadmin seeded.');
+    } catch (err) {
+      // Ensure FK checks are re-enabled even on error
+      await sequelize.query('SET FOREIGN_KEY_CHECKS = 1');
+      return error(res, err.message, 500);
+    }
+  }
 }
 
 module.exports = new DatabaseController();

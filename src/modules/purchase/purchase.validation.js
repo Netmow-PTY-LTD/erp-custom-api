@@ -15,7 +15,7 @@ const createPurchaseOrder = z.object({
 });
 
 const updatePurchaseOrder = z.object({
-    status: z.enum(['pending', 'approved', 'ordered', 'partial', 'received', 'cancelled']).optional(),
+    status: z.enum(['pending', 'approved', 'ordered', 'partial', 'received', 'cancelled', 'returned']).optional(),
     expected_delivery_date: z.string().optional(),
     notes: z.string().optional()
 });
