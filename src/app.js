@@ -23,6 +23,7 @@ const allowedOrigins = [
   'http://localhost:5173',
   'http://localhost:5174',
   'https://erpinleadsit.netlify.app',
+  'http://localhost:5000',
   'https://erp.inleadsit.com',
   'http://erp.inleadsit.com',
   'https://test.inleadsit.com',
