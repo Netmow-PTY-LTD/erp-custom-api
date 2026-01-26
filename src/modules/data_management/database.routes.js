@@ -45,6 +45,13 @@ router.routesMeta = [
             id: 'Record ID (required)',
             '...fields': 'Fields to update'
         }
+    },
+    {
+        path: '/delete-all-data',
+        method: 'GET',
+        middlewares: [verifyToken],
+        handler: (req, res) => databaseController.deleteAllData(req, res),
+        description: 'Delete all data from all tables (Truncate)',
     }
 ];
 

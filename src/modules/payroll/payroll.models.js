@@ -89,6 +89,14 @@ const PayrollItem = sequelize.define('PayrollItem', {
         allowNull: false,
         defaultValue: 0.00
     },
+    paid_amount: {
+        type: DataTypes.DECIMAL(10, 2),
+        defaultValue: 0.00
+    },
+    payment_status: {
+        type: DataTypes.ENUM('unpaid', 'partial', 'paid'),
+        defaultValue: 'unpaid'
+    },
     created_at: {
         type: DataTypes.DATE,
         defaultValue: DataTypes.NOW
@@ -104,4 +112,132 @@ const PayrollItem = sequelize.define('PayrollItem', {
     updatedAt: 'updated_at'
 });
 
-module.exports = { PayrollRun, PayrollItem };
+const PayrollPayment = sequelize.define('PayrollPayment', {
+    id: {
+        type: DataTypes.INTEGER,
+        primaryKey: true,
+        autoIncrement: true
+    },
+    payroll_item_id: {
+        type: DataTypes.INTEGER,
+        allowNull: false
+    },
+    amount: {
+        type: DataTypes.DECIMAL(10, 2),
+        allowNull: false
+    },
+    payment_date: {
+        type: DataTypes.DATEONLY,
+        allowNull: false
+    },
+    payment_method: {
+        type: DataTypes.STRING,
+        allowNull: true
+    },
+    reference: {
+        type: DataTypes.STRING,
+        allowNull: true
+    },
+    remarks: {
+        type: DataTypes.TEXT,
+        allowNull: true
+    },
+    created_by: {
+        type: DataTypes.INTEGER,
+        allowNull: true
+    }
+}, {
+    tableName: 'payroll_payments',
+    timestamps: true,
+    createdAt: 'created_at',
+    updatedAt: 'updated_at'
+});
+
+const PayrollAdvance = sequelize.define('PayrollAdvance', {
+    id: {
+        type: DataTypes.INTEGER,
+        primaryKey: true,
+        autoIncrement: true
+    },
+    staff_id: {
+        type: DataTypes.INTEGER,
+        allowNull: false
+    },
+    amount: {
+        type: DataTypes.DECIMAL(15, 2),
+        allowNull: false
+    },
+    advance_date: {
+        type: DataTypes.DATEONLY,
+        allowNull: false
+    },
+    reason: {
+        type: DataTypes.STRING,
+        allowNull: true
+    },
+    status: {
+        type: DataTypes.ENUM('pending', 'approved', 'paid', 'returned', 'cancelled'),
+        defaultValue: 'pending'
+    },
+    returned_amount: {
+        type: DataTypes.DECIMAL(15, 2),
+        defaultValue: 0.00
+    },
+    returned_date: {
+        type: DataTypes.DATEONLY,
+        allowNull: true
+    },
+    remarks: {
+        type: DataTypes.TEXT,
+        allowNull: true
+    },
+    created_by: {
+        type: DataTypes.INTEGER,
+        allowNull: true
+    }
+}, {
+    tableName: 'payroll_advances',
+    timestamps: true,
+    createdAt: 'created_at',
+    updatedAt: 'updated_at'
+});
+
+const PayrollAdvanceReturn = sequelize.define('PayrollAdvanceReturn', {
+    id: {
+        type: DataTypes.INTEGER,
+        primaryKey: true,
+        autoIncrement: true
+    },
+    advance_id: {
+        type: DataTypes.INTEGER,
+        allowNull: false
+    },
+    amount: {
+        type: DataTypes.DECIMAL(15, 2),
+        allowNull: false
+    },
+    return_date: {
+        type: DataTypes.DATEONLY,
+        allowNull: false
+    },
+    remarks: {
+        type: DataTypes.TEXT,
+        allowNull: true
+    }
+}, {
+    tableName: 'payroll_advance_returns',
+    timestamps: true,
+    createdAt: 'created_at',
+    updatedAt: 'updated_at'
+});
+
+// Associations
+PayrollAdvance.hasMany(PayrollAdvanceReturn, { foreignKey: 'advance_id', as: 'returns' });
+PayrollAdvanceReturn.belongsTo(PayrollAdvance, { foreignKey: 'advance_id', as: 'advance' });
+
+PayrollItem.hasMany(PayrollPayment, { foreignKey: 'payroll_item_id', as: 'payments' });
+PayrollPayment.belongsTo(PayrollItem, { foreignKey: 'payroll_item_id', as: 'item' });
+
+module.exports = { PayrollRun, PayrollItem, PayrollAdvance, PayrollAdvanceReturn, PayrollPayment };
+
+

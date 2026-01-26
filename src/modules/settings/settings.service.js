@@ -92,6 +92,60 @@ class SettingsService {
 
     return { ...data, updated_at: new Date() };
   }
+
+  async getLayoutSettings() {
+    const setting = await this.settingsRepository.findByName('layout_settings');
+
+    if (setting && setting.description) {
+      try {
+        return JSON.parse(setting.description);
+      } catch (e) {
+        console.error('Error parsing layout settings:', e);
+      }
+    }
+
+    // Default data if no layout settings exist
+    return {
+      pos: {
+        columns: {
+          mobile: 2,
+          sm: 3,
+          md: 4,
+          lg: 2,
+          xl: 3,
+          xxl: 4
+        },
+        gap: 4,
+        showImages: true,
+        cardStyle: 'standard'
+      }
+    };
+  }
+
+  async updateLayoutSettings(data) {
+    const setting = await this.settingsRepository.findByName('layout_settings');
+
+    // Convert data to string for storage
+    const description = JSON.stringify(data);
+
+    if (setting) {
+      // Update existing record
+      await this.settingsRepository.update(setting.id, {
+        name: 'layout_settings',
+        description: description,
+        status: 'Active'
+      });
+    } else {
+      // Create new record
+      await this.settingsRepository.create({
+        name: 'layout_settings',
+        description: description,
+        status: 'Active'
+      });
+    }
+
+    return { ...data };
+  }
 }
 
 module.exports = SettingsService;

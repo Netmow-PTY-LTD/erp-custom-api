@@ -9,16 +9,18 @@ const ACCOUNTS = {
     AR: '1200', // Accounts Receivable
     INVENTORY: '1300',
     AP: '2000', // Accounts Payable
-    PAYABLE_SURGEON: '2100',
     OWNER_CAPITAL: '3000',
     SALES: '4000',
     OTHER_INCOME: '4100',
     PURCHASE: '5000',
     SALES_RETURN: '5100',
     OFFICE_EXPENSE: '5200',
-    SURGEON_FEE: '5300',
-    PURCHASE_RETURN: '5400' // Assuming code for Purchase Return
+    PURCHASE_RETURN: '5400',
+    EMPLOYEE_ADVANCE: '1400',
+    SALARY: '5500'
 };
+
+
 
 class AccountingService {
 
@@ -94,27 +96,7 @@ class AccountingService {
                     crCode = ACCOUNTS.CASH;
                     break;
 
-                case 'PROFESSIONAL_FEE': // Surgeon Fee
-                    if (data.payment_mode === 'DUE') {
-                        // Book Liability
-                        drCode = ACCOUNTS.SURGEON_FEE;
-                        crCode = ACCOUNTS.PAYABLE_SURGEON;
-                    } else {
-                        // Pay Liability directly? Or Expense -> Cash?
-                        // If just paying the liability:
-                        // Dr Payable Surgeon
-                        // Cr Cash
-                        // Check if paying a liability or booking expense
-                        if (data.person === 'SURGEON' && data.description?.includes('PAYMENT')) {
-                            drCode = ACCOUNTS.PAYABLE_SURGEON;
-                            crCode = ACCOUNTS.CASH;
-                        } else {
-                            // Direct Expense
-                            drCode = ACCOUNTS.SURGEON_FEE;
-                            crCode = ACCOUNTS.CASH;
-                        }
-                    }
-                    break;
+
 
                 case 'PAYMENT_OUT': // Paying a Vendor (AP)
                     // Dr Accounts Payable
@@ -130,7 +112,29 @@ class AccountingService {
                     crCode = ACCOUNTS.AR;
                     break;
 
+                case 'EMPLOYEE_ADVANCE':
+                    // Dr Employee Advance (Asset)
+                    drCode = ACCOUNTS.EMPLOYEE_ADVANCE;
+                    // Cr Cash
+                    crCode = ACCOUNTS.CASH;
+                    break;
+
+                case 'ADVANCE_RETURN':
+                    // Dr Cash
+                    drCode = ACCOUNTS.CASH;
+                    // Cr Employee Advance
+                    crCode = ACCOUNTS.EMPLOYEE_ADVANCE;
+                    break;
+
+                case 'PAYROLL':
+                    // Dr Salary (Expense)
+                    drCode = ACCOUNTS.SALARY;
+                    // Cr Cash or Bank
+                    crCode = (data.payment_mode === 'BANK') ? ACCOUNTS.BANK : ACCOUNTS.CASH;
+                    break;
+
                 default:
+
                     throw new Error(`Unknown Transaction Type: ${data.type}`);
             }
 
@@ -245,22 +249,25 @@ class AccountingService {
     }
 
     async getFormattedAccountList() {
-        const { rows: allAccounts } = await AccountingRepository.findAllAccounts({}, null, null);
+        const allAccounts = await AccountingRepository.findAllAccountsWithBalances({});
 
         // 1. Build Map and standardise objects
         const accountMap = new Map();
         allAccounts.forEach(acc => {
-            const type = acc.type.charAt(0).toUpperCase() + acc.type.slice(1).toLowerCase();
+            const data = acc.get({ plain: true });
+            const type = data.type.charAt(0).toUpperCase() + data.type.slice(1).toLowerCase();
             const accObj = {
-                id: acc.id,
-                code: acc.code,
-                name: acc.name,
-                label: acc.name,
+                id: data.id,
+                code: data.code,
+                name: data.name,
+                label: data.name,
                 type: type,
-                parent: acc.parent_id,
+                parent: data.parent_id,
+                debit: parseFloat(data.total_debit) || 0,
+                credit: parseFloat(data.total_credit) || 0,
                 children: [] // Init children
             };
-            accountMap.set(acc.id, accObj);
+            accountMap.set(data.id, accObj);
         });
 
         // 2. Build Tree and Calculate Levels
@@ -551,16 +558,17 @@ class AccountingService {
             { code: ACCOUNTS.AR, name: 'Accounts Receivable', type: 'ASSET' },
             { code: ACCOUNTS.INVENTORY, name: 'Inventory', type: 'ASSET' },
             { code: ACCOUNTS.AP, name: 'Accounts Payable', type: 'LIABILITY' },
-            { code: ACCOUNTS.PAYABLE_SURGEON, name: 'Payable - Surgeon', type: 'LIABILITY' },
             { code: ACCOUNTS.OWNER_CAPITAL, name: 'Owner Capital', type: 'EQUITY' },
             { code: ACCOUNTS.SALES, name: 'Sales', type: 'INCOME' },
             { code: ACCOUNTS.OTHER_INCOME, name: 'Other Income', type: 'INCOME' },
             { code: ACCOUNTS.PURCHASE, name: 'Purchase', type: 'EXPENSE' },
-            { code: ACCOUNTS.SALES_RETURN, name: 'Sales Return', type: 'EXPENSE' }, // Contra-Revenue but handled as Expense type for simplicity or specific logic
+            { code: ACCOUNTS.SALES_RETURN, name: 'Sales Return', type: 'EXPENSE' },
             { code: ACCOUNTS.OFFICE_EXPENSE, name: 'Office Expense', type: 'EXPENSE' },
-            { code: ACCOUNTS.SURGEON_FEE, name: 'Surgeon Fee', type: 'EXPENSE' },
-            { code: ACCOUNTS.PURCHASE_RETURN, name: 'Purchase Return', type: 'EXPENSE' } // Contra-Expense
+            { code: ACCOUNTS.PURCHASE_RETURN, name: 'Purchase Return', type: 'EXPENSE' },
+            { code: ACCOUNTS.EMPLOYEE_ADVANCE, name: 'Employee Advances', type: 'ASSET' },
+            { code: ACCOUNTS.SALARY, name: 'Salaries & Wages', type: 'EXPENSE' }
         ];
+
 
         const { Account } = require('./accounting.models'); // Import here to avoid circular dep if any, or strictly use Repo
         // Better use Repo, but for seeding direct model usage is often easier if Repo doesn't have createMany/upsert
@@ -673,7 +681,8 @@ class AccountingService {
 
         return rows.map(tx => {
             const isIncome = ['INCOME', 'SALES', 'OTHER_INCOME', 'PAYMENT_IN'].includes(tx.type);
-            const isExpense = ['EXPENSE', 'PURCHASE', 'PAYMENT_OUT', 'SURGEON_FEE', 'SALES_RETURN'].includes(tx.type);
+            const isExpense = ['EXPENSE', 'PURCHASE', 'PAYMENT_OUT', 'SALES_RETURN'].includes(tx.type);
+
 
             let amountStr = formatCurrency(tx.amount);
             if (isIncome) amountStr = '+ ' + amountStr;

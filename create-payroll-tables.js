@@ -1,5 +1,4 @@
-const { sequelize } = require('./src/core/database/sequelize');
-const { PayrollRun, PayrollItem } = require('./src/modules/payroll/payroll.models');
+const { PayrollRun, PayrollItem, PayrollAdvance, PayrollAdvanceReturn } = require('./src/modules/payroll/payroll.models');
 const { PayrollStructure } = require('./src/modules/payroll/payroll.structure.model');
 
 
@@ -18,6 +17,20 @@ async function createPayrollTables() {
         // Create payroll_items table
         await PayrollItem.sync({ alter: true });
         console.log('✓ payroll_items table created/updated');
+
+        // Create payroll_advances table
+        await PayrollAdvance.sync({ alter: true });
+        console.log('✓ payroll_advances table created/updated');
+
+        // Create payroll_advance_returns table
+        await PayrollAdvanceReturn.sync({ alter: true });
+        console.log('✓ payroll_advance_returns table created/updated');
+
+        // Create payroll_advance_returns table
+        await PayrollAdvanceReturn.sync({ alter: true });
+        console.log('✓ payroll_advance_returns table created/updated');
+
+
 
         console.log('\nAll payroll tables created successfully!');
         process.exit(0);

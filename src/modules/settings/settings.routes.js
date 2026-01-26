@@ -22,6 +22,7 @@ const {
     updateShippingMethod,
     updateSystemPreferences,
     updateUserPreferences,
+    updateLayoutSettings,
 } = require('./settings.validation');
 
 // Instantiate controller
@@ -153,6 +154,63 @@ router.routesMeta = [
                 }
             }
         ]
+    },
+    {
+        path: '/layout',
+        method: 'GET',
+        middlewares: [verifyToken, moduleCheck('settings')],
+        handler: (req, res) => settingsController.getLayoutSettings(req, res),
+        description: 'Get layout configuration',
+        database: {
+            tables: ['settings'],
+            mainTable: 'settings',
+            fields: { settings: ['id', 'name', 'description'] },
+            notes: "Stores JSON layout data in 'description' column where name='layout_settings'"
+        },
+        sampleResponse: {
+            status: true,
+            message: 'Settings retrieved successfully',
+            data: {
+                pos: {
+                    columns: { mobile: 2, sm: 3, md: 4, lg: 2, xl: 3, xxl: 4 },
+                    gap: 4,
+                    showImages: true,
+                    cardStyle: "standard"
+                }
+            }
+        }
+    },
+    {
+        path: '/layout',
+        method: 'POST',
+        middlewares: [verifyToken, moduleCheck('settings'), validate(updateLayoutSettings)],
+        handler: handlerWithFields((req, res) => settingsController.updateLayoutSettings(req, res), updateLayoutSettings),
+        description: 'Update layout configuration',
+        database: {
+            tables: ['settings'],
+            mainTable: 'settings',
+            sideEffects: ['Updates "description" column where name="layout_settings"']
+        },
+        sampleRequest: {
+            pos: {
+                columns: { mobile: 2, sm: 3, md: 4, lg: 2, xl: 3, xxl: 4 },
+                gap: 4,
+                showImages: true,
+                cardStyle: "standard"
+            }
+        },
+        sampleResponse: {
+            status: true,
+            message: 'Settings updated successfully',
+            data: {
+                pos: {
+                    columns: { mobile: 2, sm: 3, md: 4, lg: 2, xl: 3, xxl: 4 },
+                    gap: 4,
+                    showImages: true,
+                    cardStyle: "standard"
+                }
+            }
+        }
     }
 ];
 
