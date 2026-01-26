@@ -4,8 +4,13 @@ const { success, error, successWithPagination } = require('../../core/utils/resp
 class PayrollController {
     async generateRun(req, res) {
         try {
-            const { month, staff_ids } = req.body;
-            const run = await PayrollService.generateRun(month, req.user.id, staff_ids);
+            console.log("Generate Run Payload:", JSON.stringify(req.body, null, 2));
+            const { month, staff_ids, custom_amounts, staffIds, customAmounts } = req.body;
+            // Robustly handle staff_ids or staffIds
+            const ids = staff_ids || staffIds;
+            const amounts = custom_amounts || customAmounts || {};
+
+            const run = await PayrollService.generateRun(month, req.user.id, ids, amounts);
             return success(res, 'Payroll run generated successfully', run, 201);
         } catch (err) {
             return error(res, err.message, 400);
@@ -97,6 +102,82 @@ class PayrollController {
             return error(res, err.message, 500);
         }
     }
+    async getAdvances(req, res) {
+        try {
+            const page = parseInt(req.query.page) || 1;
+            const limit = parseInt(req.query.limit) || 10;
+            const filters = {
+                staff_id: req.query.staff_id,
+                status: req.query.status,
+                month: req.query.month
+            };
+
+            const result = await PayrollService.getAllAdvances(filters, page, limit);
+            return successWithPagination(res, 'Advances retrieved successfully', result.data, result.pagination);
+        } catch (err) {
+            return error(res, err.message, 500);
+        }
+    }
+
+    async getAdvanceById(req, res) {
+        try {
+            const advance = await PayrollService.getAdvanceById(req.params.id);
+            return success(res, 'Advance retrieved successfully', advance);
+        } catch (err) {
+            return error(res, err.message, 404);
+        }
+    }
+
+    async createAdvance(req, res) {
+        try {
+            const data = {
+                ...req.body,
+                created_by: req.user.id
+            };
+            const advance = await PayrollService.createAdvance(data);
+            return success(res, 'Advance created successfully', advance, 201);
+        } catch (err) {
+            return error(res, err.message, 400);
+        }
+    }
+
+    async updateAdvance(req, res) {
+        try {
+            const advance = await PayrollService.updateAdvance(req.params.id, req.body);
+            return success(res, 'Advance updated successfully', advance);
+        } catch (err) {
+            return error(res, err.message, 400);
+        }
+    }
+
+    async deleteAdvance(req, res) {
+        try {
+            await PayrollService.deleteAdvance(req.params.id);
+            return success(res, 'Advance deleted successfully', null);
+        } catch (err) {
+            return error(res, err.message, 400);
+        }
+    }
+
+    async returnAdvance(req, res) {
+        try {
+            const entry = await PayrollService.processAdvanceReturn(req.params.id, req.body);
+            return success(res, 'Return recorded successfully', entry, 201);
+        } catch (err) {
+            return error(res, err.message, 400);
+        }
+    }
+
+    async addPayment(req, res) {
+        try {
+            const payment = await PayrollService.addPayment(req.params.itemId, req.body, req.user.id);
+            return success(res, 'Payment recorded successfully', payment, 201);
+        } catch (err) {
+            return error(res, err.message, 400);
+        }
+    }
 }
 
+
 module.exports = new PayrollController();
+

@@ -74,6 +74,32 @@ class AccountingRepository {
         return await Account.findAndCountAll(options);
     }
 
+    async findAllAccountsWithBalances(filters = {}) {
+        const where = {};
+        if (filters.search) {
+            where[Op.or] = [
+                { name: { [Op.like]: `%${filters.search}%` } },
+                { code: { [Op.like]: `%${filters.search}%` } }
+            ];
+        }
+
+        return await Account.findAll({
+            where,
+            attributes: [
+                'id', 'code', 'name', 'type', 'parent_id',
+                [sequelize.fn('SUM', sequelize.col('JournalLines.debit')), 'total_debit'],
+                [sequelize.fn('SUM', sequelize.col('JournalLines.credit')), 'total_credit']
+            ],
+            include: [{
+                model: JournalLine,
+                attributes: [],
+                required: false
+            }],
+            group: ['Account.id'],
+            order: [['code', 'ASC']]
+        });
+    }
+
     async findAccountsByTypes(types) {
         return await Account.findAll({
             where: {

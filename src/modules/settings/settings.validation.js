@@ -133,6 +133,24 @@ const settingsValidations = {
     notifications_enabled: z.boolean().optional(),
     email_notifications: z.boolean().optional(),
   }),
+
+  // Layout Settings
+  updateLayoutSettings: z.object({
+    pos: z.object({
+      columns: z.object({
+        mobile: z.number().optional(),
+        sm: z.number().optional(),
+        md: z.number().optional(),
+        lg: z.number().optional(),
+        xl: z.number().optional(),
+        xxl: z.number().optional(),
+      }).optional(),
+      gap: z.number().optional(),
+      showImages: z.boolean().optional(),
+      cardStyle: z.string().optional(),
+    }).optional(),
+    // Allow other layout config keys if needed in future
+  }).passthrough(),
 };
 
 module.exports = settingsValidations;

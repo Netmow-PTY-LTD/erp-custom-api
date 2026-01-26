@@ -52,12 +52,20 @@ Customer.hasMany(StaffCheckIn, { foreignKey: 'customer_id', as: 'checkins' }); /
 StaffCheckIn.belongsTo(Staff, { foreignKey: 'staff_id', as: 'staff' });
 
 // Set up Payroll associations
-const { PayrollRun, PayrollItem } = require('../../modules/payroll/payroll.models');
+const { PayrollRun, PayrollItem, PayrollAdvance, PayrollAdvanceReturn } = require('../../modules/payroll/payroll.models');
 
 PayrollRun.hasMany(PayrollItem, { foreignKey: 'run_id', as: 'items' });
 PayrollItem.belongsTo(PayrollRun, { foreignKey: 'run_id', as: 'run' });
 
 User.hasMany(PayrollItem, { foreignKey: 'staff_id', as: 'payrollItems' });
 PayrollItem.belongsTo(User, { foreignKey: 'staff_id', as: 'staff' });
+
+User.hasMany(PayrollAdvance, { foreignKey: 'staff_id', as: 'advances' });
+PayrollAdvance.belongsTo(User, { foreignKey: 'staff_id', as: 'staff' });
+PayrollAdvance.belongsTo(User, { foreignKey: 'created_by', as: 'creator' });
+
+// Associations for PayrollAdvance and PayrollAdvanceReturn are already defined in their model file
+
+
 
 module.exports = {};
