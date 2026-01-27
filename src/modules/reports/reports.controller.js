@@ -217,6 +217,29 @@ class ReportController {
             return error(res, err.message, 500);
         }
     }
+    async getStaffWiseSales(req, res) {
+        try {
+            const startDate = req.query.start_date || req.query.startDate;
+            const endDate = req.query.end_date || req.query.endDate;
+            const page = parseInt(req.query.page) || 1;
+            const limit = parseInt(req.query.limit) || 10;
+            const search = req.query.search || null;
+            const staff_id = req.query.staff_id || null;
+
+            const result = await ReportService.getStaffWiseSales(startDate, endDate, page, limit, search, staff_id);
+
+            const total = parseInt(result.total) || 0;
+
+            return successWithPagination(res, 'Staff wise sales retrieved', result.rows, {
+                total: total,
+                page,
+                limit,
+                totalPage: Math.ceil(total / limit)
+            });
+        } catch (err) {
+            return error(res, err.message, 500);
+        }
+    }
 }
 
 module.exports = new ReportController();

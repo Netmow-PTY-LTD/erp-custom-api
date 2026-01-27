@@ -552,6 +552,28 @@ router.routesMeta = [
                 }
             }
         ]
+    },
+    {
+        path: '/sales/staff-wise',
+        method: 'GET',
+        middlewares: [validate(dateRangeSchema, 'query')],
+        handler: (req, res) => reportController.getStaffWiseSales(req, res),
+        description: 'Get sales grouped by staff member',
+        queryParams: { startDate: 'YYYY-MM-DD', endDate: 'YYYY-MM-DD', page: 'Number', limit: 'Number', search: 'String' },
+        sampleResponse: {
+            success: true,
+            message: 'Staff wise sales retrieved',
+            pagination: {
+                total: 5,
+                page: 1,
+                limit: 10,
+                totalPage: 1
+            },
+            data: [
+                { id: 1, staff_name: "Ahmad Hassan", order_count: 15, total_sales: 4500.00 },
+                { id: 2, staff_name: "Siti Nurhaliza", order_count: 12, total_sales: 3800.00 }
+            ]
+        }
     }
 ];
 
