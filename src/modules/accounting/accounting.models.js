@@ -177,6 +177,11 @@ const TaxSubmission = sequelize.define('TaxSubmission', {
     notes: {
         type: DataTypes.TEXT,
         allowNull: true
+    },
+    payment_mode: {
+        type: DataTypes.ENUM('CASH', 'BANK'),
+        allowNull: false,
+        defaultValue: 'BANK'
     }
 }, {
     tableName: 'tax_submissions',

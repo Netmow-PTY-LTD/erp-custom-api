@@ -634,8 +634,8 @@ class AccountingRepository {
     }
 
     // --- Tax Submission Operations ---
-    async createTaxSubmission(data) {
-        return await TaxSubmission.create(data);
+    async createTaxSubmission(data, t) {
+        return await TaxSubmission.create(data, { transaction: t });
     }
 
     async findAllTaxSubmissions(filters = {}, limit = 10, offset = 0) {

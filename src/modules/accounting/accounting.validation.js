@@ -70,7 +70,8 @@ const createTaxSubmission = z.object({
     reference_number: z.string().optional(),
     attachment_url: z.string().optional(),
     status: z.enum(['PENDING', 'SUBMITTED', 'PAID']).default('SUBMITTED'),
-    notes: z.string().optional()
+    notes: z.string().optional(),
+    payment_mode: z.enum(['CASH', 'BANK']).default('BANK')
 });
 
 module.exports = {

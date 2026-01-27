@@ -34,9 +34,11 @@ class AccountingService {
     }
 
     // --- Core Transaction Processing ---
-    async processTransaction(data) {
-        // Run in a transaction block
-        return await sequelize.transaction(async (t) => {
+    async processTransaction(data, existingTransaction = null) {
+        const runWork = async (t) => {
+            // Debug Logs
+            console.log(`[AccountingService] Processing ${data.type} Transaction. Payment Mode: ${data.payment_mode}`);
+
             // 1. Create the Single Entry Transaction
             const transaction = await AccountingRepository.createTransaction(data, t);
 
@@ -159,7 +161,8 @@ class AccountingService {
 
                 case 'TAX_SUBMISSION': {
                     linesData.push({ account_id: await this.getAccountId(ACCOUNTS.TAX_PAYABLE), debit: amount, credit: 0 });
-                    const crCode = (data.payment_mode === 'BANK') ? ACCOUNTS.BANK : ACCOUNTS.CASH;
+                    const pMode = String(data.payment_mode || '').toUpperCase();
+                    const crCode = (pMode === 'CASH') ? ACCOUNTS.CASH : ACCOUNTS.BANK;
                     linesData.push({ account_id: await this.getAccountId(crCode), debit: 0, credit: amount });
                     break;
                 }
@@ -179,7 +182,12 @@ class AccountingService {
             const journal = await AccountingRepository.createJournalEntry(journalData, linesData, t);
 
             return { transaction, journal };
-        });
+        };
+
+        if (existingTransaction) {
+            return await runWork(existingTransaction);
+        }
+        return await sequelize.transaction(runWork);
     }
 
     // --- Reports ---
@@ -800,17 +808,20 @@ class AccountingService {
     async createTaxSubmission(data) {
         return await sequelize.transaction(async (t) => {
             // 1. Create Tax Submission Record
-            const submission = await AccountingRepository.createTaxSubmission(data);
+            const submission = await AccountingRepository.createTaxSubmission(data, t);
 
             // 2. record accounting transaction if amount > 0
-            if (data.amount > 0) {
+            const amount = parseFloat(data.amount || 0);
+            console.log(`[AccountingService] CreateTaxSubmission amount: ${amount}, data.payment_mode: ${data.payment_mode}, submission.payment_mode: ${submission.payment_mode}`);
+
+            if (amount > 0) {
                 await this.processTransaction({
                     type: 'TAX_SUBMISSION',
-                    amount: data.amount,
-                    payment_mode: data.payment_mode || 'BANK',
-                    date: data.submission_date,
+                    amount: amount,
+                    payment_mode: data.payment_mode || submission.payment_mode || 'BANK',
+                    date: data.submission_date || submission.submission_date,
                     description: `Tax Submission: ${data.tax_type} for period ${data.period_start} to ${data.period_end}. Ref: ${data.reference_number || 'N/A'}`
-                });
+                }, t);
             }
 
             return submission;
