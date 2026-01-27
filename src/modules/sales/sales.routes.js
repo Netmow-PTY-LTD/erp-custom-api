@@ -823,6 +823,32 @@ router.routesMeta = [
         ]
     },
     {
+        path: '/orders/invoices/:id/einvoice/generate',
+        method: 'POST',
+        middlewares: [],
+        handler: (req, res) => salesController.generateEInvoice(req, res),
+        description: 'Generate e-invoice draft and validate data locally.',
+        database: {
+            tables: ['invoices'],
+            mainTable: 'invoices',
+            sideEffects: ['Updates e_invoice_status to GENERATED']
+        },
+        sampleResponse: { success: true, message: 'E-Invoice generated successfully' }
+    },
+    {
+        path: '/orders/invoices/:id/einvoice/submit',
+        method: 'POST',
+        middlewares: [],
+        handler: (req, res) => salesController.submitEInvoice(req, res),
+        description: 'Submit e-invoice to LHDN Authority.',
+        database: {
+            tables: ['invoices'],
+            mainTable: 'invoices',
+            sideEffects: ['Updates e_invoice_status to SUBMITTED/VALID', 'Sets e_invoice_uuid and e_invoice_qr_url']
+        },
+        sampleResponse: { success: true, message: 'E-Invoice submitted to LHDN successfully' }
+    },
+    {
         path: '/orders/invoices/:id',
         method: 'GET',
         middlewares: [],

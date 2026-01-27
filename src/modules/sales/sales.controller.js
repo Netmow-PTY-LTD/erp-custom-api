@@ -524,6 +524,23 @@ class SalesController {
         }
     }
 
+    async generateEInvoice(req, res) {
+        try {
+            const invoice = await SalesService.generateEInvoice(req.params.id, req.user.id);
+            return success(res, 'E-Invoice generated successfully', invoice);
+        } catch (err) {
+            return error(res, err.message, 400);
+        }
+    }
+
+    async submitEInvoice(req, res) {
+        try {
+            const result = await SalesService.submitEInvoice(req.params.id, req.user.id);
+            return success(res, 'E-Invoice submitted to LHDN successfully', result);
+        } catch (err) {
+            return error(res, err.message, 400);
+        }
+    }
 }
 
 module.exports = new SalesController();

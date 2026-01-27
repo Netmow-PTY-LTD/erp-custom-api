@@ -146,6 +146,54 @@ class SettingsService {
 
     return { ...data };
   }
+  async getEInvoiceSettings() {
+    const setting = await this.settingsRepository.findByName('einvoice_settings');
+
+    if (setting && setting.description) {
+      try {
+        return JSON.parse(setting.description);
+      } catch (e) {
+        console.error('Error parsing einvoice settings:', e);
+      }
+    }
+
+    // Default data
+    return {
+      environment: 'sandbox',
+      client_id: '',
+      client_secret: '',
+      tin: '',
+      msic_code: '', // Standard Industry classification
+      contact_number: '',
+      id_client_id: '', // Intermediary ID if needed
+      id_client_secret: '', // Intermediary Secret
+      certificate: '',
+      certificate_password: ''
+    };
+  }
+
+  async updateEInvoiceSettings(data) {
+    const setting = await this.settingsRepository.findByName('einvoice_settings');
+
+    // Convert data to string for storage
+    const description = JSON.stringify(data);
+
+    if (setting) {
+      await this.settingsRepository.update(setting.id, {
+        name: 'einvoice_settings',
+        description: description,
+        status: 'Active'
+      });
+    } else {
+      await this.settingsRepository.create({
+        name: 'einvoice_settings',
+        description: description,
+        status: 'Active'
+      });
+    }
+
+    return { ...data };
+  }
 }
 
 module.exports = SettingsService;

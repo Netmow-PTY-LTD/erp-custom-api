@@ -210,7 +210,21 @@ router.routesMeta = [
                     cardStyle: "standard"
                 }
             }
-        }
+        },
+    },
+    {
+        path: '/einvoice',
+        method: 'GET',
+        middlewares: [verifyToken, moduleCheck('settings')],
+        handler: (req, res) => settingsController.getEInvoiceSettings(req, res),
+        description: 'Get E-Invoice configuration'
+    },
+    {
+        path: '/einvoice',
+        method: 'POST',
+        middlewares: [verifyToken, moduleCheck('settings')],
+        handler: (req, res) => settingsController.updateEInvoiceSettings(req, res),
+        description: 'Update E-Invoice configuration'
     }
 ];
 

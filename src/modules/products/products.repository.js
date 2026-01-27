@@ -13,6 +13,21 @@ class ProductRepository {
             where.is_active = filters.is_active;
         }
 
+        if (filters.stock_status) {
+            if (filters.stock_status === 'available') {
+                where.stock_quantity = { [Op.gt]: 0 };
+            } else if (filters.stock_status === 'out_of_stock') {
+                where.stock_quantity = 0;
+            } else if (filters.stock_status === 'low_stock') {
+                where.stock_quantity = {
+                    [Op.and]: [
+                        { [Op.lte]: Sequelize.col('min_stock_level') },
+                        { [Op.gt]: 0 }
+                    ]
+                };
+            }
+        }
+
         if (filters.product_type) {
             where.product_type = filters.product_type;
         }
@@ -179,14 +194,14 @@ class ProductRepository {
     async getProductOrders(productId, filters = {}, limit = 10, offset = 0) {
         const { Order, OrderItem } = require('../sales/sales.models');
         const { Customer } = require('../customers/customers.model');
-        
+
         const where = {};
-        
+
         // Add status filter if provided
         if (filters.status) {
             where.status = filters.status;
         }
-        
+
         // Add date range filters if provided
         if (filters.start_date || filters.end_date) {
             where.order_date = {};

@@ -92,6 +92,23 @@ class SettingsController {
       return error(res, err.message, 400);
     }
   }
+  async getEInvoiceSettings(req, res) {
+    try {
+      const settings = await this.settingsService.getEInvoiceSettings();
+      return success(res, 'E-Invoice settings retrieved successfully', settings);
+    } catch (err) {
+      return error(res, err.message, 500);
+    }
+  }
+
+  async updateEInvoiceSettings(req, res) {
+    try {
+      const settings = await this.settingsService.updateEInvoiceSettings(req.body);
+      return success(res, 'E-Invoice settings updated successfully', settings);
+    } catch (err) {
+      return error(res, err.message, 400);
+    }
+  }
 }
 
 module.exports = SettingsController;

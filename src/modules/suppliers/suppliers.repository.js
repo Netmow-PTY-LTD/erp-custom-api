@@ -20,6 +20,14 @@ class SupplierRepository {
             ];
         }
 
+        let order = [['created_at', 'DESC']];
+
+        if (filters.sort === 'top_purchase') {
+            order = [[sequelize.literal('total_purchase_amount'), 'DESC']];
+        } else if (filters.sort === 'low_purchase') {
+            order = [[sequelize.literal('total_purchase_amount'), 'ASC']];
+        }
+
         return await Supplier.findAndCountAll({
             where,
             attributes: {
@@ -62,7 +70,7 @@ class SupplierRepository {
             },
             limit,
             offset,
-            order: [['created_at', 'DESC']]
+            order
         });
     }
 

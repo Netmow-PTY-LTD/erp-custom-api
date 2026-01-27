@@ -41,6 +41,36 @@ class AccountingController {
         }
     }
 
+    async getExpenses(req, res) {
+        try {
+            const { count, rows } = await AccountingService.getExpenses(req.query);
+            const pagination = {
+                total: count,
+                page: parseInt(req.query.page) || 1,
+                limit: parseInt(req.query.limit) || 10,
+                totalPage: Math.ceil(count / (parseInt(req.query.limit) || 10))
+            };
+            return successWithPagination(res, 'Expenses retrieved successfully', rows, pagination);
+        } catch (err) {
+            return error(res, err.message, 500);
+        }
+    }
+
+    async getIncomes(req, res) {
+        try {
+            const { count, rows } = await AccountingService.getIncomes(req.query);
+            const pagination = {
+                total: count,
+                page: parseInt(req.query.page) || 1,
+                limit: parseInt(req.query.limit) || 10,
+                totalPage: Math.ceil(count / (parseInt(req.query.limit) || 10))
+            };
+            return successWithPagination(res, 'Incomes retrieved successfully', rows, pagination);
+        } catch (err) {
+            return error(res, err.message, 500);
+        }
+    }
+
     // --- Reports ---
     async getJournalReport(req, res) {
         try {
@@ -274,6 +304,67 @@ class AccountingController {
         // Implementation for charts if needed using new tables
         // For now returning basic overview or empty
         return success(res, 'Chart data endpoint pending implementation with new schema', []);
+    }
+
+    // --- Tax Submissions ---
+    async createTaxSubmission(req, res) {
+        try {
+            const submission = await AccountingService.createTaxSubmission(req.body);
+            return success(res, 'Tax submission recorded successfully', submission, 201);
+        } catch (err) {
+            const message = err.errors ? err.errors.map(e => e.message).join(', ') : err.message;
+            return error(res, message, 400);
+        }
+    }
+
+    async getAllTaxSubmissions(req, res) {
+        try {
+            const { count, rows, stats } = await AccountingService.getAllTaxSubmissions(req.query);
+            const page = parseInt(req.query.page) || 1;
+            const limit = parseInt(req.query.limit) || 10;
+            const pagination = {
+                total: count,
+                page,
+                limit,
+                totalPage: Math.ceil(count / limit)
+            };
+            return res.status(200).json({
+                status: true,
+                message: 'Tax submissions retrieved successfully',
+                data: rows,
+                pagination,
+                stats
+            });
+        } catch (err) {
+            return error(res, err.message, 500);
+        }
+    }
+
+    async getTaxSubmissionById(req, res) {
+        try {
+            const submission = await AccountingService.getTaxSubmissionById(req.params.id);
+            return success(res, 'Tax submission retrieved successfully', submission);
+        } catch (err) {
+            return error(res, err.message, 404);
+        }
+    }
+
+    async updateTaxSubmission(req, res) {
+        try {
+            const submission = await AccountingService.updateTaxSubmission(req.params.id, req.body);
+            return success(res, 'Tax submission updated successfully', submission);
+        } catch (err) {
+            return error(res, err.message, 400);
+        }
+    }
+
+    async deleteTaxSubmission(req, res) {
+        try {
+            await AccountingService.deleteTaxSubmission(req.params.id);
+            return success(res, 'Tax submission deleted successfully', null);
+        } catch (err) {
+            return error(res, err.message, 404);
+        }
     }
 }
 

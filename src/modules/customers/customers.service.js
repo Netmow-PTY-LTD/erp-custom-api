@@ -64,7 +64,7 @@ class CustomerService {
             }
         }
 
-        const { thumb_url, gallery_items, ...customerData } = data;
+        const { thumb_url, gallery_items, contacts, ...customerData } = data;
 
         // Map thumb_url to image_url
         if (thumb_url && !customerData.image_url) {
@@ -81,7 +81,7 @@ class CustomerService {
             }));
         }
 
-        const customer = await CustomerRepository.create({ ...customerData, images, created_by: userId });
+        const customer = await CustomerRepository.create({ ...customerData, images, contacts, created_by: userId });
         return this._transformCustomer(customer);
     }
 
@@ -94,7 +94,7 @@ class CustomerService {
             }
         }
 
-        const { thumb_url, gallery_items, ...customerData } = data;
+        const { thumb_url, gallery_items, contacts, ...customerData } = data;
 
         // Map thumb_url to image_url
         if (thumb_url && !customerData.image_url) {
@@ -110,7 +110,7 @@ class CustomerService {
             }));
         }
 
-        const customer = await CustomerRepository.update(id, customerData);
+        const customer = await CustomerRepository.update(id, { ...customerData, contacts });
         if (!customer) {
             throw new Error('Customer not found');
         }

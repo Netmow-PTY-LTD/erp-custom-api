@@ -61,11 +61,24 @@ const createHeadWiseIncome = z.object({
     reference_number: z.string().optional()
 });
 
+const createTaxSubmission = z.object({
+    tax_type: z.string().min(1, 'Tax type is required'),
+    period_start: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Start date must be YYYY-MM-DD'),
+    period_end: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'End date must be YYYY-MM-DD'),
+    amount: z.number().positive('Amount must be positive'),
+    submission_date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Submission date must be YYYY-MM-DD'),
+    reference_number: z.string().optional(),
+    attachment_url: z.string().optional(),
+    status: z.enum(['PENDING', 'SUBMITTED', 'PAID']).default('SUBMITTED'),
+    notes: z.string().optional()
+});
+
 module.exports = {
     createAccount,
     updateAccount,
     createTransaction,
     createJournal,
     createHeadWiseExpense,
-    createHeadWiseIncome
+    createHeadWiseIncome,
+    createTaxSubmission
 };

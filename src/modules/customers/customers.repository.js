@@ -1,4 +1,4 @@
-const { Customer, CustomerImage } = require('./customers.model');
+const { Customer, CustomerImage, CustomerContact } = require('./customers.model');
 const { Op } = require('sequelize');
 const { sequelize } = require('../../core/database/sequelize');
 
@@ -21,6 +21,14 @@ class CustomerRepository {
                 { phone: { [Op.like]: `%${filters.search}%` } },
                 { company: { [Op.like]: `%${filters.search}%` } }
             ];
+        }
+
+        let order = [['created_at', 'DESC']];
+
+        if (filters.sort === 'top_sold') {
+            order = [[sequelize.literal('total_sales'), 'DESC']];
+        } else if (filters.sort === 'low_sold') {
+            order = [[sequelize.literal('total_sales'), 'ASC']];
         }
 
         return await Customer.findAndCountAll({
@@ -77,12 +85,17 @@ class CustomerRepository {
                     model: CustomerImage,
                     as: 'images',
                     attributes: ['image_url']
+                },
+                {
+                    model: CustomerContact,
+                    as: 'contacts',
+                    attributes: ['id', 'name', 'phone', 'role', 'email', 'is_primary']
                 }
             ],
             limit,
             offset,
             distinct: true, // Fix for correct pagination count with includes
-            order: [['created_at', 'DESC']]
+            order
         });
     }
 
@@ -140,6 +153,11 @@ class CustomerRepository {
                     model: CustomerImage,
                     as: 'images',
                     attributes: ['id', 'image_url', 'is_primary', 'sort_order', 'caption']
+                },
+                {
+                    model: CustomerContact,
+                    as: 'contacts',
+                    attributes: ['id', 'name', 'phone', 'role', 'email', 'is_primary']
                 }
             ]
         });
@@ -152,7 +170,7 @@ class CustomerRepository {
     async create(data) {
         const transaction = await sequelize.transaction();
         try {
-            const { images, ...customerData } = data;
+            const { images, contacts, ...customerData } = data;
             const customer = await Customer.create(customerData, { transaction });
 
             if (images && images.length > 0) {
@@ -164,6 +182,18 @@ class CustomerRepository {
                     caption: img.caption
                 }));
                 await CustomerImage.bulkCreate(imageRecords, { transaction });
+            }
+
+            if (contacts && contacts.length > 0) {
+                const contactRecords = contacts.map(contact => ({
+                    customer_id: customer.id,
+                    name: contact.name,
+                    phone: contact.phone,
+                    role: contact.role,
+                    email: contact.email,
+                    is_primary: contact.is_primary || false
+                }));
+                await CustomerContact.bulkCreate(contactRecords, { transaction });
             }
 
             await transaction.commit();
@@ -183,7 +213,7 @@ class CustomerRepository {
                 return null;
             }
 
-            const { images, ...customerData } = data;
+            const { images, contacts, ...customerData } = data;
             await customer.update(customerData, { transaction });
 
             if (images !== undefined) {
@@ -203,6 +233,27 @@ class CustomerRepository {
                         caption: img.caption
                     }));
                     await CustomerImage.bulkCreate(imageRecords, { transaction });
+                }
+            }
+
+            if (contacts !== undefined) {
+                // Delete existing contacts
+                await CustomerContact.destroy({
+                    where: { customer_id: id },
+                    transaction
+                });
+
+                // Create new contacts
+                if (contacts && contacts.length > 0) {
+                    const contactRecords = contacts.map(contact => ({
+                        customer_id: id,
+                        name: contact.name,
+                        phone: contact.phone,
+                        role: contact.role,
+                        email: contact.email,
+                        is_primary: contact.is_primary || false
+                    }));
+                    await CustomerContact.bulkCreate(contactRecords, { transaction });
                 }
             }
 

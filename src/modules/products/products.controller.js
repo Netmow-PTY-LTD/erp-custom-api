@@ -9,6 +9,7 @@ class ProductController {
             const filters = {
                 category_id: req.query.category_id,
                 is_active: req.query.is_active,
+                stock_status: req.query.stock_status,
                 search: req.query.search
             };
 

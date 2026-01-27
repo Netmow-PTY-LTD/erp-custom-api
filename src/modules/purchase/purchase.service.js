@@ -398,10 +398,15 @@ class PurchaseService {
         const invoice_number = `PINV-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
 
         // Create invoice with auto-generated fields
+        const subtotal = parseFloat(order.total_amount || 0);
+        const discount = parseFloat(order.discount_amount || 0);
+        const tax = parseFloat(order.tax_amount || 0);
+        const totalPayable = subtotal - discount + tax;
+
         const invoiceData = {
             ...data,
             invoice_number,
-            total_amount: order.total_amount,
+            total_amount: subtotal,
             created_by: userId
         };
 
@@ -412,7 +417,8 @@ class PurchaseService {
             try {
                 await AccountingService.processTransaction({
                     type: 'PURCHASE',
-                    amount: invoice.total_payable_amount || invoice.total_amount,
+                    amount: totalPayable,
+                    tax_amount: tax,
                     payment_mode: 'DUE',
                     date: invoice.invoice_date || new Date(),
                     description: `Purchase Invoice ${invoice.invoice_number}`

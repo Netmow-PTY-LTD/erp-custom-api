@@ -9,7 +9,8 @@ class CustomerController {
             const filters = {
                 customer_type: req.query.customer_type,
                 is_active: req.query.is_active,
-                search: req.query.search
+                search: req.query.search,
+                sort: req.query.sort
             };
 
             const result = await CustomerService.getAllCustomers(filters, page, limit);
