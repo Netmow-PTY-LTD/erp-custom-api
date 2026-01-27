@@ -5,7 +5,7 @@ const { verifyToken } = require('../../core/middleware/auth');
 const { moduleCheck } = require('../../core/middleware/moduleCheck');
 const { handlerWithFields } = require('../../core/utils/zodTypeView');
 const validate = require('../../core/middleware/validate');
-const { createAccount, updateAccount, createJournal, createHeadWiseExpense, createHeadWiseIncome } = require('./accounting.validation');
+const { createAccount, updateAccount, createJournal, createHeadWiseExpense, createHeadWiseIncome, createTaxSubmission } = require('./accounting.validation');
 
 // Module name for routes-tree grouping
 router.moduleName = 'Accounting';
@@ -187,6 +187,22 @@ router.routesMeta = [
                 }
             }
         ]
+    },
+    {
+        path: '/expenses',
+        method: 'GET',
+        middlewares: [],
+        handler: (req, res) => accountingController.getExpenses(req, res),
+        description: 'Get list of Expenses',
+        queryParams: { page: 'Page', limit: 'Limit', search: 'Search', date: 'Date' }
+    },
+    {
+        path: '/incomes',
+        method: 'GET',
+        middlewares: [],
+        handler: (req, res) => accountingController.getIncomes(req, res),
+        description: 'Get list of Incomes',
+        queryParams: { page: 'Page', limit: 'Limit', search: 'Search', date: 'Date' }
     },
 
     // --- Reports ---
@@ -960,6 +976,59 @@ router.routesMeta = [
                 }
             }
         ]
+    },
+    {
+        path: '/tax-submissions',
+        method: 'POST',
+        middlewares: [validate(createTaxSubmission)],
+        handler: handlerWithFields((req, res) => accountingController.createTaxSubmission(req, res), createTaxSubmission),
+        description: 'Record a Tax Submission',
+        database: {
+            tables: ['tax_submissions', 'transactions', 'journals'],
+            mainTable: 'tax_submissions'
+        },
+        request: {
+            tax_type: 'VAT',
+            period_start: '2026-01-01',
+            period_end: '2026-01-31',
+            amount: 5000,
+            submission_date: '2026-02-15',
+            reference_number: 'VAT-JAN-2026',
+            notes: 'January VAT Submission'
+        },
+        examples: [
+            {
+                title: 'Record Tax Submission',
+                description: 'Submit VAT for January',
+                url: '/api/accounting/tax-submissions',
+                method: 'POST',
+                request: {
+                    tax_type: 'VAT',
+                    period_start: '2026-01-01',
+                    period_end: '2026-01-31',
+                    amount: 5000,
+                    submission_date: '2026-02-15',
+                    reference_number: 'VAT-JAN-2026'
+                },
+                response: {
+                    status: true,
+                    message: 'Tax submission recorded successfully'
+                }
+            }
+        ]
+    },
+    {
+        path: '/tax-submissions',
+        method: 'GET',
+        middlewares: [],
+        handler: (req, res) => accountingController.getAllTaxSubmissions(req, res),
+        description: 'Get all tax submissions',
+        queryParams: {
+            page: 'Page number',
+            limit: 'Items per page',
+            tax_type: 'Filter by type',
+            status: 'Filter by status'
+        }
     }
 ];
 

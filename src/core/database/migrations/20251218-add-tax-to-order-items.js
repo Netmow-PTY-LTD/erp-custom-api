@@ -5,12 +5,16 @@
 module.exports = {
     up: async (queryInterface, Sequelize) => {
         // Add tax_amount column
-        await queryInterface.addColumn('order_items', 'tax_amount', {
-            type: Sequelize.DECIMAL(10, 2),
-            allowNull: true,
-            defaultValue: 0.00,
-            after: 'line_total'
-        });
+        try {
+            await queryInterface.addColumn('order_items', 'tax_amount', {
+                type: Sequelize.DECIMAL(10, 2),
+                allowNull: true,
+                defaultValue: 0.00,
+                after: 'line_total'
+            });
+        } catch (error) {
+            console.log("Skipping adding 'tax_amount' column:", error.message);
+        }
     },
 
     down: async (queryInterface, Sequelize) => {

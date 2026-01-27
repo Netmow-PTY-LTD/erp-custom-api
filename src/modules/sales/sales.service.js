@@ -138,9 +138,10 @@ class SalesService {
                 const unit_price = Number(item.unit_price) || 0;
                 const discount = Number(item.discount) || 0;
 
-                // Fetch product to get sales_tax
+                // Fetch product to get default sales_tax
                 const product = await ProductRepository.findById(item.product_id);
-                const sales_tax_rate = product && product.sales_tax ? Number(product.sales_tax) : 0;
+                // Use provide tax rate from frontend (e.g. POS) or fallback to product's default
+                const sales_tax_rate = item.sales_tax !== undefined ? Number(item.sales_tax) : (product && product.sales_tax ? Number(product.sales_tax) : 0);
 
                 const total_price = quantity * unit_price; // Before discount
                 const line_total = total_price - discount; // After discount
@@ -410,21 +411,27 @@ class SalesService {
         const invoice_number = `INV-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
 
         // Create invoice with auto-generated fields
+        const subtotal = parseFloat(order.total_amount || 0);
+        const discount = parseFloat(order.discount_amount || 0);
+        const tax = parseFloat(order.tax_amount || 0);
+        const totalPayable = subtotal - discount + tax;
+
         const invoiceData = {
             ...data,
             invoice_number,
-            total_amount: order.total_amount,
+            total_amount: subtotal, // Store subtotal in DB as per existing model? (Or should it be Payable? Model says total_amount)
             created_by: userId
         };
 
         const invoice = await InvoiceRepository.create(invoiceData);
 
-        // Accounting: Book Sales Revenue (Dr AR / Cr Sales)
+        // Accounting: Book Sales Revenue (Dr AR / Cr Sales & Tax)
         if (invoice) {
             try {
                 await AccountingService.processTransaction({
                     type: 'SALES',
-                    amount: invoice.total_amount,
+                    amount: totalPayable,
+                    tax_amount: tax,
                     payment_mode: 'DUE',
                     date: invoice.created_at || new Date(),
                     description: `Sales Invoice ${invoice.invoice_number}`
@@ -1018,6 +1025,16 @@ class SalesService {
             delivered_orders: stats.deliveredOrders,
             total_value: stats.totalValue.toLocaleString()
         };
+    }
+
+    async generateEInvoice(invoiceId, userId) {
+        const EInvoiceService = require('./einvoice.service');
+        return await EInvoiceService.generateEInvoice(invoiceId, userId);
+    }
+
+    async submitEInvoice(invoiceId, userId) {
+        const EInvoiceService = require('./einvoice.service');
+        return await EInvoiceService.submitEInvoice(invoiceId, userId);
     }
 }
 

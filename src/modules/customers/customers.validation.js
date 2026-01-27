@@ -22,7 +22,14 @@ const createCustomer = z.object({
     is_active: z.boolean().default(true),
     image_url: z.string().url().optional().or(z.literal('')),
     thumb_url: z.string().url().optional().or(z.literal('')),
-    gallery_items: z.array(z.string().url()).optional()
+    gallery_items: z.array(z.string().url()).optional(),
+    contacts: z.array(z.object({
+        name: z.string().min(1, 'Contact name is required').max(255),
+        phone: z.string().max(50).optional().nullable(),
+        role: z.string().max(100).optional().nullable(),
+        email: z.string().email('Invalid email format').max(255).optional().nullable().or(z.literal('')),
+        is_primary: z.boolean().optional().default(false)
+    })).optional()
 }).transform(data => {
     // Convert salesRouteId to sales_route_id if provided
     if (data.salesRouteId !== undefined && data.sales_route_id === undefined) {
@@ -54,7 +61,15 @@ const updateCustomer = z.object({
     is_active: z.boolean().optional(),
     image_url: z.string().url().optional().or(z.literal('')),
     thumb_url: z.string().url().optional().or(z.literal('')),
-    gallery_items: z.array(z.string().url()).optional()
+    gallery_items: z.array(z.string().url()).optional(),
+    contacts: z.array(z.object({
+        id: z.number().optional(),
+        name: z.string().min(1, 'Contact name is required').max(255),
+        phone: z.string().max(50).optional().nullable(),
+        role: z.string().max(100).optional().nullable(),
+        email: z.string().email('Invalid email format').max(255).optional().nullable().or(z.literal('')),
+        is_primary: z.boolean().optional().default(false)
+    })).optional()
 }).transform(data => {
     // Convert salesRouteId to sales_route_id if provided
     if (data.salesRouteId !== undefined && data.sales_route_id === undefined) {

@@ -1,4 +1,4 @@
-const { Account, Transaction, Journal, JournalLine } = require('./accounting.models');
+const { Account, Transaction, Journal, JournalLine, TaxSubmission } = require('./accounting.models');
 const { Op } = require('sequelize');
 const { sequelize } = require('../../core/database/sequelize');
 
@@ -595,6 +595,115 @@ class AccountingRepository {
         breakdown.sort((a, b) => b.value - a.value);
 
         return breakdown;
+    }
+
+    async findHeadWiseTransactions(types, filters = {}, limit = 10, offset = 0) {
+        const where = {
+            type: { [Op.in]: types }
+        };
+
+        if (filters.from && filters.to) {
+            where.date = { [Op.between]: [filters.from, filters.to] };
+        } else if (filters.date) {
+            where.date = filters.date;
+        }
+
+        if (filters.search) {
+            where.description = { [Op.like]: `%${filters.search}%` };
+        }
+
+        return await Transaction.findAndCountAll({
+            where,
+            include: [{
+                model: Journal,
+                include: [{
+                    model: JournalLine,
+                    as: 'entries',
+                    include: [{
+                        model: Account,
+                        as: 'account',
+                        attributes: ['id', 'name', 'code', 'type']
+                    }]
+                }]
+            }],
+            limit,
+            offset,
+            order: [['date', 'DESC'], ['id', 'DESC']],
+            distinct: true
+        });
+    }
+
+    // --- Tax Submission Operations ---
+    async createTaxSubmission(data, t) {
+        return await TaxSubmission.create(data, { transaction: t });
+    }
+
+    async findAllTaxSubmissions(filters = {}, limit = 10, offset = 0) {
+        const where = {};
+        if (filters.tax_type) where.tax_type = filters.tax_type;
+        if (filters.status) where.status = filters.status;
+        if (filters.from && filters.to) {
+            where.submission_date = { [Op.between]: [filters.from, filters.to] };
+        }
+
+        return await TaxSubmission.findAndCountAll({
+            where,
+            limit,
+            offset,
+            order: [['submission_date', 'DESC'], ['id', 'DESC']]
+        });
+    }
+
+    async findTaxSubmissionById(id) {
+        return await TaxSubmission.findByPk(id);
+    }
+
+    async updateTaxSubmission(id, data) {
+        const submission = await TaxSubmission.findByPk(id);
+        if (!submission) throw new Error('Tax submission not found');
+        return await submission.update(data);
+    }
+
+    async deleteTaxSubmission(id) {
+        const submission = await TaxSubmission.findByPk(id);
+        if (!submission) throw new Error('Tax submission not found');
+        return await submission.destroy();
+    }
+
+    async getTaxSubmissionStats() {
+        // Use Real Ledger Data from 'Tax Payable' Account (2100)
+        // detailed logic:
+        // Total Tax Liability = Total Credits to Tax Payable (Tax collected from Sales)
+        // Total Tax Paid = Total Debits to Tax Payable (Payments to Govt or Adjustments)
+        // Total Due = Balance (Credit - Debit)
+
+        const taxAccount = await Account.findOne({ where: { code: '2100' } });
+
+        if (!taxAccount) {
+            return {
+                total_tax: 0,
+                total_paid: 0,
+                total_due: 0
+            };
+        }
+
+        const result = await JournalLine.findOne({
+            attributes: [
+                [sequelize.fn('SUM', sequelize.col('debit')), 'total_debit'],
+                [sequelize.fn('SUM', sequelize.col('credit')), 'total_credit']
+            ],
+            where: { account_id: taxAccount.id },
+            raw: true
+        });
+
+        const totalCredit = parseFloat(result?.total_credit || 0);
+        const totalDebit = parseFloat(result?.total_debit || 0);
+
+        return {
+            total_tax: totalCredit,
+            total_paid: totalDebit,
+            total_due: totalCredit - totalDebit
+        };
     }
 }
 

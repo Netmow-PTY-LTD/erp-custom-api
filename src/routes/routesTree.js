@@ -465,7 +465,7 @@ router.get('/', (req, res) => {
       </div >
     </div >
 
-    < !--Login Modal-- >
+
     <div class="login-modal" id="loginModal">
       <div class="login-box">
         <h3>Login to ERP</h3>
@@ -481,7 +481,6 @@ router.get('/', (req, res) => {
         <button class="btn btn-light" style="width:100%; margin-top: 10px" onclick="closeLogin()">Cancel</button>
       </div>
     </div>
-
     <script>
       // State
       let authToken = localStorage.getItem('erp_token');

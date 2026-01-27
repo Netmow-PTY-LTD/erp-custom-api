@@ -17,7 +17,9 @@ const ACCOUNTS = {
     OFFICE_EXPENSE: '5200',
     PURCHASE_RETURN: '5400',
     EMPLOYEE_ADVANCE: '1400',
-    SALARY: '5500'
+    SALARY: '5500',
+    TAX_PAYABLE: '2100',
+    TAX_EXPENSE: '5600'
 };
 
 
@@ -32,116 +34,144 @@ class AccountingService {
     }
 
     // --- Core Transaction Processing ---
-    async processTransaction(data) {
-        // Run in a transaction block
-        return await sequelize.transaction(async (t) => {
+    async processTransaction(data, existingTransaction = null) {
+        const runWork = async (t) => {
+            // Debug Logs
+            console.log(`[AccountingService] Processing ${data.type} Transaction. Payment Mode: ${data.payment_mode}`);
+
             // 1. Create the Single Entry Transaction
             const transaction = await AccountingRepository.createTransaction(data, t);
 
-            // 2. Auto Journal Logic
-            let drCode, crCode;
+            // 2. Journal Logic
             const amount = parseFloat(data.amount);
+            const tax_amount = parseFloat(data.tax_amount || 0);
             const narration = data.description || `${data.type} Transaction`;
+            const linesData = [];
 
             switch (data.type) {
-                case 'SALES':
-                    // Cr Sales
-                    crCode = ACCOUNTS.SALES;
-                    // Dr Cash or AR
-                    drCode = (data.payment_mode === 'CASH') ? ACCOUNTS.CASH :
+                case 'SALES': {
+                    // Dr Cash/Bank/AR (Full Amount)
+                    const drCode = (data.payment_mode === 'CASH') ? ACCOUNTS.CASH :
                         (data.payment_mode === 'BANK') ? ACCOUNTS.BANK : ACCOUNTS.AR;
-                    break;
+                    linesData.push({ account_id: await this.getAccountId(drCode), debit: amount, credit: 0 });
 
-                case 'PURCHASE':
-                    // Dr Purchase
-                    drCode = ACCOUNTS.PURCHASE;
-                    // Cr Cash, Bank or AP
-                    crCode = (data.payment_mode === 'CASH') ? ACCOUNTS.CASH :
+                    // Cr Sales (Amount - Tax)
+                    const subtotal = amount - tax_amount;
+                    linesData.push({ account_id: await this.getAccountId(ACCOUNTS.SALES), debit: 0, credit: subtotal });
+
+                    // Cr Tax Payable (Tax)
+                    if (tax_amount > 0) {
+                        linesData.push({ account_id: await this.getAccountId(ACCOUNTS.TAX_PAYABLE), debit: 0, credit: tax_amount });
+                    }
+                    break;
+                }
+
+                case 'PURCHASE': {
+                    // Dr Purchase (Amount - Tax)
+                    const subtotal = amount - tax_amount;
+                    linesData.push({ account_id: await this.getAccountId(ACCOUNTS.PURCHASE), debit: subtotal, credit: 0 });
+
+                    // Dr Tax (Recoverable/Paid) - using TAX_PAYABLE as contra-liability or clearing
+                    if (tax_amount > 0) {
+                        linesData.push({ account_id: await this.getAccountId(ACCOUNTS.TAX_PAYABLE), debit: tax_amount, credit: 0 });
+                    }
+
+                    // Cr Cash/Bank/AP (Full Amount)
+                    const crCode = (data.payment_mode === 'CASH') ? ACCOUNTS.CASH :
                         (data.payment_mode === 'BANK') ? ACCOUNTS.BANK : ACCOUNTS.AP;
+                    linesData.push({ account_id: await this.getAccountId(crCode), debit: 0, credit: amount });
                     break;
+                }
 
-                case 'SALES_RETURN':
+                case 'SALES_RETURN': {
                     // Dr Sales Return
-                    drCode = ACCOUNTS.SALES_RETURN;
-                    // Cr Cash or AR (Usually Cash refund)
-                    crCode = (data.payment_mode === 'CASH') ? ACCOUNTS.CASH : ACCOUNTS.AR; // Simplified
+                    linesData.push({ account_id: await this.getAccountId(ACCOUNTS.SALES_RETURN), debit: amount, credit: 0 });
+                    // Cr Cash or AR
+                    const crCode = (data.payment_mode === 'CASH') ? ACCOUNTS.CASH : ACCOUNTS.AR;
+                    linesData.push({ account_id: await this.getAccountId(crCode), debit: 0, credit: amount });
                     break;
+                }
 
-                case 'PURCHASE_RETURN':
+                case 'PURCHASE_RETURN': {
                     // Dr Cash or AP
-                    drCode = (data.payment_mode === 'CASH') ? ACCOUNTS.CASH : ACCOUNTS.AP;
+                    const drCode = (data.payment_mode === 'CASH') ? ACCOUNTS.CASH : ACCOUNTS.AP;
+                    linesData.push({ account_id: await this.getAccountId(drCode), debit: amount, credit: 0 });
                     // Cr Purchase Return
-                    crCode = ACCOUNTS.PURCHASE_RETURN;
+                    linesData.push({ account_id: await this.getAccountId(ACCOUNTS.PURCHASE_RETURN), debit: 0, credit: amount });
                     break;
+                }
 
-                case 'EXPENSE': // Daily Expense
-                    // Dr Expense Category (Map 'category' to Code? For now use generic Office Expense)
-                    // TODO: In future map data.category to specific expense codes
-                    drCode = ACCOUNTS.OFFICE_EXPENSE;
+                case 'EXPENSE': {
+                    // Dr Expense Category
+                    linesData.push({ account_id: await this.getAccountId(ACCOUNTS.OFFICE_EXPENSE), debit: amount, credit: 0 });
                     // Cr Cash
-                    crCode = ACCOUNTS.CASH;
+                    linesData.push({ account_id: await this.getAccountId(ACCOUNTS.CASH), debit: 0, credit: amount });
                     break;
+                }
 
-                case 'INCOME': // Daily Income
+                case 'INCOME': {
                     // Dr Cash
-                    drCode = ACCOUNTS.CASH;
+                    linesData.push({ account_id: await this.getAccountId(ACCOUNTS.CASH), debit: amount, credit: 0 });
                     // Cr Other Income
-                    crCode = ACCOUNTS.OTHER_INCOME;
+                    linesData.push({ account_id: await this.getAccountId(ACCOUNTS.OTHER_INCOME), debit: 0, credit: amount });
                     break;
+                }
 
-                case 'BANK_DEPOSIT': // Contra
-                    // Dr Bank
-                    drCode = ACCOUNTS.BANK;
-                    // Cr Cash
-                    crCode = ACCOUNTS.CASH;
+                case 'BANK_DEPOSIT': {
+                    // Dr Bank, Cr Cash
+                    linesData.push({ account_id: await this.getAccountId(ACCOUNTS.BANK), debit: amount, credit: 0 });
+                    linesData.push({ account_id: await this.getAccountId(ACCOUNTS.CASH), debit: 0, credit: amount });
                     break;
+                }
 
-
-
-                case 'PAYMENT_OUT': // Paying a Vendor (AP)
-                    // Dr Accounts Payable
-                    drCode = ACCOUNTS.AP;
-                    // Cr Cash or Bank
-                    crCode = (data.payment_mode === 'BANK') ? ACCOUNTS.BANK : ACCOUNTS.CASH;
+                case 'PAYMENT_OUT': {
+                    // Dr AP, Cr Cash/Bank
+                    linesData.push({ account_id: await this.getAccountId(ACCOUNTS.AP), debit: amount, credit: 0 });
+                    const crCode = (data.payment_mode === 'BANK') ? ACCOUNTS.BANK : ACCOUNTS.CASH;
+                    linesData.push({ account_id: await this.getAccountId(crCode), debit: 0, credit: amount });
                     break;
+                }
 
-                case 'PAYMENT_IN': // Receiving from Customer (AR)
-                    // Dr Cash or Bank
-                    drCode = (data.payment_mode === 'BANK') ? ACCOUNTS.BANK : ACCOUNTS.CASH;
-                    // Cr Accounts Receivable
-                    crCode = ACCOUNTS.AR;
+                case 'PAYMENT_IN': {
+                    // Dr Cash/Bank, Cr AR
+                    const drCode = (data.payment_mode === 'BANK') ? ACCOUNTS.BANK : ACCOUNTS.CASH;
+                    linesData.push({ account_id: await this.getAccountId(drCode), debit: amount, credit: 0 });
+                    linesData.push({ account_id: await this.getAccountId(ACCOUNTS.AR), debit: 0, credit: amount });
                     break;
+                }
 
-                case 'EMPLOYEE_ADVANCE':
-                    // Dr Employee Advance (Asset)
-                    drCode = ACCOUNTS.EMPLOYEE_ADVANCE;
-                    // Cr Cash
-                    crCode = ACCOUNTS.CASH;
+                case 'EMPLOYEE_ADVANCE': {
+                    linesData.push({ account_id: await this.getAccountId(ACCOUNTS.EMPLOYEE_ADVANCE), debit: amount, credit: 0 });
+                    linesData.push({ account_id: await this.getAccountId(ACCOUNTS.CASH), debit: 0, credit: amount });
                     break;
+                }
 
-                case 'ADVANCE_RETURN':
-                    // Dr Cash
-                    drCode = ACCOUNTS.CASH;
-                    // Cr Employee Advance
-                    crCode = ACCOUNTS.EMPLOYEE_ADVANCE;
+                case 'ADVANCE_RETURN': {
+                    linesData.push({ account_id: await this.getAccountId(ACCOUNTS.CASH), debit: amount, credit: 0 });
+                    linesData.push({ account_id: await this.getAccountId(ACCOUNTS.EMPLOYEE_ADVANCE), debit: 0, credit: amount });
                     break;
+                }
 
-                case 'PAYROLL':
-                    // Dr Salary (Expense)
-                    drCode = ACCOUNTS.SALARY;
-                    // Cr Cash or Bank
-                    crCode = (data.payment_mode === 'BANK') ? ACCOUNTS.BANK : ACCOUNTS.CASH;
+                case 'PAYROLL': {
+                    linesData.push({ account_id: await this.getAccountId(ACCOUNTS.SALARY), debit: amount, credit: 0 });
+                    const crCode = (data.payment_mode === 'BANK') ? ACCOUNTS.BANK : ACCOUNTS.CASH;
+                    linesData.push({ account_id: await this.getAccountId(crCode), debit: 0, credit: amount });
                     break;
+                }
+
+                case 'TAX_SUBMISSION': {
+                    linesData.push({ account_id: await this.getAccountId(ACCOUNTS.TAX_PAYABLE), debit: amount, credit: 0 });
+                    const pMode = String(data.payment_mode || '').toUpperCase();
+                    const crCode = (pMode === 'CASH') ? ACCOUNTS.CASH : ACCOUNTS.BANK;
+                    linesData.push({ account_id: await this.getAccountId(crCode), debit: 0, credit: amount });
+                    break;
+                }
 
                 default:
-
                     throw new Error(`Unknown Transaction Type: ${data.type}`);
             }
 
             // 3. Prepare Journal Entries
-            const drAccountId = await this.getAccountId(drCode);
-            const crAccountId = await this.getAccountId(crCode);
-
             const journalData = {
                 date: data.date || new Date(),
                 reference_type: 'TRANSACTION',
@@ -149,15 +179,15 @@ class AccountingService {
                 narration: narration
             };
 
-            const linesData = [
-                { account_id: drAccountId, debit: amount, credit: 0 },
-                { account_id: crAccountId, debit: 0, credit: amount }
-            ];
-
             const journal = await AccountingRepository.createJournalEntry(journalData, linesData, t);
 
             return { transaction, journal };
-        });
+        };
+
+        if (existingTransaction) {
+            return await runWork(existingTransaction);
+        }
+        return await sequelize.transaction(runWork);
     }
 
     // --- Reports ---
@@ -566,7 +596,9 @@ class AccountingService {
             { code: ACCOUNTS.OFFICE_EXPENSE, name: 'Office Expense', type: 'EXPENSE' },
             { code: ACCOUNTS.PURCHASE_RETURN, name: 'Purchase Return', type: 'EXPENSE' },
             { code: ACCOUNTS.EMPLOYEE_ADVANCE, name: 'Employee Advances', type: 'ASSET' },
-            { code: ACCOUNTS.SALARY, name: 'Salaries & Wages', type: 'EXPENSE' }
+            { code: ACCOUNTS.SALARY, name: 'Salaries & Wages', type: 'EXPENSE' },
+            { code: ACCOUNTS.TAX_PAYABLE, name: 'Tax Payable', type: 'LIABILITY' },
+            { code: ACCOUNTS.TAX_EXPENSE, name: 'Tax Expense', type: 'EXPENSE' }
         ];
 
 
@@ -694,6 +726,141 @@ class AccountingService {
                 amount: amountStr
             };
         });
+    }
+    async getExpenses(query) {
+        const page = parseInt(query.page) || 1;
+        const limit = parseInt(query.limit) || 20;
+        const offset = (page - 1) * limit;
+
+        const types = ['EXPENSE', 'PURCHASE', 'PAYMENT_OUT', 'SALES_RETURN', 'TAX_EXPENSE', 'SALARY'];
+
+        const { count, rows } = await AccountingRepository.findHeadWiseTransactions(types, query, limit, offset);
+
+        const data = rows.map(tx => {
+            const journal = tx.Journal;
+            let debitHead = null;
+            let creditHead = null;
+
+            if (journal && journal.entries) {
+                // Find main Expense head (Debit) and Payment head (Credit)
+                const debitEntry = journal.entries.find(e => parseFloat(e.debit) > 0);
+                const creditEntry = journal.entries.find(e => parseFloat(e.credit) > 0);
+
+                if (debitEntry) debitHead = debitEntry.account;
+                if (creditEntry) creditHead = creditEntry.account;
+            }
+
+            return {
+                id: tx.id,
+                title: tx.description,
+                description: tx.description,
+                debit_head_id: debitHead?.id,
+                debitHead: debitHead ? { id: debitHead.id, name: debitHead.name } : null,
+                amount: tx.amount,
+                expense_date: tx.date,
+                payment_method: creditHead?.name || tx.payment_mode,
+                reference_number: journal?.narration,
+                status: 'paid'
+            };
+        });
+
+        return { count, rows: data };
+    }
+
+    async getIncomes(query) {
+        const page = parseInt(query.page) || 1;
+        const limit = parseInt(query.limit) || 20;
+        const offset = (page - 1) * limit;
+
+        const types = ['INCOME', 'SALES', 'PAYMENT_IN', 'OTHER_INCOME'];
+
+        const { count, rows } = await AccountingRepository.findHeadWiseTransactions(types, query, limit, offset);
+
+        const data = rows.map(tx => {
+            const journal = tx.Journal;
+            let debitHead = null;
+            let creditHead = null;
+
+            if (journal && journal.entries) {
+                const debitEntry = journal.entries.find(e => parseFloat(e.debit) > 0);
+                const creditEntry = journal.entries.find(e => parseFloat(e.credit) > 0);
+
+                if (debitEntry) debitHead = debitEntry.account;
+                if (creditEntry) creditHead = creditEntry.account;
+            }
+
+            return {
+                id: tx.id,
+                title: tx.description,
+                description: tx.description,
+                credit_head_id: creditHead?.id,
+                creditHead: creditHead ? { id: creditHead.id, name: creditHead.name } : null,
+                amount: tx.amount,
+                income_date: tx.date,
+                payment_method: debitHead?.name || tx.payment_mode, // Received into
+                reference_number: journal?.narration
+            };
+        });
+
+        return { count, rows: data };
+    }
+
+    async createTaxSubmission(data) {
+        return await sequelize.transaction(async (t) => {
+            // 1. Create Tax Submission Record
+            const submission = await AccountingRepository.createTaxSubmission(data, t);
+
+            // 2. record accounting transaction if amount > 0
+            const amount = parseFloat(data.amount || 0);
+            console.log(`[AccountingService] CreateTaxSubmission amount: ${amount}, data.payment_mode: ${data.payment_mode}, submission.payment_mode: ${submission.payment_mode}`);
+
+            if (amount > 0) {
+                await this.processTransaction({
+                    type: 'TAX_SUBMISSION',
+                    amount: amount,
+                    payment_mode: data.payment_mode || submission.payment_mode || 'BANK',
+                    date: data.submission_date || submission.submission_date,
+                    description: `Tax Submission: ${data.tax_type} for period ${data.period_start} to ${data.period_end}. Ref: ${data.reference_number || 'N/A'}`
+                }, t);
+            }
+
+            return submission;
+        });
+    }
+
+    async getAllTaxSubmissions(query = {}) {
+        const page = parseInt(query.page) || 1;
+        const limit = parseInt(query.limit) || 10;
+        const offset = (page - 1) * limit;
+
+        const filters = {
+            tax_type: query.tax_type,
+            status: query.status,
+            from: query.from,
+            to: query.to
+        };
+
+        const submissions = await AccountingRepository.findAllTaxSubmissions(filters, limit, offset);
+        const stats = await AccountingRepository.getTaxSubmissionStats();
+
+        return {
+            ...submissions,
+            stats
+        };
+    }
+
+    async getTaxSubmissionById(id) {
+        const submission = await AccountingRepository.findTaxSubmissionById(id);
+        if (!submission) throw new Error('Tax submission not found');
+        return submission;
+    }
+
+    async updateTaxSubmission(id, data) {
+        return await AccountingRepository.updateTaxSubmission(id, data);
+    }
+
+    async deleteTaxSubmission(id) {
+        return await AccountingRepository.deleteTaxSubmission(id);
     }
 }
 

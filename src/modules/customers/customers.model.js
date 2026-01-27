@@ -158,7 +158,47 @@ const CustomerImage = sequelize.define('CustomerImage', {
     updatedAt: 'updated_at'
 });
 
+const CustomerContact = sequelize.define('CustomerContact', {
+    id: {
+        type: DataTypes.INTEGER,
+        primaryKey: true,
+        autoIncrement: true
+    },
+    customer_id: {
+        type: DataTypes.INTEGER,
+        allowNull: false
+    },
+    name: {
+        type: DataTypes.STRING(255),
+        allowNull: false
+    },
+    phone: {
+        type: DataTypes.STRING(50),
+        allowNull: true
+    },
+    role: {
+        type: DataTypes.STRING(100),
+        allowNull: true
+    },
+    email: {
+        type: DataTypes.STRING(255),
+        allowNull: true
+    },
+    is_primary: {
+        type: DataTypes.BOOLEAN,
+        defaultValue: false
+    }
+}, {
+    tableName: 'customer_contacts',
+    timestamps: true,
+    createdAt: 'created_at',
+    updatedAt: 'updated_at'
+});
+
 Customer.hasMany(CustomerImage, { foreignKey: 'customer_id', as: 'images' });
 CustomerImage.belongsTo(Customer, { foreignKey: 'customer_id' });
 
-module.exports = { Customer, CustomerImage };
+Customer.hasMany(CustomerContact, { foreignKey: 'customer_id', as: 'contacts' });
+CustomerContact.belongsTo(Customer, { foreignKey: 'customer_id' });
+
+module.exports = { Customer, CustomerImage, CustomerContact };

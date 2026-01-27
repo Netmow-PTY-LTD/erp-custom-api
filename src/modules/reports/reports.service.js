@@ -411,14 +411,26 @@ class ReportService {
 
         const sql = `
             SELECT 
-                sku,
-                name as product,
-                stock_quantity as stock,
-                min_stock_level as minLevel
-            FROM products
-            WHERE stock_quantity <= min_stock_level
-            AND is_active = true
-            ORDER BY stock_quantity ASC
+                p.sku,
+                p.name as product,
+                p.stock_quantity as stock,
+                p.min_stock_level as minLevel,
+                COALESCE((
+                    SELECT SUM(oi.total_price)
+                    FROM order_items oi
+                    JOIN orders o ON oi.order_id = o.id
+                    WHERE oi.product_id = p.id AND o.status != 'cancelled'
+                ), 0) as total_sales_amt,
+                COALESCE((
+                    SELECT SUM(poi.line_total)
+                    FROM purchase_order_items poi
+                    JOIN purchase_orders po ON poi.purchase_order_id = po.id
+                    WHERE poi.product_id = p.id AND po.status != 'cancelled'
+                ), 0) as total_purchase_amt
+            FROM products p
+            WHERE p.stock_quantity <= p.min_stock_level
+            AND p.is_active = true
+            ORDER BY p.stock_quantity ASC
             LIMIT :limit OFFSET :offset
         `;
 

@@ -8,7 +8,8 @@ class SupplierController {
             const limit = parseInt(req.query.limit) || 10;
             const filters = {
                 is_active: req.query.is_active,
-                search: req.query.search
+                search: req.query.search,
+                sort: req.query.sort
             };
 
             const result = await SupplierService.getAllSuppliers(filters, page, limit);

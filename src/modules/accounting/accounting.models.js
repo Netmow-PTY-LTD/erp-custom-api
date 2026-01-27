@@ -133,6 +133,63 @@ const JournalLine = sequelize.define('JournalLine', {
     timestamps: false
 });
 
+// 5. Tax Submissions
+const TaxSubmission = sequelize.define('TaxSubmission', {
+    id: {
+        type: DataTypes.INTEGER,
+        primaryKey: true,
+        autoIncrement: true
+    },
+    tax_type: {
+        type: DataTypes.STRING(50), // e.g., 'VAT', 'GST', 'INCOME_TAX'
+        allowNull: false
+    },
+    period_start: {
+        type: DataTypes.DATEONLY,
+        allowNull: false
+    },
+    period_end: {
+        type: DataTypes.DATEONLY,
+        allowNull: false
+    },
+    amount: {
+        type: DataTypes.DECIMAL(12, 2),
+        allowNull: false
+    },
+    submission_date: {
+        type: DataTypes.DATEONLY,
+        allowNull: false,
+        defaultValue: DataTypes.NOW
+    },
+    reference_number: {
+        type: DataTypes.STRING(100),
+        allowNull: true
+    },
+    attachment_url: {
+        type: DataTypes.STRING(255),
+        allowNull: true
+    },
+    status: {
+        type: DataTypes.ENUM('PENDING', 'SUBMITTED', 'PAID'),
+        allowNull: false,
+        defaultValue: 'SUBMITTED'
+    },
+    notes: {
+        type: DataTypes.TEXT,
+        allowNull: true
+    },
+    payment_mode: {
+        type: DataTypes.ENUM('CASH', 'BANK'),
+        allowNull: false,
+        defaultValue: 'BANK'
+    }
+}, {
+    tableName: 'tax_submissions',
+    timestamps: true,
+    createdAt: 'created_at',
+    updatedAt: 'updated_at'
+});
+
 // Associations
 Account.hasMany(Account, { as: 'children', foreignKey: 'parent_id' });
 Account.belongsTo(Account, { as: 'parent', foreignKey: 'parent_id' });
@@ -151,5 +208,6 @@ module.exports = {
     Account,
     Transaction,
     Journal,
-    JournalLine
+    JournalLine,
+    TaxSubmission
 };

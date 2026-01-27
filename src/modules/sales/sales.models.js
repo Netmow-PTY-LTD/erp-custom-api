@@ -398,6 +398,27 @@ const Invoice = sequelize.define('Invoice', {
         type: DataTypes.ENUM('draft', 'sent', 'paid', 'overdue', 'cancelled'),
         defaultValue: 'draft'
     },
+    // E-Invoice Fields
+    e_invoice_uuid: {
+        type: DataTypes.STRING(255),
+        allowNull: true
+    },
+    e_invoice_status: {
+        type: DataTypes.STRING(50), // PENDING, SUBMITTED, VALID, INVALID, CANCELLED
+        defaultValue: 'PENDING'
+    },
+    e_invoice_qr_url: {
+        type: DataTypes.TEXT,
+        allowNull: true
+    },
+    e_invoice_long_id: {
+        type: DataTypes.STRING(255),
+        allowNull: true
+    },
+    submission_date: {
+        type: DataTypes.DATE,
+        allowNull: true
+    },
     created_by: {
         type: DataTypes.INTEGER,
         allowNull: true
