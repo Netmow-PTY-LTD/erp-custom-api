@@ -574,6 +574,76 @@ class ReportService {
             net_profit: revenue - cogs - expenses
         };
     }
+    async getStaffWiseSales(startDate, endDate, page = 1, limit = 10, search = null, staffId = null) {
+        const { start, end } = this._getDateRange(startDate, endDate);
+        const offset = parseInt((page - 1) * limit);
+        const limitNum = parseInt(limit);
+
+        let searchCondition = '';
+        if (search && search.trim() !== '') {
+            searchCondition = `AND (s.first_name LIKE :search OR s.last_name LIKE :search OR s.name LIKE :search)`;
+        }
+
+        let staffCondition = '';
+        if (staffId && staffId !== 'all') {
+            staffCondition = `AND s.id = :staffId`;
+        }
+
+        const sql = `
+            SELECT 
+                s.id,
+                IFNULL(s.name, CONCAT(IFNULL(s.first_name, ''), ' ', IFNULL(s.last_name, ''))) as staff_name,
+                COUNT(o.id) as order_count,
+                COALESCE(SUM(o.total_amount), 0) as total_sales
+            FROM users s
+            LEFT JOIN order_staff os ON s.id = os.staff_id
+            LEFT JOIN orders o ON os.order_id = o.id 
+                AND DATE(o.order_date) BETWEEN :start AND :end
+                AND o.status != 'cancelled'
+            WHERE s.status = 'active'
+            ${searchCondition}
+            ${staffCondition}
+            GROUP BY s.id, s.name, s.first_name, s.last_name
+            ORDER BY total_sales DESC
+            LIMIT :limit OFFSET :offset
+        `;
+
+        const countSql = `
+            SELECT COUNT(DISTINCT s.id) as total 
+            FROM users s
+            WHERE s.status = 'active'
+            ${searchCondition}
+            ${staffCondition}
+        `;
+
+        const replacements = {
+            start,
+            end,
+            limit: limitNum,
+            offset,
+            ...(search && search.trim() !== '' && { search: `%${search}%` }),
+            ...(staffId && staffId !== 'all' && { staffId: parseInt(staffId) })
+        };
+
+        const rows = await sequelize.query(sql, {
+            replacements,
+            type: QueryTypes.SELECT
+        });
+
+        const countResult = await sequelize.query(countSql, {
+            replacements,
+            type: QueryTypes.SELECT
+        });
+
+        return {
+            rows: rows.map(row => ({
+                ...row,
+                order_count: parseInt(row.order_count) || 0,
+                total_sales: parseFloat(row.total_sales) || 0
+            })),
+            total: countResult[0].total
+        };
+    }
 }
 
 module.exports = new ReportService();

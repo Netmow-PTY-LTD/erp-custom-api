@@ -178,23 +178,42 @@ class DatabaseController {
   async seedFoundation(req, res) {
     try {
       const tables = await sequelize.getQueryInterface().showAllTables();
-      const skipTables = ['SequelizeMeta', 'migrations'];
+
+      // Define tables that should NOT be truncated during a system reset
+      // These are "Essentials" and foundational data
+      const keepTables = [
+        'SequelizeMeta',
+        'migrations',
+        'accounts',        // Accounting Essentials
+        'users',           // Staff/Users
+        'roles',           // System Roles
+        'role_settings',
+        'role_menus',
+        'role_dashboards',
+        'settingss',       // System Settings
+        'departments',     // Organizational structure
+        'units',           // Units of measure
+        'categories',      // Product categories
+        'warehouses'       // Storage locations
+      ];
 
       await sequelize.query('SET FOREIGN_KEY_CHECKS = 0');
 
+      const truncatedTables = [];
       for (const table of tables) {
-        if (!skipTables.includes(table)) {
+        if (!keepTables.includes(table)) {
           // Truncate table
           await sequelize.query(`TRUNCATE TABLE \`${table}\``);
+          truncatedTables.push(table);
         }
       }
 
       await sequelize.query('SET FOREIGN_KEY_CHECKS = 1');
 
-      // 1. Seed Accounting Essentials
+      // 1. Ensure Accounting Essentials (seeds only if missing)
       await AccountingService.seedAccounts();
 
-      // 2. Seed Superadmin Role
+      // 2. Seed Superadmin Role if missing
       const [superRole] = await Role.findOrCreate({
         where: { name: 'Superadmin' },
         defaults: {
@@ -205,7 +224,7 @@ class DatabaseController {
         }
       });
 
-      // 3. Seed Role Settings
+      // 3. Seed Role Settings if missing
       await RoleSettings.findOrCreate({
         where: { role_id: superRole.id },
         defaults: {
@@ -216,7 +235,7 @@ class DatabaseController {
         }
       });
 
-      // 4. Seed Super Admin User
+      // 4. Seed Super Admin User if missing
       const hashedPassword = await bcrypt.hash('password123', 10);
       await User.findOrCreate({
         where: { email: 'admin@gmail.com' },
@@ -229,7 +248,12 @@ class DatabaseController {
         }
       });
 
-      return success(res, 'Database reset successfully. Essential accounts and Superadmin seeded.');
+      return success(res, 'Database reset successfully. Foundational data preserved, transactional data cleared.', {
+        total_tables: tables.length,
+        truncated_count: truncatedTables.length,
+        truncated_tables: truncatedTables
+      });
+
     } catch (err) {
       // Ensure FK checks are re-enabled even on error
       await sequelize.query('SET FOREIGN_KEY_CHECKS = 1');
