@@ -212,6 +212,26 @@ router.routesMeta = [
         ]
     },
     {
+        path: '/orders-items',
+        method: 'GET',
+        middlewares: [],
+        handler: (req, res) => salesController.getOrdersItems(req, res),
+        description: 'Get items for multiple selected orders',
+        queryParams: {
+            orders: 'List of order IDs (e.g. [1,2] or 1,2)'
+        },
+        sampleResponse: {
+            success: true,
+            message: 'Orders items retrieved successfully',
+            data: [
+                {
+                    id: 1,
+                    items: []
+                }
+            ]
+        }
+    },
+    {
         path: '/orders/dummy',
         method: 'GET',
         middlewares: [],
@@ -448,7 +468,7 @@ router.routesMeta = [
         handler: (req, res) => salesController.getAllInvoices(req, res),
         description: 'Get all invoices with pagination. Returns paid_amount and remaining_balance for each invoice.',
         database: {
-            tables: ['invoices', 'orders', 'customers', 'payments'],
+            tables: ['invoices', 'orders', 'customers', 'payments', 'order_items', 'products'],
             mainTable: 'invoices',
             fields: {
                 invoices: ['id', 'invoice_number', 'order_id', 'invoice_date', 'due_date', 'total_amount', 'status', 'created_at'],
@@ -501,7 +521,24 @@ router.routesMeta = [
                             email: 'john@example.com',
                             phone: '+1234567890',
                             company: 'ABC Corp'
-                        }
+                        },
+                        items: [
+                            {
+                                id: 1,
+                                product_id: 1,
+                                quantity: 2,
+                                unit_price: 50.00,
+                                discount: 5.00,
+                                line_total: 95.00,
+                                product: {
+                                    id: 1,
+                                    name: 'Wireless Mouse',
+                                    sku: 'MOU-001',
+                                    price: 29.99,
+                                    image_url: 'http://example.com/thumb.jpg'
+                                }
+                            }
+                        ]
                     },
                     payments: [
                         {
