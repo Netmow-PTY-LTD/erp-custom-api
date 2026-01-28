@@ -24,6 +24,44 @@ class SalesController {
         }
     }
 
+    async getOrdersItems(req, res) {
+        try {
+            let orderIds = req.query.orders;
+
+            // Handle different formats: "[1,2]" or "1,2"
+            if (typeof orderIds === 'string') {
+                if (orderIds.startsWith('[') && orderIds.endsWith(']')) {
+                    try {
+                        orderIds = JSON.parse(orderIds);
+                    } catch (e) {
+                        return error(res, 'Invalid JSON format for orders parameter', 400);
+                    }
+                } else {
+                    orderIds = orderIds.split(',').map(id => id.trim()).filter(Boolean);
+                }
+            }
+
+            // Determine if orderIds is now an array
+            if (!Array.isArray(orderIds)) {
+                // Try to force array if it's a single value
+                if (orderIds) orderIds = [orderIds];
+                else return error(res, 'Orders parameter is required', 400);
+            }
+
+            // Convert to integers and validate
+            orderIds = orderIds.map(id => parseInt(id)).filter(id => !isNaN(id));
+
+            if (orderIds.length === 0) {
+                return error(res, 'No valid order IDs provided', 400);
+            }
+
+            const data = await SalesService.getOrdersItems(orderIds);
+            return success(res, 'Orders items retrieved successfully', data);
+        } catch (err) {
+            return error(res, err.message, 500);
+        }
+    }
+
     async getOrderById(req, res) {
         try {
             const order = await SalesService.getOrderById(req.params.id);

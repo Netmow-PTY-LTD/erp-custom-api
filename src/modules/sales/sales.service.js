@@ -29,6 +29,14 @@ class SalesService {
         };
     }
 
+    // Get multiple orders with items
+    async getOrdersItems(orderIds) {
+        if (!orderIds || !Array.isArray(orderIds) || orderIds.length === 0) {
+            throw new Error('Invalid or empty order IDs list');
+        }
+        return await OrderRepository.findOrdersWithItems(orderIds);
+    }
+
     async getOrdersBySalesRoute(filters = {}, page = 1, limit = 10) {
         const offset = (page - 1) * limit;
         const result = await SalesRouteRepository.findAllWithOrders(filters, limit, offset);

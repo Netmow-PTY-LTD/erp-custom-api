@@ -278,6 +278,39 @@ class OrderRepository {
         });
     }
 
+    async findOrdersWithItems(orderIds) {
+        const { Customer } = require('../customers/customers.model');
+        const { Product } = require('../products/products.model');
+
+        return await Order.findAll({
+            where: {
+                id: {
+                    [Op.in]: orderIds
+                }
+            },
+            attributes: ['id', 'order_number', 'order_date', 'total_amount', 'status'],
+            include: [
+                {
+                    model: Customer,
+                    as: 'customer',
+                    attributes: ['id', 'name', 'company']
+                },
+                {
+                    model: OrderItem,
+                    as: 'items',
+                    include: [
+                        {
+                            model: Product,
+                            as: 'product',
+                            attributes: ['id', 'name', 'sku', 'price', 'image_url']
+                        }
+                    ]
+                }
+            ],
+            order: [['id', 'ASC']]
+        });
+    }
+
     async findAllBySalesRoute(filters = {}, limit = 10, offset = 0) {
         const where = {};
         const customerWhere = {};
@@ -396,6 +429,17 @@ class InvoiceRepository {
                             model: Customer,
                             as: 'customer',
                             attributes: ['id', 'name', 'email', 'phone', 'company']
+                        },
+                        {
+                            model: OrderItem,
+                            as: 'items',
+                            include: [
+                                {
+                                    model: require('../products/products.model').Product,
+                                    as: 'product',
+                                    attributes: ['id', 'name', 'sku', 'price', 'image_url']
+                                }
+                            ]
                         }
                     ]
                 },
