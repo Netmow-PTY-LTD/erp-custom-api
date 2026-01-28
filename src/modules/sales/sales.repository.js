@@ -43,7 +43,7 @@ class OrderRepository {
                         {
                             model: require('../products/products.model').Product,
                             as: 'product',
-                            attributes: ['id', 'name', 'sku', 'price', 'image_url']
+                            attributes: ['id', 'name', 'sku', 'price', 'image_url', 'specification']
                         }
                     ]
                 },
@@ -83,7 +83,7 @@ class OrderRepository {
                         {
                             model: require('../products/products.model').Product,
                             as: 'product',
-                            attributes: ['id', 'name', 'sku', 'price', 'image_url']
+                            attributes: ['id', 'name', 'sku', 'price', 'image_url', 'specification']
                         }
                     ]
                 },
@@ -302,7 +302,7 @@ class OrderRepository {
                         {
                             model: Product,
                             as: 'product',
-                            attributes: ['id', 'name', 'sku', 'price', 'image_url']
+                            attributes: ['id', 'name', 'sku', 'price', 'image_url', 'specification']
                         }
                     ]
                 }
@@ -364,7 +364,7 @@ class OrderRepository {
                         {
                             model: require('../products/products.model').Product,
                             as: 'product',
-                            attributes: ['id', 'name', 'sku', 'price', 'image_url']
+                            attributes: ['id', 'name', 'sku', 'price', 'image_url', 'specification']
                         }
                     ]
                 },
@@ -437,7 +437,7 @@ class InvoiceRepository {
                                 {
                                     model: require('../products/products.model').Product,
                                     as: 'product',
-                                    attributes: ['id', 'name', 'sku', 'price', 'image_url']
+                                    attributes: ['id', 'name', 'sku', 'price', 'image_url', 'specification']
                                 }
                             ]
                         }
@@ -473,7 +473,7 @@ class InvoiceRepository {
                                 {
                                     model: require('../products/products.model').Product,
                                     as: 'product',
-                                    attributes: ['id', 'name', 'sku', 'price', 'image_url']
+                                    attributes: ['id', 'name', 'sku', 'price', 'image_url', 'specification']
                                 }
                             ]
                         }
@@ -694,9 +694,17 @@ class SalesRouteRepository {
                             // If we filter orders, we might want to see routes but with empty orders list if none match.
                             // However, 'where' inside include usually forces inner join if required is true. false -> LEFT JOIN.
                             include: [
-                                // We need delivery status too? User JSON just says "status".
-                                // But let's include items count or something if needed?
-                                // User JSON: id, customer (name), amount, status, date.
+                                {
+                                    model: OrderItem,
+                                    as: 'items',
+                                    include: [
+                                        {
+                                            model: require('../products/products.model').Product,
+                                            as: 'product',
+                                            attributes: ['id', 'name', 'sku', 'price', 'image_url', 'specification']
+                                        }
+                                    ]
+                                }
                             ]
                         }
                     ]
@@ -723,6 +731,19 @@ class SalesRouteRepository {
                             model: Order,
                             as: 'orders',
                             attributes: ['id', 'order_number', 'order_date', 'total_amount', 'status'],
+                            include: [
+                                {
+                                    model: OrderItem,
+                                    as: 'items',
+                                    include: [
+                                        {
+                                            model: require('../products/products.model').Product,
+                                            as: 'product',
+                                            attributes: ['id', 'name', 'sku', 'price', 'image_url', 'specification']
+                                        }
+                                    ]
+                                }
+                            ],
                             limit: 1,
                             order: [['order_date', 'DESC']],
                             required: false
