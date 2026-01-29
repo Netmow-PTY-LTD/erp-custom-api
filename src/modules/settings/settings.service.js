@@ -194,6 +194,47 @@ class SettingsService {
 
     return { ...data };
   }
+
+  async getGoogleMapsSettings() {
+    const setting = await this.settingsRepository.findByName('google_maps_settings');
+
+    if (setting && setting.description) {
+      try {
+        return JSON.parse(setting.description);
+      } catch (e) {
+        console.error('Error parsing google maps settings:', e);
+      }
+    }
+
+    // Default data
+    return {
+      api_key: '',
+      status: 'disabled'
+    };
+  }
+
+  async updateGoogleMapsSettings(data) {
+    const setting = await this.settingsRepository.findByName('google_maps_settings');
+
+    // Convert data to string for storage
+    const description = JSON.stringify(data);
+
+    if (setting) {
+      await this.settingsRepository.update(setting.id, {
+        name: 'google_maps_settings',
+        description: description,
+        status: 'Active'
+      });
+    } else {
+      await this.settingsRepository.create({
+        name: 'google_maps_settings',
+        description: description,
+        status: 'Active'
+      });
+    }
+
+    return { ...data };
+  }
 }
 
 module.exports = SettingsService;

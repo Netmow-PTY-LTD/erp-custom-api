@@ -109,6 +109,24 @@ class SettingsController {
       return error(res, err.message, 400);
     }
   }
+
+  async getGoogleMapsSettings(req, res) {
+    try {
+      const settings = await this.settingsService.getGoogleMapsSettings();
+      return success(res, 'Google Maps settings retrieved successfully', settings);
+    } catch (err) {
+      return error(res, err.message, 500);
+    }
+  }
+
+  async updateGoogleMapsSettings(req, res) {
+    try {
+      const settings = await this.settingsService.updateGoogleMapsSettings(req.body);
+      return success(res, 'Google Maps settings updated successfully', settings);
+    } catch (err) {
+      return error(res, err.message, 400);
+    }
+  }
 }
 
 module.exports = SettingsController;

@@ -120,6 +120,16 @@ class AccountingController {
         }
     }
 
+    async getBalanceSheet(req, res) {
+        try {
+            const { date } = req.query;
+            const report = await AccountingService.getBalanceSheet(date);
+            return success(res, 'Balance Sheet retrieved successfully', report);
+        } catch (err) {
+            return error(res, err.message, 500);
+        }
+    }
+
     async getProductProfitLoss(req, res) {
         try {
             const { from, to } = req.query;

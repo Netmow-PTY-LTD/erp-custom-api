@@ -225,6 +225,20 @@ router.routesMeta = [
         middlewares: [verifyToken, moduleCheck('settings')],
         handler: (req, res) => settingsController.updateEInvoiceSettings(req, res),
         description: 'Update E-Invoice configuration'
+    },
+    {
+        path: '/google-maps',
+        method: 'GET',
+        middlewares: [verifyToken, moduleCheck('settings')],
+        handler: (req, res) => settingsController.getGoogleMapsSettings(req, res),
+        description: 'Get Google Maps API configuration'
+    },
+    {
+        path: '/google-maps',
+        method: 'POST',
+        middlewares: [verifyToken, moduleCheck('settings')],
+        handler: (req, res) => settingsController.updateGoogleMapsSettings(req, res),
+        description: 'Update Google Maps API configuration'
     }
 ];
 
