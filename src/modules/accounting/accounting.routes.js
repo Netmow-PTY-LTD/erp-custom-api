@@ -372,6 +372,45 @@ router.routesMeta = [
         ]
     },
     {
+        path: '/reports/balance-sheet',
+        method: 'GET',
+        middlewares: [],
+        handler: (req, res) => accountingController.getBalanceSheet(req, res),
+        description: 'Get Balance Sheet Report',
+        database: {
+            tables: ['accounts', 'journal_lines'],
+            mainTable: 'accounts',
+            fields: {
+                accounts: ['code', 'name', 'type'],
+                journal_lines: ['debit', 'credit']
+            },
+        },
+        calculation: '1. Assets = Sum(Debit) - Sum(Credit) for ASSET accounts\n2. Liabilities = Sum(Credit) - Sum(Debit) for LIABILITY accounts\n3. Equity = Sum(Credit) - Sum(Debit) for EQUITY accounts + Net Profit',
+        queryParams: {
+            date: 'As of Date (YYYY-MM-DD)'
+        },
+        examples: [
+            {
+                title: 'Get Balance Sheet',
+                description: 'View Assets, Liabilities and Equity',
+                url: '/api/accounting/reports/balance-sheet?date=2026-01-31',
+                method: 'GET',
+                response: {
+                    status: true,
+                    message: 'Balance Sheet retrieved successfully',
+                    data: {
+                        assets: [{ code: '1000', name: 'Cash', balance: 10000 }],
+                        liabilities: [{ code: '2000', name: 'Accounts Payable', balance: 2000 }],
+                        equity: [{ code: '3000', name: 'Owner Capital', balance: 5000 }, { name: 'Retained Earnings', balance: 3000 }],
+                        total_assets: 10000,
+                        total_liabilities: 2000,
+                        total_equity: 8000
+                    }
+                }
+            }
+        ]
+    },
+    {
         path: '/reports/product-profit-loss',
         method: 'GET',
         middlewares: [],

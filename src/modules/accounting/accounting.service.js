@@ -631,6 +631,58 @@ class AccountingService {
         return await AccountingRepository.getProfitAndLoss(filters);
     }
 
+    async getBalanceSheet(date) {
+        const trialBalance = await AccountingRepository.getTrialBalance(date);
+
+        // Structure:
+        // Assets: [{ name, code, balance }]
+        // Liabilities: [{ name, code, balance }]
+        // Equity: [{ name, code, balance }]
+
+        // Need to calculate Net Profit as well to balance it.
+        // Net Profit = (Total Income - Total Expense) up to that date.
+
+        const pnL = await AccountingRepository.getProfitAndLoss({ to: date });
+        const netProfit = pnL.net_profit;
+
+        const report = {
+            assets: [],
+            liabilities: [],
+            equity: [],
+            total_assets: 0,
+            total_liabilities: 0,
+            total_equity: 0,
+            as_of_date: date || new Date().toISOString().split('T')[0]
+        };
+
+        trialBalance.forEach(row => {
+            const balance = (['ASSET', 'EXPENSE'].includes(row.type))
+                ? row.debit - row.credit
+                : row.credit - row.debit;
+
+            if (balance === 0 && row.type !== 'EQUITY') return; // Skip zero balances unless Equity
+
+            const entry = { name: row.account, code: row.code, balance };
+
+            if (row.type === 'ASSET') {
+                report.assets.push(entry);
+                report.total_assets += balance;
+            } else if (row.type === 'LIABILITY') {
+                report.liabilities.push(entry);
+                report.total_liabilities += balance;
+            } else if (row.type === 'EQUITY') {
+                report.equity.push(entry);
+                report.total_equity += balance;
+            }
+        });
+
+        // Add Retained Earnings (Net Profit) to Equity
+        report.equity.push({ name: 'Retained Earnings (Net Profit)', code: 'RE', balance: netProfit });
+        report.total_equity += netProfit;
+
+        return report;
+    }
+
     async getProductProfitLoss(filters) {
         return await AccountingRepository.getProductProfitLoss(filters);
     }
